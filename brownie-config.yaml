@@ -1,0 +1,26 @@
+
+networks:
+  default: hardhat-fork
+  mainnet-fork:
+    cmd_settings:
+      evm_version: london
+
+# automatically fetch contract sources from Etherscan
+autofetch_sources: True
+
+# require OpenZepplin Contracts
+dependencies:
+  - OpenZeppelin/openzeppelin-contracts@4.5.0
+  - smartcontractkit/chainlink@1.3.0
+
+# path remapping to support imports from GitHub/NPM
+compiler:
+  solc:
+    version: 0.8.10
+    remappings:
+      - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.5.0"
+      - "@chainlink=smartcontractkit/chainlink@1.3.0"
+
+reports:
+  exclude_contracts:
+    - SafeMath

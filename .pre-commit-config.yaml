@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.5.4
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+  - repo: 'https://github.com/psf/black'
+    rev: 22.3.0
+    hooks:
+      - id: black
+  - repo: 'https://github.com/pre-commit/pre-commit-hooks'
+    rev: v2.4.0
+    hooks:
+      - id: flake8
+        args:
+        - "--max-line-length=88"
+        - "--max-complexity=18"
+        - "--ignore=F401,F403,F405,W503"
+default_language_version:
+  python: python3.8
