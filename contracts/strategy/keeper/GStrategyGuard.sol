@@ -64,7 +64,7 @@ contract GStrategyGuard is IGStrategyGuard {
 
     address[] public strategies;
 
-    // maps a strategy to it stop loss data
+    // maps a strategy to its stop loss data
     mapping(address => strategyData) public strategyCheck;
 
     constructor() {
@@ -102,7 +102,7 @@ contract GStrategyGuard is IGStrategyGuard {
     }
 
     /// @notice Add a strategy to the stop loss logic - Needed in order to be
-    ///     be able to determine health of stragies underlying investments (meta pools)
+    ///     be able to determine health of strategies underlying investments (meta pools)
     /// @param _strategy the target strategy
     /// @param _timeLimit amount of time that needs to pass before triggering stop loss
     function addStrategy(address _strategy, uint64 _timeLimit) external {
