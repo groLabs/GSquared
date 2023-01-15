@@ -1030,6 +1030,10 @@ contract ConvexStrategy {
         if (msg.sender != owner) revert StrategyErrors.NotOwner();
         if (_newPid == pid) revert StrategyErrors.SamePid();
 
+        // remove old approval
+        CRV_3POOL_TOKEN.approve(metaPool, 0);
+        lpToken.approve(BOOSTER, 0);
+
         (address lp, , , address _reward, , bool shutdown) = Booster(BOOSTER)
             .poolInfo(_newPid);
         if (shutdown) revert StrategyErrors.ConvexShutdown();
@@ -1038,6 +1042,8 @@ contract ConvexStrategy {
         newRewardContract = _reward;
         newPid = _newPid;
         newMetaPool = _newMetaPool;
+
+        // add new approval
         if (CRV_3POOL_TOKEN.allowance(address(this), _newMetaPool) == 0) {
             CRV_3POOL_TOKEN.approve(_newMetaPool, type(uint256).max);
         }
