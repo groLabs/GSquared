@@ -609,7 +609,7 @@ contract ConvexStrategy {
             cvxValue = getPriceCurve(CVX_ETH, cvx);
         }
 
-        if (crvValue + cvxValue > MIN_REWARD_SELL_AMOUNT) {
+        if (crvValue + cvxValue > MIN_WETH_SELL_AMOUNT) {
             return getPriceV3(crvValue + cvxValue);
         }
     }
