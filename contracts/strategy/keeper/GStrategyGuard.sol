@@ -7,6 +7,7 @@ import "../../interfaces/IGStrategyGuard.sol";
 library GuardErrors {
     error NotOwner(); // 0x30cd7471
     error NotKeeper(); // 0xf512b278
+    error StrategyNotInQueue();
 }
 
 //  ________  ________  ________
@@ -88,15 +89,22 @@ contract GStrategyGuard is IGStrategyGuard {
         emit LogKeeperSet(_newKeeper);
     }
 
-    /// @notice forcefully set the strategies listened to
-    /// @param _strategies array of strategies
+    /// @notice forcefully sets the order of the strategies listened to
+    /// @param _strategies array of strategies - these strategies must have been added previously
     /// @dev used to clear out the queue from zero addresses,
     ///     be careful when using this
-    function setStrategies(address[] calldata _strategies) external {
+    function setStrategyQueue(address[] calldata _strategies) external {
         if (msg.sender != owner) revert GuardErrors.NotOwner();
+        address[] memory _oldQueue = strategies;
         delete strategies;
         for (uint256 i; i < _strategies.length; i++) {
-            strategies.push(_strategies[i]);
+            for (uint256 j; j < _oldQueue.length; j++) {
+                if (_strategies[i] == _oldQueue[j]) {
+                    strategies.push(_strategies[i]);
+                    break;
+                }
+                revert GuardErrors.StrategyNotInQueue();
+            }
         }
         emit LogStrategyQueueReset(_strategies);
     }
