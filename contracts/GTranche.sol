@@ -276,6 +276,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     /// @notice Get the current utilization ratio of the tranche in BP
     function utilization() external view returns (uint256) {
         (uint256[NO_OF_TRANCHES] memory _totalValue, , ) = pnlDistribution();
+        if (_totalValue[1] == 0) return 0;
         return _totalValue[0] > 0 ? (_totalValue[1] * DEFAULT_DECIMALS) / (_totalValue[0]) : type(uint256).max;
     }
 
@@ -325,7 +326,8 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         trancheBalances[SENIOR_TRANCHE_ID] = _totalValue[1];
         trancheBalances[JUNIOR_TRANCHE_ID] = _totalValue[0];
 
-        trancheUtilization = _totalValue[0] > 0 ? (_totalValue[1] * DEFAULT_DECIMALS) / (_totalValue[0]) : type(uint256).max;
+        if (_totalValue[1] == 0) trancheUtilization = 0;
+        else trancheUtilization = _totalValue[0] > 0 ? (_totalValue[1] * DEFAULT_DECIMALS) / (_totalValue[0]) : type(uint256).max;
         emit LogNewTrancheBalance(_totalValue, trancheUtilization);
         emit LogNewPnL(profit, loss);
         return (trancheUtilization, calcAmount, factor);
