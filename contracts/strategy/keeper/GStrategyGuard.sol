@@ -95,7 +95,7 @@ contract GStrategyGuard is IGStrategyGuard {
     function setStrategies(address[] calldata _strategies) external {
         if (msg.sender != owner) revert GuardErrors.NotOwner();
         delete strategies;
-        for (uint256 i; i < _strategies.length; i++) {
+        for (uint256 i; i < _strategies.length; ++i) {
             strategies.push(_strategies[i]);
         }
         emit LogStrategyQueueReset(_strategies);
@@ -118,7 +118,7 @@ contract GStrategyGuard is IGStrategyGuard {
     ///     add it to the list of strategies
     function _addStrategy(address _strategy) internal {
         uint256 strategiesLength = strategies.length;
-        for (uint256 i; i < strategiesLength; i++) {
+        for (uint256 i; i < strategiesLength; ++i) {
             if (strategies[i] == _strategy) {
                 return;
             }
@@ -132,7 +132,7 @@ contract GStrategyGuard is IGStrategyGuard {
         if (msg.sender != owner) revert GuardErrors.NotOwner();
         delete strategyCheck[_strategy];
         uint256 strategiesLength = strategies.length;
-        for (uint256 i; i < strategiesLength; i++) {
+        for (uint256 i; i < strategiesLength; ++i) {
             if (strategies[i] == _strategy) {
                 strategies[i] = address(0);
             }
@@ -148,7 +148,7 @@ contract GStrategyGuard is IGStrategyGuard {
         if (msg.sender != owner) revert GuardErrors.NotOwner();
         if (_strategy == address(0)) return;
         uint256 strategiesLength = strategies.length;
-        for (uint256 i; i < strategiesLength; i++) {
+        for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
             if (strategy == _strategy) {
                 strategyCheck[strategy].active = _status;
@@ -161,7 +161,7 @@ contract GStrategyGuard is IGStrategyGuard {
     /// @notice Check if stop loss primer needs to be triggered for a strategy
     function canUpdateStopLoss() external view returns (bool result) {
         uint256 strategiesLength = strategies.length;
-        for (uint256 i; i < strategiesLength; i++) {
+        for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
             if (strategy == address(0)) continue;
             if (IStrategy(strategy).canStopLoss()) {
@@ -178,7 +178,7 @@ contract GStrategyGuard is IGStrategyGuard {
     /// @notice Check if stop loss primer needs to be stopped
     function canEndStopLoss() external view returns (bool result) {
         uint256 strategiesLength = strategies.length;
-        for (uint256 i; i < strategiesLength; i++) {
+        for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
             if (strategy == address(0)) continue;
             if (!IStrategy(strategy).canStopLoss()) {
@@ -195,7 +195,7 @@ contract GStrategyGuard is IGStrategyGuard {
     /// @notice Check if stop loss needs to be executed
     function canExecuteStopLossPrimer() external view returns (bool result) {
         uint256 strategiesLength = strategies.length;
-        for (uint256 i; i < strategiesLength; i++) {
+        for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
             if (strategyCheck[strategy].primerTimestamp == 0) continue;
             if (IStrategy(strategy).canStopLoss()) {
@@ -214,7 +214,7 @@ contract GStrategyGuard is IGStrategyGuard {
     function setStopLossPrimer() external {
         if (msg.sender != keeper) revert GuardErrors.NotKeeper();
         uint256 strategiesLength = strategies.length;
-        for (uint256 i; i < strategiesLength; i++) {
+        for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
             if (strategy == address(0)) continue;
             if (IStrategy(strategy).canStopLoss()) {
@@ -236,7 +236,7 @@ contract GStrategyGuard is IGStrategyGuard {
     function endStopLossPrimer() external {
         if (msg.sender != keeper) revert GuardErrors.NotKeeper();
         uint256 strategiesLength = strategies.length;
-        for (uint256 i; i < strategiesLength; i++) {
+        for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
             if (strategy == address(0)) continue;
             if (!IStrategy(strategy).canStopLoss()) {
@@ -256,7 +256,7 @@ contract GStrategyGuard is IGStrategyGuard {
     function executeStopLoss() external {
         if (msg.sender != keeper) revert GuardErrors.NotKeeper();
         uint256 strategiesLength = strategies.length;
-        for (uint256 i; i < strategiesLength; i++) {
+        for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
             if (strategy == address(0)) continue;
             if (IStrategy(strategy).canStopLoss()) {
@@ -282,7 +282,7 @@ contract GStrategyGuard is IGStrategyGuard {
     /// @notice Check if any strategy needs to be harvested
     function canHarvest() external view returns (bool result) {
         uint256 strategiesLength = strategies.length;
-        for (uint256 i; i < strategiesLength; i++) {
+        for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
             if (strategy == address(0)) continue;
             if (IStrategy(strategy).canHarvest()) {
@@ -297,7 +297,7 @@ contract GStrategyGuard is IGStrategyGuard {
     function harvest() external {
         if (msg.sender != keeper) revert GuardErrors.NotKeeper();
         uint256 strategiesLength = strategies.length;
-        for (uint256 i; i < strategiesLength; i++) {
+        for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
             if (strategy == address(0)) continue;
             if (IStrategy(strategy).canHarvest()) {

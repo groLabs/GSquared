@@ -172,7 +172,7 @@ contract FixedTokens {
         view
         returns (uint256[NO_OF_TOKENS] memory values)
     {
-        for (uint256 i; i < NO_OF_TOKENS; i++) {
+        for (uint256 i; i < NO_OF_TOKENS; ++i) {
             values[i] = getYieldTokenValue(i, tokenBalances[i]);
         }
     }

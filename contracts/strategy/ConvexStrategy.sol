@@ -413,7 +413,7 @@ contract ConvexStrategy {
             revert StrategyErrors.RewardsTokenMax();
         delete rewardTokens;
         numberOfRewards = _tokens.length;
-        for (uint256 i; i < _tokens.length; i++) {
+        for (uint256 i; i < _tokens.length; ++i) {
             rewardTokens[i] = _tokens[i];
         }
         emit LogAdditionalRewards(_tokens);
@@ -566,7 +566,7 @@ contract ConvexStrategy {
         uint256 _totalAmount;
         uint256 _tokenAmount;
         address _token;
-        for (uint256 i; i < numberOfRewards; i++) {
+        for (uint256 i; i < numberOfRewards; ++i) {
             _token = rewardTokens[i];
             if (_token == address(0)) break;
             _tokenAmount = IERC20(_token).balanceOf(address(this));
@@ -676,7 +676,7 @@ contract ConvexStrategy {
         uint256 wethAmount = 0;
         uint256 reward_amount = 0;
         address reward_token;
-        for (uint256 i; i < _number_of_rewards; i++) {
+        for (uint256 i; i < _number_of_rewards; ++i) {
             reward_token = rewardTokens[i];
             reward_amount = IERC20(reward_token).balanceOf(address(this));
             if (reward_amount > MIN_REWARD_SELL_AMOUNT) {

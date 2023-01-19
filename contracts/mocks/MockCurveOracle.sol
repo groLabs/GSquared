@@ -38,7 +38,7 @@ contract MockCurveOracle is Relation {
     {
         uint256 total;
         uint256 vprice = getVirtualPrice();
-        for (uint256 i; i < _amounts.length; i++) {
+        for (uint256 i; i < _amounts.length; ++i) {
             total += (_amounts[i] * vprice) / DEFAULT_FACTOR;
         }
         return total;

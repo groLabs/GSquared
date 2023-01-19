@@ -84,7 +84,7 @@ contract CurveOracle is Relation {
     {
         uint256 total;
         uint256 vp = getVirtualPrice();
-        for (uint256 i; i < _amounts.length; i++) {
+        for (uint256 i; i < _amounts.length; ++i) {
             total += (_amounts[i] * vp) / DEFAULT_FACTOR;
         }
         return total;

@@ -441,7 +441,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     function _calcUnifiedValue() internal view returns (uint256 totalValue) {
         uint256[NO_OF_TOKENS] memory yieldTokenValues = getYieldTokenValues();
         uint256[] memory tokenValues = new uint256[](NO_OF_TOKENS);
-        for (uint256 i; i < NO_OF_TOKENS; i++) {
+        for (uint256 i; i < NO_OF_TOKENS; ++i) {
             tokenValues[i] = yieldTokenValues[i];
         }
         totalValue = oracle.getTotalValue(tokenValues);
