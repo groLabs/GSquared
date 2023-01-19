@@ -116,7 +116,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         )
     {
         asset = _asset;
-        minDeposit = _asset.decimals();
+        minDeposit = 10**_asset.decimals();
         // 24 hours release window in seconds
         releaseTime = 86400;
     }
