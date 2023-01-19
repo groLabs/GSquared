@@ -94,7 +94,7 @@ contract StrategyQueue {
                 : nodes[strategyQueue.tail].strategy;
         } else {
             uint256 index = strategyQueue.head;
-            for (uint256 j = 0; j <= i; j++) {
+            for (uint256 j; j <= i; j++) {
                 if (j == i) return nodes[index].strategy;
                 index = nodes[index].next;
             }
