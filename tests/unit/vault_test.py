@@ -66,7 +66,7 @@ def test_multiple_mints(mock_gro_vault_usdc, alice, bob):
 
 # Ensure user cannot request 0 shares to be minted
 def test_no_zero_mints(mock_gro_vault_usdc, alice):
-    with brownie.reverts(error_string("ZeroAssets()")):
+    with brownie.reverts(error_string("MinDeposit()")):
         mock_gro_vault_usdc.mint(0, alice, {"from": alice})
 
 
