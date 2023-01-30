@@ -74,7 +74,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     uint256 public utilisationThreshold = 10000;
     IPnL public pnl;
 
+    // migration state
     bool public hasMigratedFromOldTranche;
+    bool public hasMigrated;
     address newGTranche;
 
     /*//////////////////////////////////////////////////////////////
@@ -508,6 +510,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     ///     This function should ultimately be removed
     function finalizeMigration() external override {
         if (msg.sender != newGTranche) revert Errors.MsgSenderNotTranche();
+        if (hasMigrated) {
+            revert Errors.AlreadyMigrated();
+        }
         ERC4626 token;
         for (uint256 index = 0; index < NO_OF_TOKENS; index++) {
             token = getYieldToken(index);
@@ -547,6 +552,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         }
 
         updateDistribution(0, 0, true, false);
+        hasMigrated = true;
 
         emit LogMigration(
             trancheBalances[JUNIOR_TRANCHE_ID],
