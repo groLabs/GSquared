@@ -167,7 +167,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         bool _tranche,
         address _recipient
     ) external override returns (uint256 trancheAmount, uint256 calcAmount) {
-        ERC4626 token = ERC4626(getYieldToken(_index));
+        ERC4626 token = getYieldToken(_index);
         token.transferFrom(msg.sender, address(this), _amount);
 
         IGToken trancheToken = getTrancheToken(_tranche);
@@ -228,7 +228,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         if (_amount > trancheToken.balanceOf(msg.sender)) {
             revert Errors.NotEnoughBalance();
         }
-        ERC4626 token = ERC4626(getYieldToken(_index));
+        ERC4626 token = getYieldToken(_index);
 
         uint256 factor; // = _calcFactor(_tranche);
         uint256 trancheUtilization;
@@ -463,7 +463,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
 
         // only one token in the initial version of the GTranche
         uint256 token_index = NO_OF_TOKENS - 1;
-        ERC4626 token = ERC4626(getYieldToken(token_index));
+        ERC4626 token = getYieldToken(token_index);
 
         uint256[] memory yieldTokenShares = new uint256[](NO_OF_TOKENS);
         uint256 _shares = token.balanceOf(address(gMigration));
@@ -539,7 +539,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         uint256 oldBalance;
         uint256 currentBalance;
         for (uint256 index = 0; index < NO_OF_TOKENS; index++) {
-            ERC4626 token = ERC4626(getYieldToken(index));
+            ERC4626 token = getYieldToken(index);
             oldBalance = tokenBalances[index];
             currentBalance = token.balanceOf(address(this));
             tokenBalances[index] = currentBalance;
