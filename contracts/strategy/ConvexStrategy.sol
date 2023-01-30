@@ -687,7 +687,7 @@ contract ConvexStrategy {
                     address(this),
                     block.timestamp
                 );
-                wethAmount += swap[1];
+                wethAmount += swap[swap.length - 1];
             }
         }
         return wethAmount;
