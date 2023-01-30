@@ -1102,7 +1102,7 @@ contract ConvexStrategy {
     /// @notice Get ratio between meta pool tokens
     function curveValue() internal view returns (uint256) {
         uint256 three_pool_vp = ICurve3Pool(CRV_3POOL).get_virtual_price();
-        uint256 meta_pool_vp = ICurve3Pool(metaPool).get_virtual_price();
+        uint256 meta_pool_vp = ICurveMeta(metaPool).get_virtual_price();
         return (meta_pool_vp * PERCENTAGE_DECIMAL_FACTOR) / three_pool_vp;
     }
 
