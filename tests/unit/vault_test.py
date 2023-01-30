@@ -783,7 +783,8 @@ def test_it_should_not_move_the_strategy_if_same_pos_specified(
     assert mock_gro_vault_usdc.getStrategyPositions(fill_queue[4].address) == 4
     assert mock_gro_vault_usdc.getStrategyPositions(fill_queue[3].address) == 3
     assert mock_gro_vault_usdc.getStrategyPositions(fill_queue[2].address) == 2
-    mock_gro_vault_usdc.moveStrategy(fill_queue[3], 3, {"from": admin})
+    with brownie.reverts():
+        mock_gro_vault_usdc.moveStrategy(fill_queue[3], 3, {"from": admin})
     assert mock_gro_vault_usdc.getStrategyPositions(fill_queue[4].address) == 4
     assert mock_gro_vault_usdc.getStrategyPositions(fill_queue[3].address) == 3
     assert mock_gro_vault_usdc.getStrategyPositions(fill_queue[2].address) == 2

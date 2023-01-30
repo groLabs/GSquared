@@ -72,6 +72,10 @@ contract StrategyQueue {
     //////////////////////////////////////////////////////////////*/
 
     error NoIdEntry(uint256 id);
+    error StrategyNotMoved(uint256 errorNo);
+    // 1 - no move specified
+    // 2 - strategy cant be moved further up/down the queue
+    // 3 - strategy moved to its own position
     error NoStrategyEntry(address strategy);
     error StrategyExists(address strategy);
     error MaxStrategyExceeded();
@@ -181,10 +185,10 @@ contract StrategyQueue {
         bool _back
     ) internal {
         Strategy storage oldPos = nodes[_id];
-        if (_steps == 0) return;
+        if (_steps == 0) revert StrategyNotMoved(1);
         if (oldPos.strategy == ZERO_ADDRESS) revert NoIdEntry(_id);
         uint48 _newPos = !_back ? oldPos.prev : oldPos.next;
-        if (_newPos == 0) return;
+        if (_newPos == 0) revert StrategyNotMoved(2);
 
         for (uint256 i = 1; i < _steps; i++) {
             _newPos = !_back ? nodes[_newPos].prev : nodes[_newPos].next;
@@ -193,7 +197,7 @@ contract StrategyQueue {
                 break;
             }
         }
-        if (_newPos == _id) return;
+        if (_newPos == _id) revert StrategyNotMoved(3);
         Strategy memory newPos = nodes[_newPos];
         _link(oldPos.prev, oldPos.next);
         if (!_back) {
