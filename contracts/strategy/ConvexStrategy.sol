@@ -622,6 +622,7 @@ contract ConvexStrategy {
     }
 
     /// @notice Sell available reward tokens for underlying asset
+    /// @return Contracts total amount of base assets
     /// @dev Sell path for CRV/CVX:
     ///     Reward => ETH => USDC => Asset
     ///     <CRV/CVX-ETH pool> => <UNI v3> => 3Pool
@@ -719,7 +720,7 @@ contract ConvexStrategy {
         uint256 debt = VAULT.getStrategyDebt();
         // not enough assets to withdraw
         if (_amount >= assets && _amount == debt) {
-            balance += sellAllRewards();
+            balance = sellAllRewards();
             balance += divestAll(false);
             if (_amount > balance) {
                 loss = _amount - balance;
@@ -778,7 +779,7 @@ contract ConvexStrategy {
             uint256 _rewards
         ) = _estimatedTotalAssets(true);
 
-        if (_rewards > MIN_REWARD_SELL_AMOUNT) balance += sellAllRewards();
+        if (_rewards > MIN_REWARD_SELL_AMOUNT) balance = sellAllRewards();
         if (_excessDebt > assets) {
             debtRepayment = balance + divestAll(false);
             loss = debt - debtRepayment;
