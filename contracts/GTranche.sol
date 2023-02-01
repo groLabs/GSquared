@@ -64,7 +64,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
 
     // Module defining relations between underlying assets
     IOracle public immutable oracle;
+    // Migration contract
     GMigration private immutable gMigration;
+    uint256 public constant minDeposit = 1e18;
 
     /*//////////////////////////////////////////////////////////////
                     STORAGE VARIABLES & TYPES
@@ -167,6 +169,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         bool _tranche,
         address _recipient
     ) external override returns (uint256 trancheAmount, uint256 calcAmount) {
+
         ERC4626 token = ERC4626(getYieldToken(_index));
         token.transferFrom(msg.sender, address(this), _amount);
 
@@ -183,6 +186,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
             false
         );
 
+        if (calcAmount < minDeposit) {
+            revert("GTranche: deposit amount too low");
+        }
         if (_tranche && trancheUtilization > utilisationThreshold) {
             revert Errors.UtilisationTooHigh();
         }
@@ -270,7 +276,8 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     /// @notice Get the current utilization ratio of the tranche in BP
     function utilization() external view returns (uint256) {
         (uint256[NO_OF_TRANCHES] memory _totalValue, , ) = pnlDistribution();
-        return (_totalValue[1] * DEFAULT_DECIMALS) / (_totalValue[0] + 1);
+        if (_totalValue[1] == 0) return 0;
+        return _totalValue[0] > 0 ? (_totalValue[1] * DEFAULT_DECIMALS) / (_totalValue[0]) : type(uint256).max;
     }
 
     /// @notice Update the current assets in the Junior/Senior tranche by
@@ -319,9 +326,8 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         trancheBalances[SENIOR_TRANCHE_ID] = _totalValue[1];
         trancheBalances[JUNIOR_TRANCHE_ID] = _totalValue[0];
 
-        trancheUtilization =
-            (_totalValue[1] * DEFAULT_DECIMALS) /
-            (_totalValue[0] + 1);
+        if (_totalValue[1] == 0) trancheUtilization = 0;
+        else trancheUtilization = _totalValue[0] > 0 ? (_totalValue[1] * DEFAULT_DECIMALS) / (_totalValue[0]) : type(uint256).max;
         emit LogNewTrancheBalance(_totalValue, trancheUtilization);
         emit LogNewPnL(profit, loss);
         return (trancheUtilization, calcAmount, factor);
