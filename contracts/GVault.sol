@@ -896,7 +896,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
     function _estimatedTotalAssets() private view returns (uint256) {
         uint256 total = vaultAssets;
         uint256[MAXIMUM_STRATEGIES] memory _queue = withdrawalQueue();
-        for (uint256 i = 0; i < noOfStrategies(); i++) {
+        for (uint256 i = 0; i < noOfStrategies(); ++i) {
             total += _getStrategyEstimatedTotalAssets(_queue[i]);
         }
         return total;
