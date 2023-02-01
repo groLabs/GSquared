@@ -34,28 +34,22 @@ contract GStrategyGuard is IGStrategyGuard {
     );
 
     event LogKeeperSet(address newKeeper);
-
+    event LogKeeperRemoved(address keeper);
     event LogStrategyAdded(address indexed strategy, uint256 timeLimit);
-
     event LogStrategyRemoved(address indexed strategy);
-
     event LogStrategyStatusUpdated(address indexed strategy, bool status);
-
     event LogStrategyStopLossPrimer(
         address indexed strategy,
         uint128 primerTimeStamp
     );
-
     event LogStrategyQueueReset(address[] strategies);
-
     event LogStopLossEscalated(address strategy);
     event LogStopLossDescalated(address strategy, bool active);
     event LogStopLossExecuted(address strategy, bool success);
-
     event LogStrategyHarvestFailure(address strategy, string reason, bytes lowLevelData);
 
     address public owner;
-    address public keeper;
+    mapping(address => bool) public keepers;
 
     struct strategyData {
         bool active; // Is the strategy active
@@ -85,14 +79,21 @@ contract GStrategyGuard is IGStrategyGuard {
     /// @param _newKeeper address of new keeper
     function setKeeper(address _newKeeper) external {
         if (msg.sender != owner) revert GuardErrors.NotOwner();
-        keeper = _newKeeper;
+        keepers[_newKeeper] = true;
         emit LogKeeperSet(_newKeeper);
+    }
+
+    /// @notice remove a keeper from the contract
+    /// @param _keeper address of keeper to remove
+    function revokKeeper(address _keeper) external {
+        if (msg.sender != owner) revert GuardErrors.NotOwner();
+        keepers[_keeper] = false;
+        emit LogKeeperRemoved(_keeper);
     }
 
     /// @notice forcefully sets the order of the strategies listened to
     /// @param _strategies array of strategies - these strategies must have been added previously
-    /// @dev used to clear out the queue from zero addresses,
-    ///     be careful when using this
+    /// @dev used to clear out the queue from zero addresses, be careful when using this
     function setStrategyQueue(address[] calldata _strategies) external {
         if (msg.sender != owner) revert GuardErrors.NotOwner();
         address[] memory _oldQueue = strategies;
@@ -223,7 +224,7 @@ contract GStrategyGuard is IGStrategyGuard {
 
     /// @notice Update the stop loss primer by setting a stop loss start time for a strategy
     function setStopLossPrimer() external {
-        if (msg.sender != keeper) revert GuardErrors.NotKeeper();
+        if (!keepers[msg.sender]) revert GuardErrors.NotKeeper();
         uint256 strategiesLength = strategies.length;
         for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
@@ -245,7 +246,7 @@ contract GStrategyGuard is IGStrategyGuard {
 
     /// @notice Cancel the stop loss by resetting the stop loss start time for a strategy
     function endStopLossPrimer() external {
-        if (msg.sender != keeper) revert GuardErrors.NotKeeper();
+        if (!keepers[msg.sender]) revert GuardErrors.NotKeeper();
         uint256 strategiesLength = strategies.length;
         for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
@@ -265,7 +266,7 @@ contract GStrategyGuard is IGStrategyGuard {
 
     /// @notice Execute stop loss for a given strategy
     function executeStopLoss() external {
-        if (msg.sender != keeper) revert GuardErrors.NotKeeper();
+        if (!keepers[msg.sender]) revert GuardErrors.NotKeeper();
         uint256 strategiesLength = strategies.length;
         address strategy;
         uint256 primerTimestamp;
@@ -308,7 +309,7 @@ contract GStrategyGuard is IGStrategyGuard {
 
     /// @notice Execute strategy harvest
     function harvest() external {
-        if (msg.sender != keeper) revert GuardErrors.NotKeeper();
+        if (!keepers[msg.sender]) revert GuardErrors.NotKeeper();
         uint256 strategiesLength = strategies.length;
         for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
