@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 import "./GToken.sol";
 
 /// @notice NonRebasing token implementation of the GToken.
-///     This contract defines the Gro Vault Token (GVT) - A yield baring token used in
+///     This contract defines the Gro Vault Token (GVT) - A yield bearing token used in
 ///     gro protocol. The NonRebasing token has a fluctuating price, defined as:
 ///         BASE (10**18) / factor (total supply / total assets)
 ///     where the total supply is the number of minted tokens, and the total assets

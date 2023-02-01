@@ -144,7 +144,7 @@ interface IUniV3_POOL {
 /** @title StableConvexXPool
  *   @notice Convex strategy based of yearns convex contract that allows usage of one of the 3 pool
  *       stables as want, rather than a metapool lp token. This strategy can swap between meta pool
- *       and convex strategies to opimize yield/risk, and routes all assets through the following flow:
+ *       and convex strategies to optimize yield/risk, and routes all assets through the following flow:
  *           3crv => metaLp => convex.
  */
 contract ConvexStrategy {
@@ -550,7 +550,7 @@ contract ConvexStrategy {
         (uint160 sqrtPriceX96, , , , , , ) = IUniV3_POOL(USDC_ETH_V3).slot0();
         price = ((2**192 * DEFAULT_DECIMALS_FACTOR) / uint256(sqrtPriceX96)**2);
         // we assume a dollar price of usdc and divide it by the 3pool
-        //  virtual prive to get an estimate for the number of tokens we will get
+        //  virtual price to get an estimate for the number of tokens we will get
         return
             _amount *
             ((price * 1E12) / ICurve3Pool(CRV_3POOL).get_virtual_price());
@@ -614,7 +614,7 @@ contract ConvexStrategy {
         }
     }
 
-    /// @notice Sell available reward tokens for underlyng asset
+    /// @notice Sell available reward tokens for underlying asset
     /// @dev Sell path for CRV/CVX:
     ///     Reward => ETH => USDC => Asset
     ///     <CRV/CVX-ETH pool> => <UNI v3> => 3Pool
@@ -808,7 +808,7 @@ contract ConvexStrategy {
         return (profit, loss, debtRepayment, balance);
     }
 
-    /// @notice stopLossAttempts to remove assets from active Convex position
+    /// @notice Attempts to remove assets from active Convex position
     /// @param _debt Amount to divest from position
     /// @param _slippage control for when harvest divests
     /// @dev slippage control for users not necessary as they would check for
@@ -948,7 +948,7 @@ contract ConvexStrategy {
     }
 
     /// @notice Pulls out all funds into strategies base asset and stops
-    ///     the strategy from being able to run harvest. reports back
+    ///     the strategy from being able to run harvest. Reports back
     ///     any gains/losses from this action to the vault
     function stopLoss() external returns (bool) {
         if (!keepers[msg.sender]) revert StrategyErrors.NotKeeper();
@@ -962,7 +962,7 @@ contract ConvexStrategy {
         uint256 loss;
         uint256 profit;
         // we expect losses, but should account for a situation that
-        //     produces gainst
+        //     produces gains
         if (debt > balance) {
             loss = debt - balance;
         } else {
