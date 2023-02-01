@@ -171,7 +171,7 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
         emit LogNewDeposit(msg.sender, _recipient, _amount, _index, _tranche);
         uint256 trancheAmount;
         if (_tranche) trancheAmount = calc_amount;
-        else trancheAmount = calc_amount * factor / DEFAULT_FACTOR;
+        else trancheAmount = (calc_amount * factor) / DEFAULT_FACTOR;
         return (trancheAmount, calc_amount);
     }
 

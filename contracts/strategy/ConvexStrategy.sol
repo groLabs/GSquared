@@ -1125,7 +1125,8 @@ contract ConvexStrategy {
         if (msg.sender != owner) revert StrategyErrors.NotOwner();
         if (address(ASSET) == _token) revert StrategyErrors.BaseAsset();
         if (address(lpToken) == _token) revert StrategyErrors.LpToken();
-        if (address(rewardContract) == _token) revert StrategyErrors.ConvexToken();
+        if (address(rewardContract) == _token)
+            revert StrategyErrors.ConvexToken();
         uint256 _amount = ERC20(_token).balanceOf(address(this));
         ERC20(_token).transfer(_recipient, _amount);
     }

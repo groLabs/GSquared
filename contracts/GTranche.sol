@@ -205,7 +205,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
             calcAmount
         );
         if (_tranche) trancheAmount = calcAmount;
-        else trancheAmount = calcAmount * factor / DEFAULT_FACTOR;
+        else trancheAmount = (calcAmount * factor) / DEFAULT_FACTOR;
     }
 
     /// @notice Handles withdrawal logic:
@@ -277,7 +277,10 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     function utilisation() external view returns (uint256) {
         (uint256[NO_OF_TRANCHES] memory _totalValue, , ) = pnlDistribution();
         if (_totalValue[1] == 0) return 0;
-        return _totalValue[0] > 0 ? (_totalValue[1] * DEFAULT_DECIMALS) / (_totalValue[0]) : type(uint256).max;
+        return
+            _totalValue[0] > 0
+                ? (_totalValue[1] * DEFAULT_DECIMALS) / (_totalValue[0])
+                : type(uint256).max;
     }
 
     /// @notice Update the current assets in the Junior/Senior tranche by
@@ -328,7 +331,10 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         trancheBalances[JUNIOR_TRANCHE_ID] = _totalValue[0];
 
         if (_totalValue[1] == 0) trancheUtilisation = 0;
-        else trancheUtilisation = _totalValue[0] > 0 ? (_totalValue[1] * DEFAULT_DECIMALS) / (_totalValue[0]) : type(uint256).max;
+        else
+            trancheUtilisation = _totalValue[0] > 0
+                ? (_totalValue[1] * DEFAULT_DECIMALS) / (_totalValue[0])
+                : type(uint256).max;
         emit LogNewTrancheBalance(_totalValue, trancheUtilisation);
         emit LogNewPnL(profit, loss);
         return (trancheUtilisation, calcAmount, factor);
@@ -350,7 +356,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         _trancheBalances[1] = int256(trancheBalances[SENIOR_TRANCHE_ID]);
         int256 lastTotal = _trancheBalances[0] + _trancheBalances[1];
         if (lastTotal > totalValue) {
-            unchecked { loss = lastTotal - totalValue; }
+            unchecked {
+                loss = lastTotal - totalValue;
+            }
             int256[NO_OF_TRANCHES] memory losses = pnl.distributeLoss(
                 loss,
                 _trancheBalances
@@ -358,7 +366,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
             _trancheBalances[0] -= losses[0];
             _trancheBalances[1] -= losses[1];
         } else {
-            unchecked { profit = totalValue - lastTotal; }
+            unchecked {
+                profit = totalValue - lastTotal;
+            }
             int256[NO_OF_TRANCHES] memory profits = pnl.distributeProfit(
                 profit,
                 _trancheBalances
@@ -385,7 +395,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         _trancheBalances[1] = int256(trancheBalances[SENIOR_TRANCHE_ID]);
         int256 lastTotal = _trancheBalances[0] + _trancheBalances[1];
         if (lastTotal > totalValue) {
-            unchecked { loss = lastTotal - totalValue; }
+            unchecked {
+                loss = lastTotal - totalValue;
+            }
             int256[NO_OF_TRANCHES] memory losses = pnl.distributeAssets(
                 true,
                 loss,
@@ -394,7 +406,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
             _trancheBalances[0] -= losses[0];
             _trancheBalances[1] -= losses[1];
         } else {
-            unchecked { profit = totalValue - lastTotal; }
+            unchecked {
+                profit = totalValue - lastTotal;
+            }
             int256[NO_OF_TRANCHES] memory profits = pnl.distributeAssets(
                 false,
                 profit,

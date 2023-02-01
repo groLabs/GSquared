@@ -60,7 +60,7 @@ contract GRouter is IGRouter {
         address indexed sender,
         uint256[N_COINS] tokenAmounts,
         bool tranche,
-        uint256 trancheAmount, 
+        uint256 trancheAmount,
         uint256 calcAmount
     );
 
@@ -361,12 +361,24 @@ contract GRouter is IGRouter {
         // deposit into Tranche
         // index is zero for ETH mainnet as there is just one yield token
         uint256 trancheAmount;
-        (trancheAmount, amount) = tranche.deposit(shareAmount, 0, _tranche, msg.sender);
+        (trancheAmount, amount) = tranche.deposit(
+            shareAmount,
+            0,
+            _tranche,
+            msg.sender
+        );
         if (amount < _minAmount) {
             revert Errors.LTMinAmountExpected();
         }
 
-        emit LogDeposit(msg.sender, _amount, _token_index, _tranche, trancheAmount, amount);
+        emit LogDeposit(
+            msg.sender,
+            _amount,
+            _token_index,
+            _tranche,
+            trancheAmount,
+            amount
+        );
     }
 
     /// @notice Helper Function to deposit users funds into the tranche for legacy functions
@@ -404,9 +416,20 @@ contract GRouter is IGRouter {
         // deposit into Tranche
         // index is zero for ETH mainnet as there is just one yield token
         uint256 trancheAmount;
-        (trancheAmount, amount) = tranche.deposit(shareAmount, 0, _tranche, msg.sender);
+        (trancheAmount, amount) = tranche.deposit(
+            shareAmount,
+            0,
+            _tranche,
+            msg.sender
+        );
 
-        emit LogLegacyDeposit(msg.sender, inAmounts, _tranche, trancheAmount, amount);
+        emit LogLegacyDeposit(
+            msg.sender,
+            inAmounts,
+            _tranche,
+            trancheAmount,
+            amount
+        );
     }
 
     /// @notice helper function to withdraw stablecoins by burning equivalent amount of tranche tokens
