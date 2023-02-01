@@ -24,7 +24,7 @@ import {IGToken} from "../interfaces/IGToken.sol";
 ///
 ///     This contract allows us to modify the underpinnings of the tranche
 ///         without having to worry about changing the core logic. The implementation
-///         beneth support 3 underlying EIP-4626 compatible tokens, but this contract
+///         beneath supports 3 underlying EIP-4626 compatible tokens, but this contract
 ///         can be modified to use any combination.
 ///     Tranche Tokens:
 ///         - One Senior and one Junior tranche, this should be left unchanged
@@ -44,7 +44,7 @@ import {IGToken} from "../interfaces/IGToken.sol";
 ///         (see oracle/relation module). Also note that this contract assumes
 ///         that the 4626 token has the same decimals as its underlying token,
 ///         this is not guaranteed by EIP-4626 and would have to be modified in
-///         case these to values diviate, but for the purpose of the token this
+///         case these to values deviate, but for the purpose of the token this
 ///         version intends to operate on, this is held true.
 contract FixedTokensCurve {
     /*//////////////////////////////////////////////////////////////
@@ -105,7 +105,7 @@ contract FixedTokensCurve {
 
     /// @notice Get the underlying yield token by index
     /// @param _index index of desired token
-    /// @dev this function needs to be modified if the number of token are changed
+    /// @dev this function needs to be modified if the number of tokens is changed
     /// @return yieldToken tranches underlying yield token at index
     function getYieldToken(uint256 _index)
         public
@@ -120,7 +120,7 @@ contract FixedTokensCurve {
 
     /// @notice Get the underlying yield tokens decimals by index
     /// @param _index index of desired token
-    /// @dev this function needs to be modified if the number of token are changed
+    /// @dev this function needs to be modified if the number of tokens is changed
     /// @return decimals token decimals
     function getYieldTokenDecimals(uint256 _index)
         public
@@ -146,7 +146,7 @@ contract FixedTokensCurve {
     }
 
     /// @notice Get values of all underlying yield tokens
-    /// @dev this function needs to be modified for the number if token are changed
+    /// @dev this function needs to be modified if the number of tokens is changed
     /// @return values Amount of underlying tokens of yield tokens
     function getYieldTokenValues()
         public
