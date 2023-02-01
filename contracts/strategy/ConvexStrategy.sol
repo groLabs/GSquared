@@ -6,7 +6,7 @@ import "../interfaces/ICurveMeta.sol";
 import "../interfaces/IStop.sol";
 import "../interfaces/IStrategy.sol";
 import "../interfaces/IGVault.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "../solmate/src/tokens/ERC20.sol";
 
 // High level Responsibilities:
 // - Borrow funds from the vault (1)
@@ -175,8 +175,8 @@ contract ConvexStrategy {
     address internal constant CVX_ETH =
         address(0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4);
 
-    IERC20 internal constant CRV_3POOL_TOKEN =
-        IERC20(address(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490));
+    ERC20 internal constant CRV_3POOL_TOKEN =
+        ERC20(address(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490));
 
     address internal constant UNI_V2 =
         address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
@@ -199,7 +199,7 @@ contract ConvexStrategy {
 
     // Vault and core asset associated with strategy
     IGVault internal immutable VAULT;
-    IERC20 internal immutable ASSET;
+    ERC20 internal immutable ASSET;
 
     // CVX rewards calculation parameters
     uint256 internal constant TOTAL_CLIFFS = 1000;
@@ -217,13 +217,13 @@ contract ConvexStrategy {
     // Current strategy investment target
     uint256 internal pid; // convex lp token pid
     address internal metaPool; // meta pool
-    IERC20 internal lpToken; // meta pool lp token
+    ERC20 internal lpToken; // meta pool lp token
     address internal rewardContract; // convex reward contract for lp token
 
     // Potential strategy investment target
     uint256 internal newPid;
     address internal newMetaPool;
-    IERC20 internal newLpToken;
+    ERC20 internal newLpToken;
     address internal newRewardContract;
 
     // Additional reward tokens provided by CRV
@@ -305,24 +305,24 @@ contract ConvexStrategy {
     ) {
         owner = _owner;
         VAULT = _vault;
-        IERC20 _asset = _vault.asset();
+        ERC20 _asset = _vault.asset();
         ASSET = _asset;
         _asset.approve(address(_vault), type(uint256).max); // Max approve asset for Vault to save gas
 
-        IERC20(CRV).approve(CRV_ETH, type(uint256).max);
-        IERC20(CVX).approve(CVX_ETH, type(uint256).max);
-        IERC20(WETH).approve(UNI_V3, type(uint256).max);
+        ERC20(CRV).approve(CRV_ETH, type(uint256).max);
+        ERC20(CVX).approve(CVX_ETH, type(uint256).max);
+        ERC20(WETH).approve(UNI_V3, type(uint256).max);
 
         (address lp, , , address reward, , bool shutdown) = Booster(BOOSTER)
             .poolInfo(_pid);
         if (shutdown) revert StrategyErrors.ConvexShutdown();
         pid = _pid;
         metaPool = _metaPool;
-        lpToken = IERC20(lp);
+        lpToken = ERC20(lp);
         rewardContract = reward;
-        IERC20(CRV_3POOL_TOKEN).approve(_metaPool, type(uint256).max);
-        IERC20(USDC).approve(CRV_3POOL, type(uint256).max);
-        IERC20(lp).approve(BOOSTER, type(uint256).max);
+        ERC20(CRV_3POOL_TOKEN).approve(_metaPool, type(uint256).max);
+        ERC20(USDC).approve(CRV_3POOL, type(uint256).max);
+        ERC20(lp).approve(BOOSTER, type(uint256).max);
         emit LogChangePool(_pid, lp, reward, _metaPool);
     }
 
@@ -574,7 +574,7 @@ contract ConvexStrategy {
         for (uint256 i; i < numberOfRewards; i++) {
             _token = rewardTokens[i];
             if (_token == address(0)) break;
-            _tokenAmount = IERC20(_token).balanceOf(address(this));
+            _tokenAmount = ERC20(_token).balanceOf(address(this));
             if (_tokenAmount > 0)
                 _totalAmount += getPriceV2(_token, _tokenAmount);
         }
@@ -586,7 +586,7 @@ contract ConvexStrategy {
         uint256 crv = Rewards(rewardContract).earned(address(this));
 
         // calculations pulled directly from CVX's contract for minting CVX per CRV claimed
-        uint256 supply = IERC20(CVX).totalSupply();
+        uint256 supply = ERC20(CVX).totalSupply();
         uint256 cvx;
 
         uint256 cliff = supply / REDUCTION_PER_CLIFF;
@@ -634,7 +634,7 @@ contract ConvexStrategy {
             wethAmount += _sellAdditionalRewards(_numberOfRewards);
         }
 
-        uint256 cvx = IERC20(CVX).balanceOf(address(this));
+        uint256 cvx = ERC20(CVX).balanceOf(address(this));
         if (cvx > MIN_REWARD_SELL_AMOUNT) {
             wethAmount += ICurveRewards(CVX_ETH).exchange(
                 CRV_ETH_INDEX,
@@ -645,7 +645,7 @@ contract ConvexStrategy {
             );
         }
 
-        uint256 crv = IERC20(CRV).balanceOf(address(this));
+        uint256 crv = ERC20(CRV).balanceOf(address(this));
         if (crv > MIN_REWARD_SELL_AMOUNT) {
             wethAmount += ICurveRewards(CRV_ETH).exchange(
                 CRV_ETH_INDEX,
@@ -683,7 +683,7 @@ contract ConvexStrategy {
         address reward_token;
         for (uint256 i; i < _number_of_rewards; i++) {
             reward_token = rewardTokens[i];
-            reward_amount = IERC20(reward_token).balanceOf(address(this));
+            reward_amount = ERC20(reward_token).balanceOf(address(this));
             if (reward_amount > MIN_REWARD_SELL_AMOUNT) {
                 uint256[] memory swap = IUniV2(UNI_V2).swapExactTokensForTokens(
                     reward_amount,
@@ -1042,7 +1042,7 @@ contract ConvexStrategy {
         (address lp, , , address _reward, , bool shutdown) = Booster(BOOSTER)
             .poolInfo(_newPid);
         if (shutdown) revert StrategyErrors.ConvexShutdown();
-        IERC20 _newLpToken = IERC20(lp);
+        ERC20 _newLpToken = ERC20(lp);
         newLpToken = _newLpToken;
         newRewardContract = _reward;
         newPid = _newPid;
@@ -1062,7 +1062,7 @@ contract ConvexStrategy {
     function migratePool() internal {
         uint256 _newPid = newPid;
         address _newMetaPool = newMetaPool;
-        IERC20 _newLpToken = newLpToken;
+        ERC20 _newLpToken = newLpToken;
         address _newReward = newRewardContract;
 
         pid = _newPid;
@@ -1072,7 +1072,7 @@ contract ConvexStrategy {
 
         newMetaPool = address(0);
         newPid = 0;
-        newLpToken = IERC20(address(0));
+        newLpToken = ERC20(address(0));
         newRewardContract = address(0);
 
         emit LogChangePool(
@@ -1123,7 +1123,7 @@ contract ConvexStrategy {
     function sweep(address _recipient, address _token) external {
         if (msg.sender != owner) revert StrategyErrors.NotOwner();
         if (address(ASSET) == _token) revert StrategyErrors.BaseAsset();
-        uint256 _amount = IERC20(_token).balanceOf(address(this));
-        IERC20(_token).transfer(_recipient, _amount);
+        uint256 _amount = ERC20(_token).balanceOf(address(this));
+        ERC20(_token).transfer(_recipient, _amount);
     }
 }
