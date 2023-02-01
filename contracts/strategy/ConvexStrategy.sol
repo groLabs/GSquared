@@ -411,10 +411,15 @@ contract ConvexStrategy {
         if (msg.sender != owner) revert StrategyErrors.NotOwner();
         if (_tokens.length > MAX_REWARDS)
             revert StrategyErrors.RewardsTokenMax();
+        for (uint256 i; i < rewardTokens.length; i++) {
+            IERC20(rewardTokens[i]).approve(UNI_V2, 0);
+        }
         delete rewardTokens;
         numberOfRewards = _tokens.length;
         for (uint256 i; i < _tokens.length; i++) {
-            rewardTokens[i] = _tokens[i];
+            address token = _tokens[i];
+            rewardTokens[i] = token;
+            IERC20(token).approve(UNI_V2, type(uint256).max);
         }
         emit LogAdditionalRewards(_tokens);
     }
