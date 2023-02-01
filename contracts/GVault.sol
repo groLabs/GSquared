@@ -228,9 +228,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         returns (uint256 assets)
     {
         // Check for rounding error in previewMint.
-        if ((assets = previewMint(_shares)) == 0) revert Errors.ZeroAssets();
-
-        if (assets < minDeposit) revert Errors.MinDeposit();
+        if ((assets = previewMint(_shares)) < minDeposit) revert Errors.MinDeposit();
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
         vaultAssets += assets;
