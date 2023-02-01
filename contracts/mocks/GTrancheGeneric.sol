@@ -449,7 +449,7 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
     function finalizeMigration() external override {
         require(msg.sender == newGTranche, "insert custom error here");
         ERC4626 token;
-        for (uint256 index = 0; index < NO_OF_TOKENS; index++) {
+        for (uint256 index; index < NO_OF_TOKENS; index++) {
             token = getYieldToken(index);
             token.transfer(msg.sender, token.balanceOf(address(this)));
             tokenBalances[index] = token.balanceOf(address(this));
@@ -478,7 +478,7 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
 
         uint256 oldBalance;
         uint256 currentBalance;
-        for (uint256 index = 0; index < NO_OF_TOKENS; index++) {
+        for (uint256 index; index < NO_OF_TOKENS; index++) {
             ERC4626 token = ERC4626(getYieldToken(index));
             oldBalance = tokenBalances[index];
             currentBalance = token.balanceOf(address(this));

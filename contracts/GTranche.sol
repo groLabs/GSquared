@@ -515,7 +515,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     function finalizeMigration() external override {
         if (msg.sender != newGTranche) revert Errors.MsgSenderNotTranche();
         ERC4626 token;
-        for (uint256 index = 0; index < NO_OF_TOKENS; index++) {
+        for (uint256 index; index < NO_OF_TOKENS; index++) {
             token = getYieldToken(index);
             token.transfer(msg.sender, token.balanceOf(address(this)));
             tokenBalances[index] = token.balanceOf(address(this));
@@ -544,7 +544,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
 
         uint256 oldBalance;
         uint256 currentBalance;
-        for (uint256 index = 0; index < NO_OF_TOKENS; index++) {
+        for (uint256 index; index < NO_OF_TOKENS; index++) {
             ERC4626 token = ERC4626(getYieldToken(index));
             oldBalance = tokenBalances[index];
             currentBalance = token.balanceOf(address(this));

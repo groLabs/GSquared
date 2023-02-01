@@ -230,7 +230,7 @@ contract ConvexStrategy {
 
     // Additional reward tokens provided by CRV
     address[MAX_REWARDS] public rewardTokens;
-    uint256 numberOfRewards = 0;
+    uint256 numberOfRewards;
 
     // Admin variables
     address public owner; // contract owner
@@ -490,7 +490,7 @@ contract ConvexStrategy {
     {
         uint256 _balance = ASSET.balanceOf(address(this));
         uint256 _poolAssets = poolAssets();
-        uint256 _rewardAmounts = 0;
+        uint256 _rewardAmounts;
         if (_rewards) {
             _rewardAmounts = rewards();
         }
@@ -680,8 +680,8 @@ contract ConvexStrategy {
         internal
         returns (uint256)
     {
-        uint256 wethAmount = 0;
-        uint256 reward_amount = 0;
+        uint256 wethAmount;
+        uint256 reward_amount;
         address reward_token;
         for (uint256 i; i < _number_of_rewards; ++i) {
             reward_token = rewardTokens[i];
@@ -764,9 +764,9 @@ contract ConvexStrategy {
             uint256
         )
     {
-        uint256 profit = 0;
-        uint256 loss = 0;
-        uint256 debtRepayment = 0;
+        uint256 profit;
+        uint256 loss;
+        uint256 debtRepayment;
 
         uint256 debt = VAULT.getStrategyDebt();
 

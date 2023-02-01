@@ -378,7 +378,7 @@ contract GRouter is IGRouter {
         bool _tranche
     ) internal returns (uint256 amount) {
         // swap each stable into 3crv
-        for (uint256 index = 0; index < N_COINS; index++) {
+        for (uint256 index; index < N_COINS; index++) {
             // skip loop if amount zero for index
             if (inAmounts[index] == 0) {
                 continue;
