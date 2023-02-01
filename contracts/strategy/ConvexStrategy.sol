@@ -625,9 +625,9 @@ contract ConvexStrategy {
     ///     <CRV/CVX-ETH pool> => <UNI v3> => 3Pool
     ///      Sell path for addition rewards
     ///     Add. rewards => ETH => USDC => Asset
-    ///     <Uni v2>
+    ///     <UNI v2> => <UNI v2>
     function _sellRewards() internal returns (uint256) {
-        uint256 wethAmount = 0;
+        uint256 wethAmount = IERC20(WETH).balanceOf(address(this));
         uint256 _numberOfRewards = numberOfRewards;
 
         if (_numberOfRewards > 0) {
@@ -660,7 +660,7 @@ contract ConvexStrategy {
             uint256[3] memory _amounts;
             _amounts[1] = IUniV3(UNI_V3).exactInput(
                 IUniV3.ExactInputParams(
-                    abi.encodePacked(address(WETH), uint24(UNI_V3_FEE), USDC),
+                    abi.encodePacked(WETH, uint24(UNI_V3_FEE), USDC),
                     address(this),
                     block.timestamp,
                     wethAmount,
