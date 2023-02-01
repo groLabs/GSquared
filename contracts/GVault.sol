@@ -76,7 +76,8 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         uint256 loss,
         uint256 debtPaid,
         uint256 debtAdded,
-        uint256 lockedProfit
+        uint256 lockedProfit,
+        uint256 excessLoss
     );
 
     event LogStrategyTotalChanges(
@@ -664,9 +665,12 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         }
 
         // Profit is locked and gradually released per block
-        // NOTE: compute current locked profit and replace with sum of current and new
+        // this computes current locked profit and replace with
+        // the sum of the current and the new profit
         uint256 lockedProfitBeforeLoss = _calculateLockedProfit() +
             _calcFees(_gain);
+        // Store how much loss remains after locked profit is removed,
+        // here only for logging purposes
         if (lockedProfitBeforeLoss > _loss) {
             lockedProfit = lockedProfitBeforeLoss - _loss;
         } else {
@@ -686,7 +690,8 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
             _loss,
             debtPayment,
             credit,
-            lockedProfit
+            lockedProfit,
+            lockedProfitBeforeLoss
         );
 
         emit LogStrategyTotalChanges(
