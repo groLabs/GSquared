@@ -18,11 +18,11 @@ import {PnLErrors} from "../common/PnLErrors.sol";
 /// @title PnLFixedRate
 /// @notice PnL - Separate contract for defining profit and loss calculation for the GTranche.
 ///     This implementation provides fix rate income to the Senior tranche. Fixed rate being
-///     defined as a % APY for the senior tranche. The implementation give a constant stream
+///     defined as a % APY for the senior tranche. The implementation gives a constant stream
 ///     of assets from the junior to the senior tranche, independent of yields or other system
 ///     wide gains for the tranche. Its recommended that the tranches underlying 4626 tokens
 ///     support slow release, and that this slow release is adjusted accordingly to the fixed
-///     rate, as to not create intermidary loss for the junior tranche between yield generating
+///     rate, as to not create intermediary loss for the junior tranche between yield generating
 ///     events. Note that all normal yields (from 4626 harvests) are distributed to the junior
 ///     tranche, and that the Senior tranche
 contract PnLFixedRate is IPnL {

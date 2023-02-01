@@ -22,7 +22,7 @@ import {SeniorTranche} from "./tokens/SeniorTranche.sol";
 // gro protocol: https://github.com/groLabs/GSquared
 
 /// @title GMigration
-/// @notice Responsible for migrating funds from old gro protocol to the new gro-protocol
+/// @notice Responsible for migrating funds from old gro protocol to the new gro protocol
 /// this contract converts stables to 3crv and then deposits into the new GVault which in turn
 /// is deposited into the gTranche.
 contract GMigration is Ownable, Constants {

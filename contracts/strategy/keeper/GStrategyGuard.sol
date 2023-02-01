@@ -7,6 +7,7 @@ import "../../interfaces/IGStrategyGuard.sol";
 library GuardErrors {
     error NotOwner(); // 0x30cd7471
     error NotKeeper(); // 0xf512b278
+    error StrategyNotInQueue();
 }
 
 //  ________  ________  ________
@@ -64,7 +65,7 @@ contract GStrategyGuard is IGStrategyGuard {
 
     address[] public strategies;
 
-    // maps a strategy to it stop loss data
+    // maps a strategy to its stop loss data
     mapping(address => strategyData) public strategyCheck;
 
     constructor() {
@@ -88,21 +89,28 @@ contract GStrategyGuard is IGStrategyGuard {
         emit LogKeeperSet(_newKeeper);
     }
 
-    /// @notice forcefully set the strategies listened to
-    /// @param _strategies array of strategies
+    /// @notice forcefully sets the order of the strategies listened to
+    /// @param _strategies array of strategies - these strategies must have been added previously
     /// @dev used to clear out the queue from zero addresses,
     ///     be careful when using this
-    function setStrategies(address[] calldata _strategies) external {
+    function setStrategyQueue(address[] calldata _strategies) external {
         if (msg.sender != owner) revert GuardErrors.NotOwner();
+        address[] memory _oldQueue = strategies;
         delete strategies;
         for (uint256 i; i < _strategies.length; i++) {
-            strategies.push(_strategies[i]);
+            for (uint256 j; j < _oldQueue.length; j++) {
+                if (_strategies[i] == _oldQueue[j]) {
+                    strategies.push(_strategies[i]);
+                    break;
+                }
+                revert GuardErrors.StrategyNotInQueue();
+            }
         }
         emit LogStrategyQueueReset(_strategies);
     }
 
     /// @notice Add a strategy to the stop loss logic - Needed in order to be
-    ///     be able to determine health of stragies underlying investments (meta pools)
+    ///     be able to determine health of strategies underlying investments (meta pools)
     /// @param _strategy the target strategy
     /// @param _timeLimit amount of time that needs to pass before triggering stop loss
     function addStrategy(address _strategy, uint64 _timeLimit) external {

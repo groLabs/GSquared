@@ -24,7 +24,7 @@ import {GTranche} from "./GTranche.sol";
 // gro protocol: https://github.com/groLabs/GSquared
 
 /// @title GRouter
-/// @notice Handles deposits and withdrawal from the three supported stablecoins
+/// @notice Handles deposits and withdrawals from the three supported stablecoins
 /// DAI, USDC and USDT into Gro Protocol
 /// @dev The legacy deposit and withdrawal flows are for old integrations and
 /// should be avoided for new integrations as they are less gas efficient.
@@ -140,7 +140,7 @@ contract GRouter is IGRouter {
     }
 
     /*//////////////////////////////////////////////////////////////
-                        DEPOSIT/ WITHDRAW LOGIC
+                        DEPOSIT/ WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Deposit supported stablecoin into either junior or senior tranches of gro protocol
@@ -246,7 +246,7 @@ contract GRouter is IGRouter {
     /// @param _token_index index of deposit token 0 - DAI, 1 - USDC, 2 -USDT
     /// @param _tranche false for junior and true for senior tranche
     /// @param _minAmount min amount of tokens expected in return
-    /// @return  amount Returns $ value tranchetokens burned
+    /// @return  amount Returns $ value of tranche tokens burned
     function withdraw(
         uint256 _amount,
         uint256 _token_index,
@@ -265,7 +265,7 @@ contract GRouter is IGRouter {
     }
 
     /*//////////////////////////////////////////////////////////////
-                    LEGACY DEPOSIT/ WITHDRAW LOGIC
+                    LEGACY DEPOSIT/ WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Legacy deposit for the senior tranche pwrd
@@ -358,7 +358,7 @@ contract GRouter is IGRouter {
         uint256 shareAmount = vaultToken.deposit(depositAmount, address(this));
 
         // deposit into Tranche
-        // index is zero for ETH mainnet as their is just one yield token
+        // index is zero for ETH mainnet as there is just one yield token
         uint256 trancheAmount;
         (trancheAmount, amount) = tranche.deposit(shareAmount, 0, _tranche, msg.sender);
         if (amount < _minAmount) {
@@ -413,7 +413,7 @@ contract GRouter is IGRouter {
     /// @param _token_index index of deposit token 0 - DAI, 1 - USDC, 2 -USDT
     /// @param _tranche false for junior and true for senior tranche
     /// @param _minAmount min amount of tranche tokens expected in return
-    /// @return amount Returns $ value tranchetokens burned
+    /// @return amount Returns $ value of tranche tokens burned
     function withdrawFromTrancheForCaller(
         uint256 _amount,
         uint256 _token_index,
@@ -426,7 +426,7 @@ contract GRouter is IGRouter {
             _amount
         );
         // withdraw from tranche
-        // index is zero for ETH mainnet as their is just one yield token
+        // index is zero for ETH mainnet as there is just one yield token
         // returns usd value of withdrawal
         (uint256 vaultTokenBalance, ) = tranche.withdraw(
             _amount,

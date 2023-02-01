@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity 0.8.10;
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "../solmate/src/tokens/ERC20.sol";
 import {IStrategy} from "./IStrategy.sol";
 
 /// GVault interface
 interface IGVault {
-    function asset() external view returns (IERC20);
+    function asset() external view returns (ERC20);
 
     function excessDebt(address _strategy)
         external

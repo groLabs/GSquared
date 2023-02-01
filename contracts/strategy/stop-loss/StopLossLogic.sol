@@ -22,10 +22,10 @@ library StopLossErrors {
 
 /// @title stop loss logic
 /// @notice Determines if stop loss needs to be triggered for underlying strategy.
-///     Note thats this contract shouldnt be used in isolation, but rather by a
+///     Note that this contract shouldnt be used in isolation, but rather by a
 ///     keeper system that only references over extended time periods to determine the
 ///     health of the underlying pool. WARNING - this contract should not be used as a
-///     spot orcle.
+///     spot oracle.
 contract StopLossLogic is IStop {
     event OwnershipTransferred(
         address indexed previousOwner,
@@ -51,7 +51,7 @@ contract StopLossLogic is IStop {
 
     struct PoolCheck {
         uint128 equilibriumValue; // The mean of assets value in the pool
-        uint128 healthThreshold; // How much the pool can diviate from above value
+        uint128 healthThreshold; // How much the pool can deviate from above value
     }
 
     mapping(address => PoolCheck) public strategyData; // maps a strategy to its values
