@@ -72,6 +72,10 @@ contract StrategyQueue {
     //////////////////////////////////////////////////////////////*/
 
     error NoIdEntry(uint256 id);
+    error StrategyNotMoved(uint256 errorNo);
+    // 1 - no move specified
+    // 2 - strategy cant be moved further up/down the queue
+    // 3 - strategy moved to its own position
     error NoStrategyEntry(address strategy);
     error StrategyExists(address strategy);
     error MaxStrategyExceeded();
@@ -94,7 +98,7 @@ contract StrategyQueue {
                 : nodes[strategyQueue.tail].strategy;
         } else {
             uint256 index = strategyQueue.head;
-            for (uint256 j = 0; j <= i; j++) {
+            for (uint256 j; j <= i; j++) {
                 if (j == i) return nodes[index].strategy;
                 index = nodes[index].next;
             }
@@ -111,7 +115,7 @@ contract StrategyQueue {
         uint256 index = strategyQueue.head;
         uint256 _totalNodes = strategyQueue.totalNodes;
         queue[0] = index;
-        for (uint256 i = 1; i < _totalNodes; i++) {
+        for (uint256 i = 1; i < _totalNodes; ++i) {
             index = nodes[index].next;
             queue[i] = index;
         }
@@ -127,7 +131,7 @@ contract StrategyQueue {
     {
         uint48 index = strategyQueue.head;
         uint48 _totalNodes = strategyQueue.totalNodes;
-        for (uint48 i = 0; i <= _totalNodes; i++) {
+        for (uint48 i = 0; i <= _totalNodes; ++i) {
             if (_strategy == nodes[index].strategy) {
                 return i;
             }
@@ -181,19 +185,19 @@ contract StrategyQueue {
         bool _back
     ) internal {
         Strategy storage oldPos = nodes[_id];
-        if (_steps == 0) return;
+        if (_steps == 0) revert StrategyNotMoved(1);
         if (oldPos.strategy == ZERO_ADDRESS) revert NoIdEntry(_id);
         uint48 _newPos = !_back ? oldPos.prev : oldPos.next;
-        if (_newPos == 0) return;
+        if (_newPos == 0) revert StrategyNotMoved(2);
 
-        for (uint256 i = 1; i < _steps; i++) {
+        for (uint256 i = 1; i < _steps; ++i) {
             _newPos = !_back ? nodes[_newPos].prev : nodes[_newPos].next;
             if (_newPos == 0) {
                 _newPos = !_back ? strategyQueue.head : strategyQueue.tail;
                 break;
             }
         }
-        if (_newPos == _id) return;
+        if (_newPos == _id) revert StrategyNotMoved(3);
         Strategy memory newPos = nodes[_newPos];
         _link(oldPos.prev, oldPos.next);
         if (!_back) {
