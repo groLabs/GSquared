@@ -538,25 +538,15 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
     }
 
     function _removeStrategy(address _strategy) internal {
-        require(
-            !strategies[_strategy].active,
-            "removeStrategy: strategy active"
-        );
-
-        require(
-            strategies[_strategy].totalDebt == 0,
-            "removeStrategy: totalDebt !0"
-        );
+        if (strategies[_strategy].active) revert Errors.StrategyActive();
+        if (strategies[_strategy].totalDebt > 0) revert Errors.StrategyDebtNotZero();
 
         _pop(_strategy);
     }
 
     /// @notice Remove strategy from vault adapter, called by strategy on emergencyExit
     function revokeStrategy() external {
-        require(
-            strategies[msg.sender].active,
-            "revokeStrategy: strategy not active"
-        );
+        if (!strategies[msg.sender].active) revert Errors.StrategyNotActive();
         _revokeStrategy(msg.sender);
     }
 
