@@ -707,7 +707,9 @@ contract ConvexStrategy {
     /// @notice Withdraw assets from the strategy to the Vault -
     ///    If the strategy has a loss, this loss will be distributed
     ///     proportionally on the user withdrawing
-    /// @param _amount Strategy gains from latest harvest
+    /// @param _amount asset quantity needed to be withdrawn by Vault
+    /// @return withdrawnAssets amount of assets that were withdrawn from the strategy
+    /// @return loss amount of loss that occurred during withdrawal
     function withdraw(uint256 _amount)
         external
         returns (uint256 withdrawnAssets, uint256 loss)
@@ -856,7 +858,7 @@ contract ConvexStrategy {
         uint256 minAmount;
         if (_slippage) {
             uint256 debt = VAULT.getStrategyDebt();
-            uint256 slippage = 50;
+            uint256 slippage = baseSlippage;
             minAmount =
                 (debt *
                     (PERCENTAGE_DECIMAL_FACTOR -

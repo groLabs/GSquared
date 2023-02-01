@@ -589,8 +589,8 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         return _excessDebt(_strategy);
     }
 
-    /// @notice Helper function to get strategies total debt to the vault
-    /// @dev here to simplify strategies life when trying to get the totalDebt
+    /// @notice Helper function to get strategy's total debt to the vault
+    /// @dev here to simplify strategy's life when trying to get the totalDebt
     function strategyDebt() external view returns (uint256) {
         return strategies[msg.sender].totalDebt;
     }
@@ -759,13 +759,13 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
             uint256 _lockedProfit = lockedProfit;
             return
                 _lockedProfit -
-                ((_lockedProfit / _releaseTime) * _timeSinceLastReport);
+                (_lockedProfit * _timeSinceLastReport / _releaseTime);
         } else {
             return 0;
         }
     }
 
-    /// @notice the number of total assets the GVault has excluding and profits
+    /// @notice the number of total assets the GVault has excluding profits
     /// and losses
     function _freeFunds() internal view returns (uint256) {
         return _totalAssets() - _calculateLockedProfit();
@@ -811,7 +811,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         StrategyParams storage strategy = strategies[_strategy];
         // Loss can only be up the amount of debt issued to strategy
         if (strategy.totalDebt < _loss) revert Errors.StrategyLossTooHigh();
-        // Add loss to srategy and remove loss from strategyDebt
+        // Add loss to strategy and remove loss from strategyDebt
         strategy.totalLoss += _loss;
         strategy.totalDebt -= _loss;
         vaultTotalDebt -= _loss;
@@ -847,7 +847,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         return _gain - fees;
     }
 
-    /// @notice Update a given strategies debt ratio
+    /// @notice Update a given strategys debt ratio
     /// @param _strategy target strategy
     /// @param _debtRatio new debt ratio
     /// @dev See setDebtRatio functions
@@ -862,7 +862,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         emit LogNewDebtRatio(_strategy, _debtRatio, _vaultDebtRatio);
     }
 
-    /// @notice Get current enstimated amount of assets in strategy
+    /// @notice Get current estimated amount of assets in strategy
     /// @param _index index of strategy
     function _getStrategyEstimatedTotalAssets(uint256 _index)
         internal

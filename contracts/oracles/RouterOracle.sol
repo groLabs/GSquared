@@ -57,7 +57,7 @@ contract FixedStablecoins {
 }
 
 contract RouterOracle is FixedStablecoins, IGRouterOracle {
-    uint256 constant CHIANLINK_FACTOR = 1_00_000_000;
+    uint256 constant CHAINLINK_FACTOR = 1_00_000_000;
     uint256 constant NO_OF_AGGREGATORS = 3;
     uint256 constant STALE_CHECK = 86_400; // 24 Hours
 
@@ -86,7 +86,7 @@ contract RouterOracle is FixedStablecoins, IGRouterOracle {
                 true
             );
         (uint256 price, bool isStale) = getPriceFeed(_index);
-        return ((_amount * price) / CHIANLINK_FACTOR, isStale);
+        return ((_amount * price) / CHAINLINK_FACTOR, isStale);
     }
 
     /// @notice Get LP token value of input amount of single token
@@ -102,7 +102,7 @@ contract RouterOracle is FixedStablecoins, IGRouterOracle {
                 true
             );
         (uint256 price, bool isStale) = getPriceFeed(_index);
-        return ((_amount * CHIANLINK_FACTOR) / price, isStale);
+        return ((_amount * CHAINLINK_FACTOR) / price, isStale);
     }
 
     /// @notice Get price from aggregator

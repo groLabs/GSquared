@@ -49,7 +49,7 @@ contract CurveOracle is Relation {
     /// @notice Get price of an individual underlying token
     ///     (or its relation to the whole value of the tranche)
     /// @param _i token id
-    /// @param _amount amount of price
+    /// @param _amount amount of yield token
     /// @param _deposit is the pricing triggered from a deposit or a withdrawal
     /// @return price of token amount
     function getSinglePrice(

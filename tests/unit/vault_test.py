@@ -418,12 +418,12 @@ def test_add_strategy(
     # check you can correctly add strategy (note initial debt ratio of zero)
     test_strategy = admin.deploy(MockStrategy, mock_gro_vault_usdc.address)
     mock_gro_vault_usdc.addStrategy(test_strategy.address, 0, {"from": admin})
-    assert mock_gro_vault_usdc.withdrawalQueue(2) == test_strategy.address
+    assert mock_gro_vault_usdc.withdrawalQueueAt(2) == test_strategy.address
 
 
 def test_remove_strategy(mock_gro_vault_usdc, admin, primary_mock_strategy, alice):
     # check strategy in current withdraral queue
-    assert primary_mock_strategy.address == mock_gro_vault_usdc.withdrawalQueue(0)
+    assert primary_mock_strategy.address == mock_gro_vault_usdc.withdrawalQueueAt(0)
     # Do a deposit and strategy harvest to give strategy funds
     mock_gro_vault_usdc.deposit(1000 * 1e6, alice, {"from": alice})
     primary_mock_strategy.runHarvest({"from": admin})
@@ -438,7 +438,7 @@ def test_remove_strategy(mock_gro_vault_usdc, admin, primary_mock_strategy, alic
     )
     # run remove strategy
     mock_gro_vault_usdc.removeStrategy(primary_mock_strategy.address)
-    assert primary_mock_strategy.address != mock_gro_vault_usdc.withdrawalQueue(0)
+    assert primary_mock_strategy.address != mock_gro_vault_usdc.withdrawalQueueAt(0)
     mock_gro_vault_usdc.strategies(primary_mock_strategy.address)[ACTIVE] is not True
 
 
@@ -459,11 +459,11 @@ def test_remove_and_add_strategy_from_queue(
 ):
     chain.snapshot()
     # test that we can remove an active strategy from the queue
-    assert mock_gro_vault_usdc.withdrawalQueue(0) == primary_mock_strategy.address
+    assert mock_gro_vault_usdc.withdrawalQueueAt(0) == primary_mock_strategy.address
     mock_gro_vault_usdc.removeStrategyFromQueue(
         primary_mock_strategy.address, {"from": admin}
     )
-    assert mock_gro_vault_usdc.withdrawalQueue(0) != primary_mock_strategy.address
+    assert mock_gro_vault_usdc.withdrawalQueueAt(0) != primary_mock_strategy.address
     chain.revert()
 
     # check removals cannot happen from an account that isn't whitelisted
@@ -476,11 +476,11 @@ def test_remove_and_add_strategy_from_queue(
     mock_gro_vault_usdc.removeStrategyFromQueue(
         primary_mock_strategy.address, {"from": admin}
     )
-    assert mock_gro_vault_usdc.withdrawalQueue(0) != primary_mock_strategy.address
+    assert mock_gro_vault_usdc.withdrawalQueueAt(0) != primary_mock_strategy.address
     mock_gro_vault_usdc.addStrategyToQueue(
         primary_mock_strategy.address, {"from": admin}
     )
-    assert mock_gro_vault_usdc.withdrawalQueue(1) == primary_mock_strategy.address
+    assert mock_gro_vault_usdc.withdrawalQueueAt(1) == primary_mock_strategy.address
     chain.revert()
 
     # check additions cannot happen from an account that isn't whitelisted
@@ -700,16 +700,16 @@ def test_report(mock_gro_vault_usdc, primary_mock_strategy, mock_usdc, alice, bo
 def test_new_strategy_should_be_added_to_end(
     mock_gro_vault_usdc, admin, bot, next_mock_strategy
 ):
-    assert mock_gro_vault_usdc.withdrawalQueue(0) == ZERO_ADDRESS
+    assert mock_gro_vault_usdc.withdrawalQueueAt(0) == ZERO_ADDRESS
     strategy = next_mock_strategy()
     mock_gro_vault_usdc.addStrategy(strategy.address, 5000, {"from": admin})
-    assert mock_gro_vault_usdc.withdrawalQueue(0) == strategy.address
-    assert mock_gro_vault_usdc.withdrawalQueue(1) == ZERO_ADDRESS
+    assert mock_gro_vault_usdc.withdrawalQueueAt(0) == strategy.address
+    assert mock_gro_vault_usdc.withdrawalQueueAt(1) == ZERO_ADDRESS
     strategy_2 = next_mock_strategy()
     mock_gro_vault_usdc.addStrategy(strategy_2.address, 5000, {"from": admin})
-    assert mock_gro_vault_usdc.withdrawalQueue(0) == strategy.address
-    assert mock_gro_vault_usdc.withdrawalQueue(1) == strategy_2.address
-    assert mock_gro_vault_usdc.withdrawalQueue(2) == ZERO_ADDRESS
+    assert mock_gro_vault_usdc.withdrawalQueueAt(0) == strategy.address
+    assert mock_gro_vault_usdc.withdrawalQueueAt(1) == strategy_2.address
+    assert mock_gro_vault_usdc.withdrawalQueueAt(2) == ZERO_ADDRESS
 
 
 # Given a vault with one or more strategies

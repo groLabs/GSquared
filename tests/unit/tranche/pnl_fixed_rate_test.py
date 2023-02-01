@@ -68,10 +68,10 @@ def test_withdrawals_works_within_utilzation_ratio_limit(
     tranche_fixed_rate.deposit(
         _amount / 8, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_utilization_ratio = tranche_fixed_rate.trancheBalances(
+    initial_utilisation_ratio = tranche_fixed_rate.trancheBalances(
         SENIOR_TRANCHE
     ) / tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE)
-    assert initial_utilization_ratio <= 0.5
+    assert initial_utilisation_ratio <= 0.5
     tranche_fixed_rate.withdraw(
         gTokens[JUNIOR_TRANCHE_ID].balanceOf(user.address) / 5,
         token_index,
@@ -82,7 +82,7 @@ def test_withdrawals_works_within_utilzation_ratio_limit(
     assert (
         tranche_fixed_rate.trancheBalances(SENIOR_TRANCHE)
         / tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE)
-        > initial_utilization_ratio
+        > initial_utilisation_ratio
     )
 
 
@@ -99,10 +99,10 @@ def test_withdrawals_fails_outside_utilzation_ratio_limit(
     tranche_fixed_rate.deposit(
         _amount / 2, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_utilization_ratio = tranche_fixed_rate.trancheBalances(
+    initial_utilisation_ratio = tranche_fixed_rate.trancheBalances(
         SENIOR_TRANCHE
     ) / tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE)
-    assert initial_utilization_ratio <= 1.0
+    assert initial_utilisation_ratio <= 1.0
     with pytest.raises(exceptions.VirtualMachineError):
         tranche_fixed_rate.withdraw(
             gTokens[JUNIOR_TRANCHE_ID].balanceOf(user.address) / 5,
@@ -114,7 +114,7 @@ def test_withdrawals_fails_outside_utilzation_ratio_limit(
     assert (
         tranche_fixed_rate.trancheBalances(SENIOR_TRANCHE)
         / tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE)
-        == initial_utilization_ratio
+        == initial_utilisation_ratio
     )
 
 
@@ -203,7 +203,7 @@ def test_junior_tranche_asserts_decrease_on_withdrawal(
     )
 
 
-def test_utilization_increases_on_minting_of_senior_tranche_token(
+def test_utilisation_increases_on_minting_of_senior_tranche_token(
     admin, users, tranche_fixed_rate, tokens
 ):
     token_index = 0
@@ -216,15 +216,15 @@ def test_utilization_increases_on_minting_of_senior_tranche_token(
     tranche_fixed_rate.deposit(
         _amount / 8, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_U_ratio = tranche_fixed_rate.utilization()
+    initial_U_ratio = tranche_fixed_rate.utilisation()
     assert initial_U_ratio > 0
     tranche_fixed_rate.deposit(
         _amount / 8, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    assert tranche_fixed_rate.utilization() > initial_U_ratio
+    assert tranche_fixed_rate.utilisation() > initial_U_ratio
 
 
-def test_utilization_decreases_on_burning_of_senior_tranche_token(
+def test_utilisation_decreases_on_burning_of_senior_tranche_token(
     admin, users, tranche_fixed_rate, tokens, gTokens
 ):
     token_index = 0
@@ -237,7 +237,7 @@ def test_utilization_decreases_on_burning_of_senior_tranche_token(
     tranche_fixed_rate.deposit(
         _amount / 4, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_U_ratio = tranche_fixed_rate.utilization()
+    initial_U_ratio = tranche_fixed_rate.utilisation()
     assert initial_U_ratio > 0
     tranche_fixed_rate.withdraw(
         gTokens[SENIOR_TRANCHE_ID].balanceOf(user.address) / 8,
@@ -246,10 +246,10 @@ def test_utilization_decreases_on_burning_of_senior_tranche_token(
         user.address,
         {"from": user.address},
     )
-    assert tranche_fixed_rate.utilization() < initial_U_ratio
+    assert tranche_fixed_rate.utilisation() < initial_U_ratio
 
 
-def test_utilization_decreases_on_minting_of_junior_tranche_token(
+def test_utilisation_decreases_on_minting_of_junior_tranche_token(
     admin, users, tranche_fixed_rate, tokens
 ):
     token_index = 0
@@ -262,15 +262,15 @@ def test_utilization_decreases_on_minting_of_junior_tranche_token(
     tranche_fixed_rate.deposit(
         _amount / 8, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_U_ratio = tranche_fixed_rate.utilization()
+    initial_U_ratio = tranche_fixed_rate.utilisation()
     assert initial_U_ratio > 0
     tranche_fixed_rate.deposit(
         _amount / 8, token_index, JUNIOR_TRANCHE, user.address, {"from": user.address}
     )
-    assert tranche_fixed_rate.utilization() < initial_U_ratio
+    assert tranche_fixed_rate.utilisation() < initial_U_ratio
 
 
-def test_utilization_increases_on_burning_of_junior_tranche_token(
+def test_utilisation_increases_on_burning_of_junior_tranche_token(
     admin, users, tranche_fixed_rate, tokens, gTokens
 ):
     token_index = 0
@@ -283,7 +283,7 @@ def test_utilization_increases_on_burning_of_junior_tranche_token(
     tranche_fixed_rate.deposit(
         _amount / 8, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_U_ratio = tranche_fixed_rate.utilization()
+    initial_U_ratio = tranche_fixed_rate.utilisation()
     assert initial_U_ratio > 0
     tranche_fixed_rate.withdraw(
         gTokens[JUNIOR_TRANCHE].balanceOf(user.address) / 8,
@@ -292,7 +292,7 @@ def test_utilization_increases_on_burning_of_junior_tranche_token(
         user.address,
         {"from": user.address},
     )
-    assert tranche_fixed_rate.utilization() > initial_U_ratio
+    assert tranche_fixed_rate.utilisation() > initial_U_ratio
 
 
 def test_profit_distribution_curve(admin, users, tranche_fixed_rate, tokens):
@@ -399,7 +399,7 @@ def test_senior_tranche_should_get_fixed_rate_return_changes_in_junior_depth(
     admin, users, tranche_fixed_rate, get_pnl_fixed_rate, tokens, gTokens
 ):
     setup_tranche(tokens, LARGE_NUMBER, users, tranche_fixed_rate)
-    tranche_fixed_rate.setUtilizationThreshold(10000, {"from": admin})
+    tranche_fixed_rate.setUtilisationThreshold(10000, {"from": admin})
     token_index = 0
     user = users[0]
     _amount = LARGE_NUMBER * 10 ** tokens[token_index].decimals()
@@ -462,7 +462,7 @@ def test_senior_tranche_should_get_fixed_rate_return_new_rate_1_year(
 ):
     setup_tranche(tokens, LARGE_NUMBER, users, tranche_fixed_rate)
     initial_tranche_token_assets = tranche_fixed_rate.pnlDistribution()[0]
-    tranche_fixed_rate.setUtilizationThreshold(10000, {"from": admin})
+    tranche_fixed_rate.setUtilisationThreshold(10000, {"from": admin})
     get_pnl_fixed_rate.setRate(300, {"from": admin})
     # one year should give 2% of senior from junior to senior before interaction
     move_time(YEAR_IN_SECONDS)

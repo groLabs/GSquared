@@ -89,7 +89,7 @@ contract GRouter is IGRouter {
         threePool = _threePool;
         threeCrv = _threeCrv;
 
-        // Apporve contracts for max amounts to reduce gas
+        // Approve contracts for max amounts to reduce gas
         threeCrv.approve(address(_vaultToken), type(uint256).max);
         threeCrv.approve(address(_threePool), type(uint256).max);
         ERC20(address(_vaultToken)).safeApprove(
@@ -121,7 +121,7 @@ contract GRouter is IGRouter {
         );
     }
 
-    /// @notice Helper Function to get correct input for curve 'add_liquididty' function
+    /// @notice Helper Function to get correct input for curve 'add_liquidity' function
     /// @param _amount the amount of stablecoin with the correct decimals
     /// @param _index the index of the stable corresponding to DAI, USDC and USDT respectively
     /// @return array of length three with the corresponding stablecoin amount
@@ -268,7 +268,7 @@ contract GRouter is IGRouter {
                     LEGACY DEPOSIT/ WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Legacy deposit for the senior tranche pwrd
+    /// @notice Legacy deposit for the senior tranche token
     /// @param inAmounts amount of stables being deposited as an array of length 3 with the
     /// following indexes corresponding to the following stables 0 - DAI, 1 - USDC, 2 -USDT
     /// @param _minAmount minimum amount of tranche token received
@@ -284,7 +284,7 @@ contract GRouter is IGRouter {
         }
     }
 
-    /// @notice Legacy deposit for the junior tranche pwrd
+    /// @notice Legacy deposit for the junior tranche token
     /// @param inAmounts amount of stables being deposited as an array of length 3 with the
     /// following indexes corresponding to the following stables 0 - DAI, 1 - USDC, 2 -USDT
     /// @param _minAmount minimum amount of tranche token received
@@ -402,7 +402,7 @@ contract GRouter is IGRouter {
         uint256 shareAmount = vaultToken.deposit(depositAmount, address(this));
 
         // deposit into Tranche
-        // index is zero for ETH mainnet as their is just one yield token
+        // index is zero for ETH mainnet as there is just one yield token
         uint256 trancheAmount;
         (trancheAmount, amount) = tranche.deposit(shareAmount, 0, _tranche, msg.sender);
 
