@@ -3,7 +3,7 @@ pragma solidity 0.8.10;
 
 import "../interfaces/IStrategy.sol";
 import "../interfaces/IGVault.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "../solmate/src/tokens/ERC20.sol";
 
 library TestStratErrors {
     error NotOwner(); // 0x30cd7471
@@ -30,7 +30,7 @@ contract MockStrategy{
     uint256 internal constant DEFAULT_DECIMALS_FACTOR = 1E18;
 
     IGVault public immutable vault;
-    IERC20 public immutable asset;
+    ERC20 public immutable asset;
 
     uint256 internal constant MAX_REPORT_DELAY = 604800;
     uint256 internal constant MIN_REPORT_DELAY = 172800;
@@ -91,7 +91,7 @@ contract MockStrategy{
         owner = msg.sender;
         keepers[msg.sender] = true;
         vault = _vault;
-        IERC20 _asset = _vault.asset();
+        ERC20 _asset = _vault.asset();
         asset = _asset;
         _asset.approve(address(_vault), type(uint256).max); // Max approve asset for Vault to save gas
     }

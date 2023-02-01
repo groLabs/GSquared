@@ -76,7 +76,8 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         uint256 loss,
         uint256 debtPaid,
         uint256 debtAdded,
-        uint256 lockedProfit
+        uint256 lockedProfit,
+        uint256 excessLoss
     );
 
     event LogStrategyTotalChanges(
@@ -215,7 +216,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         return shares;
     }
 
-    /// @notice Request shares to be minted  by depositing assets into the GVault
+    /// @notice Request shares to be minted by depositing assets into the GVault
     /// @param _shares Amount of shares to be minted
     /// @param _receiver Address receiving the shares
     /// @return assets the number of asset tokens deposited during the mint of the
@@ -341,7 +342,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
     }
 
     /*//////////////////////////////////////////////////////////////
-                    DEPOSIT/WITHDRAW LIMIT LOGIC
+                    DEPOSIT/WITHDRAWAL LIMIT LOGIC
     //////////////////////////////////////////////////////////////*/
 
     /// @notice The maximum amount a user can deposit into the vault
@@ -537,25 +538,15 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
     }
 
     function _removeStrategy(address _strategy) internal {
-        require(
-            !strategies[_strategy].active,
-            "removeStrategy: strategy active"
-        );
-
-        require(
-            strategies[_strategy].totalDebt == 0,
-            "removeStrategy: totalDebt !0"
-        );
+        if (strategies[_strategy].active) revert Errors.StrategyActive();
+        if (strategies[_strategy].totalDebt > 0) revert Errors.StrategyDebtNotZero();
 
         _pop(_strategy);
     }
 
     /// @notice Remove strategy from vault adapter, called by strategy on emergencyExit
     function revokeStrategy() external {
-        require(
-            strategies[msg.sender].active,
-            "revokeStrategy: strategy not active"
-        );
+        if (!strategies[msg.sender].active) revert Errors.StrategyNotActive();
         _revokeStrategy(msg.sender);
     }
 
@@ -603,7 +594,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         return strategies[msg.sender].totalDebt;
     }
 
-    /// @notice Report back any gains/losses from a (strategy) harvest, vault adapetr
+    /// @notice Report back any gains/losses from a (strategy) harvest, vault adapter
     ///     calls back debt or gives out more credit to the strategy depending on available
     ///     credit and the strategies current position.
     /// @param _gain Strategy gains from latest harvest
@@ -664,9 +655,12 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         }
 
         // Profit is locked and gradually released per block
-        // NOTE: compute current locked profit and replace with sum of current and new
+        // this computes current locked profit and replace with
+        // the sum of the current and the new profit
         uint256 lockedProfitBeforeLoss = _calculateLockedProfit() +
             _calcFees(_gain);
+        // Store how much loss remains after locked profit is removed,
+        // here only for logging purposes
         if (lockedProfitBeforeLoss > _loss) {
             lockedProfit = lockedProfitBeforeLoss - _loss;
         } else {
@@ -686,7 +680,8 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
             _loss,
             debtPayment,
             credit,
-            lockedProfit
+            lockedProfit,
+            lockedProfitBeforeLoss
         );
 
         emit LogStrategyTotalChanges(
@@ -773,7 +768,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
     }
 
     /// @notice Calculate the amount of assets the vault has available for the strategy to pull and invest,
-    ///     the available credit is based of the strategies debt ratio and the total available assets
+    ///     the available credit is based on the strategies debt ratio and the total available assets
     ///     the vault has
     /// @param _strategy target strategy
     /// @dev called during harvest
@@ -891,7 +886,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
     function _estimatedTotalAssets() private view returns (uint256) {
         uint256 total = vaultAssets;
         uint256[MAXIMUM_STRATEGIES] memory _queue = withdrawalQueue();
-        for (uint256 i = 0; i < noOfStrategies(); i++) {
+        for (uint256 i = 0; i < noOfStrategies(); ++i) {
             total += _getStrategyEstimatedTotalAssets(_queue[i]);
         }
         return total;

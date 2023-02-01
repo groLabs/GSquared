@@ -11,6 +11,7 @@ library Errors {
     error LTMinAmountExpected(); //less than 0x3d93e699
     error NotEnoughBalance(); // 0xad3a8b9e
     error ZeroAddress(); //0xd92e233d
+    error MinDeposit(); //0x11bcd830
 
     // GMigration
     error TrancheAlreadySet(); //0xe8ce7222
@@ -28,13 +29,12 @@ library Errors {
     error IncorrectVaultOnStrategy(); //0x7408aa63
     error OverDepositLimit(); //0xbf41e3d0
     error StrategyActive(); // 0xebb33d91
+    error StrategyNotActive(); // 0xdc974a98
     error StrategyDebtNotZero(); // 0x332c333c
     error StrategyLossTooHigh(); // 0xa9aba8bd
-    error StrategyNotActive(); // 0xdc974a98
     error VaultDebtRatioTooHigh(); //0xf6f34eca
     error VaultFeeTooHigh(); //0xb6659cb6
     error ZeroAssets(); //0x32d971dc
-    error MinDeposit(); //0x11bcd830
     error ZeroShares(); //0x9811e0c7
 
     //Whitelist

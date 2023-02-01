@@ -3,7 +3,7 @@ pragma solidity 0.8.10;
 
 contract Constants {
     uint8 public constant N_COINS = 3;
-    uint8 public constant DEFAULT_DECIMALS = 18; // GToken and Controller use this decimals
+    uint8 public constant DEFAULT_DECIMALS = 18; // GToken and Controller use these decimals
     uint256 public constant DEFAULT_DECIMALS_FACTOR =
         uint256(10)**DEFAULT_DECIMALS;
     uint8 public constant CHAINLINK_PRICE_DECIMALS = 8;
