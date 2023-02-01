@@ -87,7 +87,7 @@ contract StrategyQueue {
     /// @notice Get strategy at position i of withdrawal queue
     /// @param i position in withdrawal queue
     /// @return strategy strategy at position i
-    function withdrawalQueue(uint256 i)
+    function withdrawalQueueAt(uint256 i)
         external
         view
         returns (address strategy)
@@ -107,7 +107,7 @@ contract StrategyQueue {
 
     /// @notice Get the entire withdrawal queue
     /// @return queue list of all strategy ids in order of withdrawal priority
-    function withdrawalQueue()
+    function fullWithdrawalQueue()
         internal
         view
         returns (uint256[MAXIMUM_STRATEGIES] memory queue)

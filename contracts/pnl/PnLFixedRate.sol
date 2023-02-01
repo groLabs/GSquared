@@ -148,12 +148,12 @@ contract PnLFixedRate is IPnL {
         int256 _amount,
         int256[NO_OF_TRANCHES] calldata _trancheBalances
     ) public view override returns (int256[NO_OF_TRANCHES] memory profit) {
-        int256 _utilization = (_trancheBalances[1] * DEFAULT_DECIMALS) /
+        int256 _utilisation = (_trancheBalances[1] * DEFAULT_DECIMALS) /
             (_trancheBalances[0] + 1);
-        if (_utilization < int256(IGTranche(gTranche).utilisationThreshold())) {
+        if (_utilisation < int256(IGTranche(gTranche).utilisationThreshold())) {
             int256 seniorProfit = _calc_rate(_trancheBalances[1]);
             // if rate distribution is greater than profit, the junior tranche
-            //  will experiene negative profit, e.g. a loss
+            //  will experience negative profit, e.g. a loss
             if (_trancheBalances[0] < seniorProfit - _amount) {
                 profit[0] = -_trancheBalances[0];
                 profit[1] = _amount + _trancheBalances[0];

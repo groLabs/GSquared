@@ -64,10 +64,10 @@ def test_withdrawals_works_within_utilzation_ratio_limit(
     tranche.deposit(
         _amount / 8, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_utilization_ratio = tranche.trancheBalances(
+    initial_utilisation_ratio = tranche.trancheBalances(
         SENIOR_TRANCHE
     ) / tranche.trancheBalances(JUNIOR_TRANCHE)
-    assert initial_utilization_ratio <= 1.0
+    assert initial_utilisation_ratio <= 1.0
     tranche.withdraw(
         gTokens[JUNIOR_TRANCHE_ID].balanceOf(user.address) / 5,
         token_index,
@@ -78,7 +78,7 @@ def test_withdrawals_works_within_utilzation_ratio_limit(
     assert (
         tranche.trancheBalances(SENIOR_TRANCHE)
         / tranche.trancheBalances(JUNIOR_TRANCHE)
-        > initial_utilization_ratio
+        > initial_utilisation_ratio
     )
 
 
@@ -95,10 +95,10 @@ def test_withdrawals_fails_outside_utilzation_ratio_limit(
     tranche.deposit(
         _amount / 3, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_utilization_ratio = tranche.trancheBalances(
+    initial_utilisation_ratio = tranche.trancheBalances(
         SENIOR_TRANCHE
     ) / tranche.trancheBalances(JUNIOR_TRANCHE)
-    assert initial_utilization_ratio <= 1.0
+    assert initial_utilisation_ratio <= 1.0
     with pytest.raises(exceptions.VirtualMachineError):
         tranche.withdraw(
             gTokens[JUNIOR_TRANCHE_ID].balanceOf(user.address) / 2,
@@ -110,7 +110,7 @@ def test_withdrawals_fails_outside_utilzation_ratio_limit(
     assert (
         tranche.trancheBalances(SENIOR_TRANCHE)
         / tranche.trancheBalances(JUNIOR_TRANCHE)
-        == initial_utilization_ratio
+        == initial_utilisation_ratio
     )
 
 
@@ -187,7 +187,7 @@ def test_junior_tranche_asserts_decrease_on_withdrawal(
     assert math.isclose(tranche.trancheBalances(JUNIOR_TRANCHE), initial_JT_assets / 2)
 
 
-def test_utilization_increases_on_minting_of_senior_tranche_token(
+def test_utilisation_increases_on_minting_of_senior_tranche_token(
     admin, users, tranche, tokens
 ):
     token_index = 0
@@ -200,15 +200,15 @@ def test_utilization_increases_on_minting_of_senior_tranche_token(
     tranche.deposit(
         _amount / 8, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_U_ratio = tranche.utilization()
+    initial_U_ratio = tranche.utilisation()
     assert initial_U_ratio > 0
     tranche.deposit(
         _amount / 8, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    assert tranche.utilization() > initial_U_ratio
+    assert tranche.utilisation() > initial_U_ratio
 
 
-def test_utilization_decreases_on_burning_of_senior_tranche_token(
+def test_utilisation_decreases_on_burning_of_senior_tranche_token(
     admin, users, tranche, tokens, gTokens
 ):
     token_index = 0
@@ -221,7 +221,7 @@ def test_utilization_decreases_on_burning_of_senior_tranche_token(
     tranche.deposit(
         _amount / 4, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_U_ratio = tranche.utilization()
+    initial_U_ratio = tranche.utilisation()
     assert initial_U_ratio > 0
     tranche.withdraw(
         gTokens[SENIOR_TRANCHE_ID].balanceOf(user.address) / 8,
@@ -230,10 +230,10 @@ def test_utilization_decreases_on_burning_of_senior_tranche_token(
         user.address,
         {"from": user.address},
     )
-    assert tranche.utilization() < initial_U_ratio
+    assert tranche.utilisation() < initial_U_ratio
 
 
-def test_utilization_decreases_on_minting_of_junior_tranche_token(
+def test_utilisation_decreases_on_minting_of_junior_tranche_token(
     admin, users, tranche, tokens
 ):
     token_index = 0
@@ -246,15 +246,15 @@ def test_utilization_decreases_on_minting_of_junior_tranche_token(
     tranche.deposit(
         _amount / 8, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_U_ratio = tranche.utilization()
+    initial_U_ratio = tranche.utilisation()
     assert initial_U_ratio > 0
     tranche.deposit(
         _amount / 8, token_index, JUNIOR_TRANCHE, user.address, {"from": user.address}
     )
-    assert tranche.utilization() < initial_U_ratio
+    assert tranche.utilisation() < initial_U_ratio
 
 
-def test_utilization_increases_on_burning_of_junior_tranche_token(
+def test_utilisation_increases_on_burning_of_junior_tranche_token(
     admin, users, tranche, tokens, gTokens
 ):
     token_index = 0
@@ -267,7 +267,7 @@ def test_utilization_increases_on_burning_of_junior_tranche_token(
     tranche.deposit(
         _amount / 8, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_U_ratio = tranche.utilization()
+    initial_U_ratio = tranche.utilisation()
     assert initial_U_ratio > 0
     tranche.withdraw(
         gTokens[JUNIOR_TRANCHE].balanceOf(user.address) / 8,
@@ -276,7 +276,7 @@ def test_utilization_increases_on_burning_of_junior_tranche_token(
         user.address,
         {"from": user.address},
     )
-    assert tranche.utilization() > initial_U_ratio
+    assert tranche.utilisation() > initial_U_ratio
 
 
 def test_profit_distribution_curve(admin, users, tranche, tokens):

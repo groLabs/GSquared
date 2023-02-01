@@ -21,7 +21,7 @@ struct StrategyParams {
     uint256 totalLoss;
 }
 
-contract MockStrategy{
+contract MockStrategy {
     /*//////////////////////////////////////////////////////////////
                         CONSTANTS & IMMUTABLES
     //////////////////////////////////////////////////////////////*/
@@ -85,9 +85,7 @@ contract MockStrategy{
                             CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(
-        IGVault _vault
-    ) {
+    constructor(IGVault _vault) {
         owner = msg.sender;
         keepers[msg.sender] = true;
         vault = _vault;
@@ -121,7 +119,11 @@ contract MockStrategy{
         return _estimatedTotalAssets(false);
     }
 
-    function _estimatedTotalAssets(bool _rewards) private view returns (uint256) {
+    function _estimatedTotalAssets(bool _rewards)
+        private
+        view
+        returns (uint256)
+    {
         return asset.balanceOf(address(this));
     }
 
@@ -178,7 +180,7 @@ contract MockStrategy{
 
         uint256 debt = vault.getStrategyDebt();
 
-        uint256 assets =_estimatedTotalAssets(true);
+        uint256 assets = _estimatedTotalAssets(true);
         uint256 balance = asset.balanceOf(address(this));
 
         // During testing, send this contract some tokens to simulate "Rewards"
@@ -205,14 +207,11 @@ contract MockStrategy{
         return (profit, loss, debtRepayment, balance);
     }
 
-    function divest(uint256 _debt, bool _slippage) internal returns (uint256) {
-    }
+    function divest(uint256 _debt, bool _slippage) internal returns (uint256) {}
 
-    function divestAll(bool _slippage) internal returns (uint256) {
-    }
+    function divestAll(bool _slippage) internal returns (uint256) {}
 
-    function invest(uint256 _credit) internal returns (uint256) {
-    }
+    function invest(uint256 _credit) internal returns (uint256) {}
 
     function runHarvest() external {
         if (!keepers[msg.sender]) revert TestStratErrors.NotKeeper();
@@ -250,8 +249,7 @@ contract MockStrategy{
         emit Harvested(profit, loss, debtRepayment, excessDebt);
     }
 
-    function stopLoss() external returns (bool) {
-    }
+    function stopLoss() external returns (bool) {}
 
     /*//////////////////////////////////////////////////////////////
                            TRIGGERS
@@ -284,8 +282,7 @@ contract MockStrategy{
         return false;
     }
 
-    function canStopLoss() external view returns (bool) {
-    }
+    function canStopLoss() external view returns (bool) {}
 
     /*//////////////////////////////////////////////////////////////
                           HELPER FUNCTIONS 

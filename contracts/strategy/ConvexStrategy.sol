@@ -414,14 +414,14 @@ contract ConvexStrategy {
         if (_tokens.length > MAX_REWARDS)
             revert StrategyErrors.RewardsTokenMax();
         for (uint256 i; i < rewardTokens.length; i++) {
-            IERC20(rewardTokens[i]).approve(UNI_V2, 0);
+            ERC20(rewardTokens[i]).approve(UNI_V2, 0);
         }
         delete rewardTokens;
         numberOfRewards = _tokens.length;
         for (uint256 i; i < _tokens.length; ++i) {
             address token = _tokens[i];
             rewardTokens[i] = token;
-            IERC20(token).approve(UNI_V2, type(uint256).max);
+            ERC20(token).approve(UNI_V2, type(uint256).max);
         }
         emit LogAdditionalRewards(_tokens);
     }
@@ -629,7 +629,7 @@ contract ConvexStrategy {
     ///     Add. rewards => ETH => USDC => Asset
     ///     <UNI v2> => <UNI v2>
     function _sellRewards() internal returns (uint256) {
-        uint256 wethAmount = IERC20(WETH).balanceOf(address(this));
+        uint256 wethAmount = ERC20(WETH).balanceOf(address(this));
         uint256 _numberOfRewards = numberOfRewards;
 
         if (_numberOfRewards > 0) {
@@ -707,7 +707,9 @@ contract ConvexStrategy {
     /// @notice Withdraw assets from the strategy to the Vault -
     ///    If the strategy has a loss, this loss will be distributed
     ///     proportionally on the user withdrawing
-    /// @param _amount Strategy gains from latest harvest
+    /// @param _amount asset quantity needed to be withdrawn by Vault
+    /// @return withdrawnAssets amount of assets that were withdrawn from the strategy
+    /// @return loss amount of loss that occurred during withdrawal
     function withdraw(uint256 _amount)
         external
         returns (uint256 withdrawnAssets, uint256 loss)
@@ -856,7 +858,7 @@ contract ConvexStrategy {
         uint256 minAmount;
         if (_slippage) {
             uint256 debt = VAULT.getStrategyDebt();
-            uint256 slippage = 50;
+            uint256 slippage = baseSlippage;
             minAmount =
                 (debt *
                     (PERCENTAGE_DECIMAL_FACTOR -
@@ -1123,8 +1125,9 @@ contract ConvexStrategy {
         if (msg.sender != owner) revert StrategyErrors.NotOwner();
         if (address(ASSET) == _token) revert StrategyErrors.BaseAsset();
         if (address(lpToken) == _token) revert StrategyErrors.LpToken();
-        if (address(rewardContract) == _token) revert StrategyErrors.ConvexToken();
-        uint256 _amount = IERC20(_token).balanceOf(address(this));
-        IERC20(_token).transfer(_recipient, _amount);
+        if (address(rewardContract) == _token)
+            revert StrategyErrors.ConvexToken();
+        uint256 _amount = ERC20(_token).balanceOf(address(this));
+        ERC20(_token).transfer(_recipient, _amount);
     }
 }

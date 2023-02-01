@@ -46,7 +46,11 @@ contract GStrategyGuard is IGStrategyGuard {
     event LogStopLossEscalated(address strategy);
     event LogStopLossDescalated(address strategy, bool active);
     event LogStopLossExecuted(address strategy, bool success);
-    event LogStrategyHarvestFailure(address strategy, string reason, bytes lowLevelData);
+    event LogStrategyHarvestFailure(
+        address strategy,
+        string reason,
+        bytes lowLevelData
+    );
 
     address public owner;
     mapping(address => bool) public keepers;
@@ -321,11 +325,19 @@ contract GStrategyGuard is IGStrategyGuard {
                     ) {
                         strategyCheck[strategy].active = false;
                         bytes memory lowLevelData;
-                        emit LogStrategyHarvestFailure(strategy, _reason, lowLevelData);
+                        emit LogStrategyHarvestFailure(
+                            strategy,
+                            _reason,
+                            lowLevelData
+                        );
                     } catch (bytes memory _lowLevelData) {
                         strategyCheck[strategy].active = false;
                         string memory reason;
-                        emit LogStrategyHarvestFailure(strategy, reason, _lowLevelData);
+                        emit LogStrategyHarvestFailure(
+                            strategy,
+                            reason,
+                            _lowLevelData
+                        );
                     }
                     return;
                 }

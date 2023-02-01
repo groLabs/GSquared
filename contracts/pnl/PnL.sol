@@ -52,6 +52,7 @@ contract PnL is IPnL {
     }
 
     /// @notice Calculate distribution of assets changes of underlying yield tokens
+    /// @param _loss flag indicating if the change is loss or gain
     /// @param _amount amount of loss to distribute
     /// @param _trancheBalances balances of current tranches in common denominator
     function distributeAssets(
@@ -75,7 +76,7 @@ contract PnL is IPnL {
                 emit LogNewJuniorLoss(-1 * amounts[0]);
             }
         }
-        int256 _utilization = (_trancheBalances[1] * DEFAULT_DECIMALS) /
+        int256 _utilisation = (_trancheBalances[1] * DEFAULT_DECIMALS) /
             (_trancheBalances[0] + 1);
     }
 
@@ -102,21 +103,21 @@ contract PnL is IPnL {
         int256[NO_OF_TRANCHES] calldata _trancheBalances
     ) public view override returns (int256[NO_OF_TRANCHES] memory profit) {
         int256 _juniorLoss = juniorLoss;
-        int256 _utilization = (_trancheBalances[1] * DEFAULT_DECIMALS) /
+        int256 _utilisation = (_trancheBalances[1] * DEFAULT_DECIMALS) /
             (_trancheBalances[0] + 1);
-        if (_amount > _juniorLoss && _utilization < DEFAULT_DECIMALS) {
+        if (_amount > _juniorLoss && _utilisation < DEFAULT_DECIMALS) {
             _amount = _amount - _juniorLoss;
             // Can potentially break here if _amount ~ _juniorLoss, but should clear up
             //  on its own
-            int256 seniorProfit = (_amount * _utilization) /
-                (DEFAULT_DECIMALS + _utilization);
+            int256 seniorProfit = (_amount * _utilisation) /
+                (DEFAULT_DECIMALS + _utilisation);
             int256 juniorProfit = _juniorLoss + _amount - seniorProfit;
 
-            if (_utilization < 8000)
-                _utilization = (_utilization * 3) / 8 + 3000;
-            else _utilization = (_utilization - 8000) * 2 + 6000;
+            if (_utilisation < 8000)
+                _utilisation = (_utilisation * 3) / 8 + 3000;
+            else _utilisation = (_utilisation - 8000) * 2 + 6000;
 
-            int256 profitFromSeniorTranche = (seniorProfit * _utilization) /
+            int256 profitFromSeniorTranche = (seniorProfit * _utilisation) /
                 10000;
             profit[0] = juniorProfit + profitFromSeniorTranche;
             profit[1] = seniorProfit - profitFromSeniorTranche;

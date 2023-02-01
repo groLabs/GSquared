@@ -36,7 +36,7 @@ contract MockFixedStablecoins {
 }
 
 contract MockZapperOracle is MockFixedStablecoins, IGRouterOracle {
-    uint256 constant CHIANLINK_FACTOR = 1_00_000_000;
+    uint256 constant CHAINLINK_FACTOR = 1_00_000_000;
     uint256 constant NO_OF_AGGREGATORS = 3;
     uint256 constant STALE_CHECK = 1_0_000;
 

@@ -32,14 +32,14 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
 
     constructor(
         address[] memory _yieldTokens,
-        address[2] memory _tranchTokens,
+        address[2] memory _trancheTokens,
         address _oracle
-    ) MockFixedTokens(_yieldTokens, _tranchTokens) {
+    ) MockFixedTokens(_yieldTokens, _trancheTokens) {
         oracle = IOracle(_oracle);
     }
 
     /////////////////////////////// setters ////////////////////////////////////////////////
-    function setUtilizationRatio(uint256 _newRatio) external onlyOwner {
+    function setUtilisationRatio(uint256 _newRatio) external onlyOwner {
         utilisationThreshold = _newRatio;
         emit LogNewRatio(_newRatio);
     }
@@ -61,11 +61,11 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
         uint256 calc_amount = _calcTokenValue(_index, _amount, true);
         tranche_balances[_tranche] += calc_amount;
         if (_tranche)
-            require(utilization() <= utilisationThreshold, "!utilization");
+            require(utilisation() <= utilisationThreshold, "!utilisation");
         trancheToken.mint(_recipient, trancheToken.factor(), calc_amount);
         uint256 trancheAmount;
         if (_tranche) trancheAmount = calc_amount;
-        else trancheAmount = calc_amount * factor / DEFAULT_FACTOR;
+        else trancheAmount = (calc_amount * factor) / DEFAULT_FACTOR;
         emit LogNewDeposit(msg.sender, _recipient, _amount, _index, _tranche);
         return (trancheAmount, calc_amount);
     }
@@ -84,7 +84,7 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
 
         trancheToken.burn(msg.sender, trancheToken.factor(), calc_amount);
         tranche_balances[_tranche] -= calc_amount;
-        if (!_tranche) require(utilization() <= utilisationThreshold);
+        if (!_tranche) require(utilisation() <= utilisationThreshold);
         token_balances[_index] -= _amount;
         token.transfer(msg.sender, _amount);
         emit LogNewWithdrawal(
@@ -112,13 +112,13 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
     }
 
     /////////////////////////////// PNL ////////////////////////////////////////////////
-    function utilization() public view returns (uint256) {
+    function utilisation() public view returns (uint256) {
         return
             (tranche_balances[SENIOR_TRANCHE_ID] * DEFAULT_DECIMALS) /
             (tranche_balances[JUNIOR_TRANCHE_ID] + 1);
     }
 
-    function _calcUtilization() internal view returns (uint256) {
+    function _calcUtilisation() internal view returns (uint256) {
         uint256[NO_OF_TRANCHES] memory _totalValue = _calcTotalValue();
         return (_totalValue[1] * DEFAULT_DECIMALS) / _totalValue[0];
     }
@@ -151,11 +151,11 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
                 _tranche_balances[0] -= currentTotal - totalValue;
             }
         } else if (currentTotal < totalValue) {
-            uint256 _utilization = (_tranche_balances[1] * DEFAULT_DECIMALS) /
+            uint256 _utilisation = (_tranche_balances[1] * DEFAULT_DECIMALS) /
                 _tranche_balances[0];
             uint256[NO_OF_TRANCHES] memory profits = _distributeProfit(
                 totalValue - currentTotal,
-                _utilization
+                _utilisation
             );
             _tranche_balances[0] += profits[0];
             _tranche_balances[1] += profits[1];
@@ -166,20 +166,20 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
     function finalizeMigration() external override {}
 
     // TODO update default profit distribution curve
-    function _distributeProfit(uint256 _amount, uint256 _utilization)
+    function _distributeProfit(uint256 _amount, uint256 _utilisation)
         internal
         pure
         returns (uint256[NO_OF_TRANCHES] memory profit)
     {
-        uint256 juniorProfit = (_amount * _utilization) / DEFAULT_DECIMALS;
+        uint256 juniorProfit = (_amount * _utilisation) / DEFAULT_DECIMALS;
         uint256 seniorProfit = _amount - juniorProfit;
 
-        if (_utilization > 10000) _utilization = 10000;
-        else if (_utilization < 8000)
-            _utilization = (_utilization * 3) / 8 + 3000;
-        else _utilization = (_utilization - 8000) * 2 + 6000;
+        if (_utilisation > 10000) _utilisation = 10000;
+        else if (_utilisation < 8000)
+            _utilisation = (_utilisation * 3) / 8 + 3000;
+        else _utilisation = (_utilisation - 8000) * 2 + 6000;
 
-        uint256 profitFromSeniorTranche = (seniorProfit * _utilization) / 10000;
+        uint256 profitFromSeniorTranche = (seniorProfit * _utilisation) / 10000;
         profit[0] = juniorProfit + profitFromSeniorTranche;
         profit[1] = seniorProfit - profitFromSeniorTranche;
     }
