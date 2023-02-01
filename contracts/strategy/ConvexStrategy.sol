@@ -800,16 +800,13 @@ contract ConvexStrategy {
                 }
             } else if (assets < debt) {
                 loss = debt - assets;
+                // here for safety, but should really never be the case
+                //  that loss > _excessDebt
                 if (loss > _excessDebt) debtRepayment = 0;
                 else if (balance < _excessDebt - loss) {
                     balance += divest(_excessDebt - loss - balance, true);
                     debtRepayment = balance;
-                } else {
-                    // here for safety, but should really never be the case
-                    //  that loss > _excessDebt
-                    if (loss > _excessDebt) debtRepayment = 0;
-                    else debtRepayment = _excessDebt - loss;
-                }
+                } else debtRepayment = _excessDebt - loss;
             }
         }
         return (profit, loss, debtRepayment, balance);
