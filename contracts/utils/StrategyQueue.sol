@@ -111,7 +111,7 @@ contract StrategyQueue {
         uint256 index = strategyQueue.head;
         uint256 _totalNodes = strategyQueue.totalNodes;
         queue[0] = index;
-        for (uint256 i = 1; i < _totalNodes; i++) {
+        for (uint256 i = 1; i < _totalNodes; ++i) {
             index = nodes[index].next;
             queue[i] = index;
         }
@@ -127,7 +127,7 @@ contract StrategyQueue {
     {
         uint48 index = strategyQueue.head;
         uint48 _totalNodes = strategyQueue.totalNodes;
-        for (uint48 i = 0; i <= _totalNodes; i++) {
+        for (uint48 i = 0; i <= _totalNodes; ++i) {
             if (_strategy == nodes[index].strategy) {
                 return i;
             }
@@ -186,7 +186,7 @@ contract StrategyQueue {
         uint48 _newPos = !_back ? oldPos.prev : oldPos.next;
         if (_newPos == 0) return;
 
-        for (uint256 i = 1; i < _steps; i++) {
+        for (uint256 i = 1; i < _steps; ++i) {
             _newPos = !_back ? nodes[_newPos].prev : nodes[_newPos].next;
             if (_newPos == 0) {
                 _newPos = !_back ? strategyQueue.head : strategyQueue.tail;

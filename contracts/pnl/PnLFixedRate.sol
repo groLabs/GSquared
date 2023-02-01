@@ -18,11 +18,11 @@ import {PnLErrors} from "../common/PnLErrors.sol";
 /// @title PnLFixedRate
 /// @notice PnL - Separate contract for defining profit and loss calculation for the GTranche.
 ///     This implementation provides fix rate income to the Senior tranche. Fixed rate being
-///     defined as a % APY for the senior tranche. The implementation give a constant stream
+///     defined as a % APY for the senior tranche. The implementation gives a constant stream
 ///     of assets from the junior to the senior tranche, independent of yields or other system
 ///     wide gains for the tranche. Its recommended that the tranches underlying 4626 tokens
 ///     support slow release, and that this slow release is adjusted accordingly to the fixed
-///     rate, as to not create intermidary loss for the junior tranche between yield generating
+///     rate, as to not create intermediary loss for the junior tranche between yield generating
 ///     events. Note that all normal yields (from 4626 harvests) are distributed to the junior
 ///     tranche, and that the Senior tranche
 contract PnLFixedRate is IPnL {
@@ -132,12 +132,12 @@ contract PnLFixedRate is IPnL {
     ) public view override returns (int256[NO_OF_TRANCHES] memory loss) {
         int256 seniorProfit = _calc_rate(_trancheBalances[1]);
         if (_amount + seniorProfit > _trancheBalances[0]) {
-            loss[1] = _amount - _trancheBalances[0];
             loss[0] = _trancheBalances[0];
+            loss[1] = _amount - _trancheBalances[0];
         } else {
+            loss[0] = _amount + seniorProfit;
             // The senior tranche will experience negative loss == fixed rate profit
             loss[1] = -1 * seniorProfit;
-            loss[0] = _amount + seniorProfit;
         }
     }
 
@@ -154,8 +154,13 @@ contract PnLFixedRate is IPnL {
             int256 seniorProfit = _calc_rate(_trancheBalances[1]);
             // if rate distribution is greater than profit, the junior tranche
             //  will experiene negative profit, e.g. a loss
-            profit[0] = _amount - seniorProfit;
-            profit[1] = seniorProfit;
+            if (_trancheBalances[0] < seniorProfit - _amount) {
+                profit[0] = -_trancheBalances[0];
+                profit[1] = _amount + _trancheBalances[0];
+            } else {
+                profit[0] = _amount - seniorProfit;
+                profit[1] = seniorProfit;
+            }
         } else {
             profit[0] = _amount;
         }

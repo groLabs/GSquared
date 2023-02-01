@@ -30,7 +30,7 @@ contract CurveOracle is Relation {
         return curvePool.get_virtual_price();
     }
 
-    /// @notice get swapping price between to underlying assets in
+    /// @notice Get swapping price between the underlying assets in
     ///     the tranche
     /// @param _i token A
     /// @param _j token B
@@ -63,7 +63,7 @@ contract CurveOracle is Relation {
     /// @notice Get token amount from an amount of common denominator assets
     /// @param _i index of token
     /// @param _amount amount of common denominator asset
-    /// @param _deposit is the  pricing triggered from a deposit or a withdrawal
+    /// @param _deposit is the pricing triggered from a deposit or a withdrawal
     /// @return get amount of yield tokens from amount
     function getTokenAmount(
         uint256 _i,
@@ -84,7 +84,7 @@ contract CurveOracle is Relation {
     {
         uint256 total;
         uint256 vp = getVirtualPrice();
-        for (uint256 i; i < _amounts.length; i++) {
+        for (uint256 i; i < _amounts.length; ++i) {
             total += (_amounts[i] * vp) / DEFAULT_FACTOR;
         }
         return total;
