@@ -24,9 +24,9 @@ import {IOracle} from "../interfaces/IOracle.sol";
 ///         it allows us to create a separate definition of how the underlying tranche
 ///         assets relate to one another without making changes to the core tranche logic.
 ///     By relation, we mean a common denominator between all the underlying assets that
-///         will be used to price the tranche tokens. Generally speaking it likely that
+///         will be used to price the tranche tokens. Generally speaking, its likely that
 ///         this will be a price oracle or bonding curve of some sort, but the choice
-///         (and by extensoin) implementation is left as an exercise to the user ;)
+///         (and by extension) implementation is left as an exercise to the user ;)
 ///     This modularity exists in order to allow for the GTranche to fulfill different
 ///         requirements, as we can specify how we want to facilitate protection (tranching)
 ///         based on how we relate the underlying tokens to one another.
@@ -35,7 +35,7 @@ import {IOracle} from "../interfaces/IOracle.sol";
 ///         - Swapping price: How much of token x do I get for token y?
 ///         - Single price: What is the value of token x in a common denominator
 ///         - token amount: How much of token x do I get from common denominator y
-///         - total value: What is the combined value of all underlying tokens ina common denominator
+///         - total value: What is the combined value of all underlying tokens in a common denominator
 abstract contract Relation is IOracle {
     uint256 constant DEFAULT_FACTOR = 1_000_000_000_000_000_000;
 
