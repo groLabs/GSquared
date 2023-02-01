@@ -234,7 +234,7 @@ contract ConvexStrategy {
     address public owner; // contract owner
     mapping(address => bool) public keepers;
 
-    uint256 public baseSlippage = 50;
+    uint256 public baseSlippage = 10;
     uint256 public stopLossAttempts;
     address public stopLossLogic;
     bool public emergencyMode;
