@@ -137,6 +137,17 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         return strategies[msg.sender].totalDebt;
     }
 
+    /// @notice Get total invested in strategy
+    /// @param _index index of strategy
+    /// @return amount of total debt the strategies have to the GVault
+    function getStrategyDebt(uint256 _index)
+        external
+        view
+        returns (uint256 amount)
+    {
+        return strategies[nodes[_index].strategy].totalDebt;
+    }
+
     /// @notice Helper function for strategy to get harvest data from vault
     function getStrategyData()
         external
@@ -149,17 +160,6 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
     {
         StrategyParams storage stratData = strategies[msg.sender];
         return (stratData.active, stratData.totalDebt, stratData.lastReport);
-    }
-
-    /// @notice Get total amount invested in strategy
-    /// @param _index index of strategy
-    /// @return amount of total debt the strategies have to the GVault
-    function getStrategyAssets(uint256 _index)
-        external
-        view
-        returns (uint256 amount)
-    {
-        return strategies[nodes[_index].strategy].totalDebt;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -535,6 +535,8 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         _removeStrategy(_strategy);
     }
 
+    /// @notice remove strategy from the withdrawal queue
+    /// @param _strategy address of strategy to remove
     function _removeStrategy(address _strategy) internal {
         if (strategies[_strategy].active) revert Errors.StrategyActive();
         if (strategies[_strategy].totalDebt > 0) revert Errors.StrategyDebtNotZero();
@@ -542,7 +544,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         _pop(_strategy);
     }
 
-    /// @notice Remove strategy from vault adapter, called by strategy on emergencyExit
+    /// @notice Remove strategy from vault adapter
     function revokeStrategy() external {
         if (!strategies[msg.sender].active) revert Errors.StrategyNotActive();
         _revokeStrategy(msg.sender);
@@ -578,6 +580,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
 
     /// @notice Amount of debt the strategy has to pay back to the vault at next harvest
     /// @param _strategy target strategy
+    /// @return amount of debt the strategy has to pay back and the current debt ratio of the strategy
     function excessDebt(address _strategy)
         external
         view
@@ -598,6 +601,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
     /// @param _gain Strategy gains from latest harvest
     /// @param _loss Strategy losses from latest harvest
     /// @param _debtPayment Amount strategy can pay back to vault
+    /// @param _emergency Flag to indicate if the harvest was an emergency harvest
     function report(
         uint256 _gain,
         uint256 _loss,
@@ -697,6 +701,8 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Runs before any withdraw function mainly to ensure vault has enough assets
+    /// @param _assets Amount of assets to withdraw
+    /// @return Amount of assets withdrawn and amount of assets in vault
     function beforeWithdraw(uint256 _assets)
         internal
         returns (uint256, uint256)
@@ -813,6 +819,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
 
     /// @notice Amount by which a strategy exceeds its current debt limit
     /// @param _strategy target strategy
+    /// @return amount of debt the strategy has to pay back and the current debt ratio of the strategy
     function _excessDebt(address _strategy)
         internal
         view
@@ -883,7 +890,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
     /// @dev note that this does consider estimated gains/losses from the strategies
     function _estimatedTotalAssets() private view returns (uint256) {
         uint256 total = vaultAssets;
-        uint256[MAXIMUM_STRATEGIES] memory _queue = withdrawalQueue();
+        uint256[MAXIMUM_STRATEGIES] memory _queue = fullWithdrawalQueue();
         for (uint256 i = 0; i < noOfStrategies(); ++i) {
             total += _getStrategyEstimatedTotalAssets(_queue[i]);
         }

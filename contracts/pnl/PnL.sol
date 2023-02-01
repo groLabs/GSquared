@@ -52,6 +52,7 @@ contract PnL is IPnL {
     }
 
     /// @notice Calculate distribution of assets changes of underlying yield tokens
+    /// @param _loss flag indicating if the change is loss or gain
     /// @param _amount amount of loss to distribute
     /// @param _trancheBalances balances of current tranches in common denominator
     function distributeAssets(

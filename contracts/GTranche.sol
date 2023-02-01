@@ -570,6 +570,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
                         Legacy logic (GTokens)
     //////////////////////////////////////////////////////////////*/
 
+    // Current BASE of legacy GVT (Junior tranche token)
     uint256 internal constant JUNIOR_INIT_BASE = 5000000000000000;
 
     /// @notice This function exists to support the older versions of the GToken
@@ -598,6 +599,12 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         return amount;
     }
 
+    /// @notice calculate the tranches factor
+    /// @param _tranche junior or senior tranche
+    /// @param _totalAssets total value in tranche
+    /// @return factor factor to be applied to tranche
+    /// @dev The factor is used to either determine the value of the tranche
+    ///     or the number of tokens to be issued for a given amount
     function _calcFactor(bool _tranche, uint256 _totalAssets)
         internal
         view

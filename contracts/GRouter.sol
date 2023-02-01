@@ -326,7 +326,7 @@ contract GRouter is IGRouter {
 
     /// @notice Helper Function to deposit users funds into the tranche
     /// @param _amount the amount of tranche tokens being deposited with the correct decimals
-    /// @param _token_index index of deposit token 0 - DAI, 1 - USDC, 2 -USDT
+    /// @param _token_index index of deposit token 0 - DAI, 1 - USDC, 2 - USDT, 3+ - 3Crv
     /// @param _tranche false for junior and true for senior tranche
     /// @param _minAmount min amount of tranche tokens expected in return
     /// @return amount Returns $ value of tranche tokens minted
@@ -351,6 +351,7 @@ contract GRouter is IGRouter {
             // check 3crv amount received
             depositAmount = threeCrv.balanceOf(address(this));
         } else {
+            // depositing 3crv
             depositAmount = _amount;
         }
 
