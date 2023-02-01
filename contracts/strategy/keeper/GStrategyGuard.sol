@@ -195,12 +195,15 @@ contract GStrategyGuard is IGStrategyGuard {
     /// @notice Check if stop loss needs to be executed
     function canExecuteStopLossPrimer() external view returns (bool result) {
         uint256 strategiesLength = strategies.length;
+        address strategy;
+        uint64 primerTimestamp;
         for (uint256 i; i < strategiesLength; i++) {
-            address strategy = strategies[i];
-            if (strategyCheck[strategy].primerTimestamp == 0) continue;
+            strategy = strategies[i];
+            primerTimestamp = strategyCheck[strategy].primerTimestamp;
+            if (primerTimestamp == 0) continue;
             if (IStrategy(strategy).canStopLoss()) {
                 if (
-                    block.timestamp - strategyCheck[strategy].primerTimestamp >=
+                    block.timestamp - primerTimestamp >=
                     strategyCheck[strategy].timeLimit &&
                     strategyCheck[strategy].active
                 ) {
@@ -256,13 +259,15 @@ contract GStrategyGuard is IGStrategyGuard {
     function executeStopLoss() external {
         if (msg.sender != keeper) revert GuardErrors.NotKeeper();
         uint256 strategiesLength = strategies.length;
+        address strategy;
+        uint256 primerTimestamp;
         for (uint256 i; i < strategiesLength; i++) {
-            address strategy = strategies[i];
-            if (strategy == address(0)) continue;
+            strategy = strategies[i];
+            primerTimestamp = strategyCheck[strategy].primerTimestamp;
+            if (primerTimestamp == 0 || strategy == address(0)) continue;
             if (IStrategy(strategy).canStopLoss()) {
                 if (
-                    (block.timestamp -
-                        strategyCheck[strategy].primerTimestamp) >=
+                    (block.timestamp - primerTimestamp) >=
                     strategyCheck[strategy].timeLimit &&
                     strategyCheck[strategy].active
                 ) {
