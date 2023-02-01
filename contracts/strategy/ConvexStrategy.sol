@@ -778,7 +778,7 @@ contract ConvexStrategy {
             uint256 _rewards
         ) = _estimatedTotalAssets(true);
 
-        if (_rewards > MIN_REWARD_SELL_AMOUNT) balance += sellAllRewards();
+        if (_rewards > MIN_REWARD_SELL_AMOUNT) balance = sellAllRewards();
         if (_excessDebt > assets) {
             debtRepayment = balance + divestAll(false);
             loss = debt - debtRepayment;
