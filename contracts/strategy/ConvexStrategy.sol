@@ -23,6 +23,8 @@ library StrategyErrors {
     error Stopped(); // 0x7acc84e3
     error SamePid(); // 0x4eb5bc6d
     error BaseAsset(); // 0xaeca768b
+    error LpToken(); // 0xaeca768b
+    error ConvexToken(); // 0xaeca768b
     error LTMinAmountExpected(); // 0x3d93e699
 }
 
@@ -1123,7 +1125,9 @@ contract ConvexStrategy {
     function sweep(address _recipient, address _token) external {
         if (msg.sender != owner) revert StrategyErrors.NotOwner();
         if (address(ASSET) == _token) revert StrategyErrors.BaseAsset();
-        uint256 _amount = ERC20(_token).balanceOf(address(this));
-        ERC20(_token).transfer(_recipient, _amount);
+        if (address(lpToken) == _token) revert StrategyErrors.LpToken();
+        if (address(rewardContract) == _token) revert StrategyErrors.ConvexToken();
+        uint256 _amount = IERC20(_token).balanceOf(address(this));
+        IERC20(_token).transfer(_recipient, _amount);
     }
 }
