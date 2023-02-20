@@ -52,7 +52,7 @@ contract GRouter is IGRouter {
         uint256 tokenAmount,
         uint256 tokenIndex,
         bool tranche,
-        uint256 trancheAmounts,
+        uint256 trancheAmount,
         uint256 calcAmount
     );
 
@@ -60,7 +60,7 @@ contract GRouter is IGRouter {
         address indexed sender,
         uint256[N_COINS] tokenAmounts,
         bool tranche,
-        uint256 trancheAmounts,
+        uint256 trancheAmount,
         uint256 calcAmount
     );
 
