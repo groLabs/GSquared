@@ -77,7 +77,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
         uint256 debtPaid,
         uint256 debtAdded,
         uint256 lockedProfit,
-        uint256 excessLoss
+        uint256 lockedProfitBeforeLoss
     );
 
     event LogStrategyTotalChanges(
