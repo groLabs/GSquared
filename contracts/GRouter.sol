@@ -52,7 +52,7 @@ contract GRouter is IGRouter {
         uint256 tokenAmount,
         uint256 tokenIndex,
         bool tranche,
-        uint256 trancheTokens,
+        uint256 trancheAmount,
         uint256 calcAmount
     );
 
