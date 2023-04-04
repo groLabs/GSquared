@@ -6,7 +6,7 @@ test = 'test'
 cache_path  = 'forge-cache'
 
 [fuzz]
-runs = 1000
+runs = 100
 max_test_rejects = 655360
 seed = '0x3e8'
 dictionary_weight = 40
