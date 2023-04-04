@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./Base.GSquared.t.sol";
-import "forge-std/console2.sol";
 
 contract TrancheTest is Test, BaseSetup {
     using stdStorage for StdStorage;
@@ -130,27 +129,12 @@ contract TrancheTest is Test, BaseSetup {
         vm.startPrank(BASED_ADDRESS);
         convexStrategy.runHarvest();
 
-        console2.log(
-            "vault 1 assets %s strategy assets %s",
-            gVault.totalAssets(),
-            convexStrategy.estimatedTotalAssets()
-        );
-        console2.log(
-            "crv assets vault %s strategy assets %s",
-            THREE_POOL_TOKEN.balanceOf(address(gVault)),
-            ERC20(fraxConvexRewards).balanceOf(address(convexStrategy))
-        );
 
         uint256 utilisation = gTranche.utilisation();
         uint256 BP = change % 10000;
         uint256 assets = gVault.totalAssets();
         uint256 initialSeniorTrancheAssets = gTranche.trancheBalances(true);
 
-        console2.log(
-            "senior %s junior ",
-            gTranche.trancheBalances(true),
-            gTranche.trancheBalances(false)
-        );
         vm.stopPrank();
         if (_loss) {
             uint256 loss = assets - (assets * change) / 10000;
@@ -166,16 +150,6 @@ contract TrancheTest is Test, BaseSetup {
         convexStrategy.runHarvest();
         vm.stopPrank();
 
-        console2.log(
-            "vault 2 assets %s strategy assets %s",
-            gVault.totalAssets(),
-            convexStrategy.estimatedTotalAssets()
-        );
-        console2.log(
-            "crv assets vault %s strategy assets %s",
-            THREE_POOL_TOKEN.balanceOf(address(gVault)),
-            ERC20(fraxConvexRewards).balanceOf(address(convexStrategy))
-        );
         vm.startPrank(alice);
         uint256 aliceSeniorAssets = PWRD.balanceOf(alice);
         uint256 aliceJuniorAssets = GVT.balanceOf(alice);
@@ -186,11 +160,6 @@ contract TrancheTest is Test, BaseSetup {
             10;
         vm.stopPrank();
 
-        console2.log(
-            "senior %s junior ",
-            gTranche.trancheBalances(true),
-            gTranche.trancheBalances(false)
-        );
         if (_loss) {
             if (change <= 5000) {
                 assertGe(
@@ -209,16 +178,6 @@ contract TrancheTest is Test, BaseSetup {
                 initialSeniorTrancheAssets
             );
         }
-        console2.log(
-            "vault 3 assets %s strategy assets %s",
-            gVault.totalAssets(),
-            convexStrategy.estimatedTotalAssets()
-        );
-        console2.log(
-            "crv assets vault %s strategy assets %s",
-            THREE_POOL_TOKEN.balanceOf(address(gVault)),
-            ERC20(fraxConvexRewards).balanceOf(address(convexStrategy))
-        );
     }
 
     /// Given a user with assets in the Junior tranche
