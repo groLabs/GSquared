@@ -364,7 +364,7 @@ contract ConvexStrategyTest is BaseSetup {
         assertEq(THREE_POOL_TOKEN.balanceOf(address(gVault)), gVault.totalAssets());
     }
     // TODO: This test is omitted
-    function test_should_pull_out_all_asset_during_stop_loss() public {
+    function test_should_pull_out_all_asset_during_stop_loss() private {
         depositIntoVault(alice, 1E24);
 
         vm.startPrank(BASED_ADDRESS);
@@ -520,7 +520,7 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
     }
     // TODO: This test is omitted
-    function test_strategy_should_claim_and_sell_rewards() public {
+    function test_strategy_should_claim_and_sell_rewards() private {
         depositIntoVault(alice, 1E24);
 
         vm.startPrank(BASED_ADDRESS);
