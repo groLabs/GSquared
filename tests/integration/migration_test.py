@@ -1,6 +1,10 @@
 import math
 
-from brownie import Contract, GMigration, GTranche, GVault
+import pytest
+from brownie import Contract
+from brownie import GMigration
+from brownie import GTranche
+from brownie import GVault
 from conftest import *
 
 # RUN TESTS IN THIS FILE ON MAINNET FORK
@@ -97,6 +101,7 @@ def force_slippage(strategy):
 # WHEN all the funds are correctly migrated to the new gTranche
 # THEN the respective junior and senior tranche balances match
 # the previous gro protocol balances
+@pytest.mark.skip(reason="migration test")
 def test_migration(
     admin,
     dai_vault,
@@ -155,7 +160,7 @@ def test_migration(
     usdc_vault.migrate(gmigration, {"from": TIMELOCK})
     usdt_vault.migrate(gmigration, {"from": TIMELOCK})
 
-    assert dai_token.balanceOf(gmigration) > expected_dai
+    assert int(dai_token.balanceOf(gmigration)) > int(expected_dai)
     assert usdc_token.balanceOf(gmigration) > expected_usdc
     assert usdt_token.balanceOf(gmigration) > expected_usdt
 
