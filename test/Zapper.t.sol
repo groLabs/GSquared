@@ -7,7 +7,6 @@ contract RouterTest is Test, BaseSetup {
     using stdStorage for StdStorage;
 
     function testDepositWithdraw() public {
-
         vm.startPrank(alice);
 
         setStorage(alice, DAI.balanceOf.selector, address(DAI), 100E20);
@@ -29,7 +28,7 @@ contract RouterTest is Test, BaseSetup {
 
         GVT.approve(address(gRouter), MAX_UINT);
         PWRD.approve(address(gRouter), MAX_UINT);
-        
+
         aliceDaiBalance = DAI.balanceOf(alice);
         uint256 alicePWRDBalance = PWRD.balanceOf(alice);
         gRouter.withdraw(10E18, 0, true, 0);
@@ -48,7 +47,6 @@ contract RouterTest is Test, BaseSetup {
     }
 
     function testDepositWithdrawLegacy() public {
-
         vm.startPrank(alice);
 
         setStorage(alice, DAI.balanceOf.selector, address(DAI), 100E20);
@@ -70,7 +68,7 @@ contract RouterTest is Test, BaseSetup {
 
         GVT.approve(address(gRouter), MAX_UINT);
         PWRD.approve(address(gRouter), MAX_UINT);
-        
+
         aliceDaiBalance = DAI.balanceOf(alice);
         uint256 alicePWRDBalance = PWRD.balanceOf(alice);
         gRouter.withdrawByStablecoin(true, 0, alicePWRDBalance, 0);

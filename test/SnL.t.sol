@@ -12,21 +12,26 @@ contract SnLTest is BaseSetup {
 
     address frax_lp = address(0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B);
     address frax = address(0x853d955aCEf822Db058eb8505911ED77F175b99e);
-    address fraxConvexPool = address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-    address fraxConvexRewards = address(0xB900EF131301B307dB5eFcbed9DBb50A3e209B2e);
+    address fraxConvexPool =
+        address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+    address fraxConvexRewards =
+        address(0xB900EF131301B307dB5eFcbed9DBb50A3e209B2e);
     uint256 frax_lp_pid = 32;
 
     address musd_lp = address(0x1AEf73d49Dedc4b1778d0706583995958Dc862e6);
     address musd_curve = address(0x8474DdbE98F5aA3179B3B3F5942D724aFcdec9f6);
     address musd = address(0xe2f2a5C287993345a840Db3B0845fbC70f5935a5);
-    address musdConvexPool = address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-    address musdConvexRewards = address(0xDBFa6187C79f4fE4Cda20609E75760C5AaE88e52);
+    address musdConvexPool =
+        address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+    address musdConvexRewards =
+        address(0xDBFa6187C79f4fE4Cda20609E75760C5AaE88e52);
     uint256 musd_lp_pid = 14;
 
     address mim_lp = address(0x5a6A4D54456819380173272A5E8E9B9904BdF41B);
     address mim = address(0x99D8a9C45b2ecA8864373A26D1459e3Dff1e17F3);
     address mimConvexPool = address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-    address mimConvexRewards = address(0xFd5AbF66b003881b88567EB9Ed9c651F14Dc4771);
+    address mimConvexRewards =
+        address(0xFd5AbF66b003881b88567EB9Ed9c651F14Dc4771);
     uint256 mim_lp_pid = 40;
 
     using SafeERC20 for IERC20;
@@ -43,17 +48,32 @@ contract SnLTest is BaseSetup {
 
     function setUp() public virtual override {
         BaseSetup.setUp();
-        
+
         vm.startPrank(BASED_ADDRESS);
-        fraxStrategy = new ConvexStrategy(IGVault(address(gVault)), BASED_ADDRESS, frax_lp_pid, frax_lp);
-        musdStrategy = new ConvexStrategy(IGVault(address(gVault)), BASED_ADDRESS, musd_lp_pid, musd_curve);
-        mimStrategy = new ConvexStrategy(IGVault(address(gVault)), BASED_ADDRESS, mim_lp_pid, mim_lp);
+        fraxStrategy = new ConvexStrategy(
+            IGVault(address(gVault)),
+            BASED_ADDRESS,
+            frax_lp_pid,
+            frax_lp
+        );
+        musdStrategy = new ConvexStrategy(
+            IGVault(address(gVault)),
+            BASED_ADDRESS,
+            musd_lp_pid,
+            musd_curve
+        );
+        mimStrategy = new ConvexStrategy(
+            IGVault(address(gVault)),
+            BASED_ADDRESS,
+            mim_lp_pid,
+            mim_lp
+        );
         snl = new StopLossLogic();
 
         fraxStrategy.setStopLossLogic(address(snl));
         musdStrategy.setStopLossLogic(address(snl));
         mimStrategy.setStopLossLogic(address(snl));
-        
+
         snl.setStrategy(address(fraxStrategy), 1e18, 400);
         snl.setStrategy(address(musdStrategy), 1e18, 400);
         snl.setStrategy(address(mimStrategy), 1e18, 400);
@@ -61,7 +81,6 @@ contract SnLTest is BaseSetup {
         fraxStrategy.setKeeper(BASED_ADDRESS);
         musdStrategy.setKeeper(BASED_ADDRESS);
         mimStrategy.setKeeper(BASED_ADDRESS);
-        
 
         gVault.removeStrategy(address(strategy));
         gVault.addStrategy(address(fraxStrategy), 3000);
@@ -90,13 +109,19 @@ contract SnLTest is BaseSetup {
         vm.stopPrank();
     }
 
-
     // GIVEN a convex strategy not added to the stop loss logic
     // WHEN the stop loss check is run
     // THEN the logic should return false
-    function test_guard_should_return_false_if_when_no_threshold_breached() public {
+    function test_guard_should_return_false_if_when_no_threshold_breached()
+        public
+    {
         vm.startPrank(BASED_ADDRESS);
-        ConvexStrategy testStrategy = new ConvexStrategy(IGVault(address(gVault)), BASED_ADDRESS, frax_lp_pid, frax_lp);
+        ConvexStrategy testStrategy = new ConvexStrategy(
+            IGVault(address(gVault)),
+            BASED_ADDRESS,
+            frax_lp_pid,
+            frax_lp
+        );
         testStrategy.setKeeper(BASED_ADDRESS);
         guard.addStrategy(address(testStrategy), HOUR_IN_SECONDS);
         gVault.addStrategy(address(testStrategy), 1000);
@@ -108,12 +133,15 @@ contract SnLTest is BaseSetup {
     }
 
     // Harvest
-    function test_guard_should_return_false_multiple_strategies_no_threshold_broken_harvest() public {
+    function test_guard_should_return_false_multiple_strategies_no_threshold_broken_harvest()
+        public
+    {
         assertTrue(!guard.canHarvest());
     }
 
-
-    function test_guard_should_returns_true_multiple_strategies_one_broken_treshold_harvest() public {
+    function test_guard_should_returns_true_multiple_strategies_one_broken_treshold_harvest()
+        public
+    {
         uint256 shares = genThreeCrv(1E24, alice);
         vm.startPrank(alice);
         vm.warp(block.timestamp + MIN_REPORT_DELAY);
@@ -123,7 +151,9 @@ contract SnLTest is BaseSetup {
         vm.stopPrank();
     }
 
-    function test_guard_should_execute_if_threshold_broken_one_strategy() public {
+    function test_guard_should_execute_if_threshold_broken_one_strategy()
+        public
+    {
         uint256 shares = genThreeCrv(1E24, alice);
         vm.startPrank(alice);
         THREE_POOL_TOKEN.transfer(address(fraxStrategy), HARVEST_MIN);
@@ -145,13 +175,14 @@ contract SnLTest is BaseSetup {
         vm.stopPrank();
     }
 
-    function test_guard_should_execute_if_threshold_broken_and_return_true_if_credit_available() public {
+    function test_guard_should_execute_if_threshold_broken_and_return_true_if_credit_available()
+        public
+    {
         uint256 shares = depositIntoVault(alice, 1E25);
 
         vm.warp(block.timestamp + MIN_REPORT_DELAY);
 
         vm.startPrank(BASED_ADDRESS);
-
 
         assertTrue(fraxStrategy.canHarvest());
         assertTrue(guard.canHarvest());
@@ -165,8 +196,9 @@ contract SnLTest is BaseSetup {
         vm.stopPrank();
     }
 
-    function test_guard_should_returns_true_after_execute_if_multiple_strategy_thresholds_broken() public {
-
+    function test_guard_should_returns_true_after_execute_if_multiple_strategy_thresholds_broken()
+        public
+    {
         uint256 shares = genThreeCrv(1E26, alice);
         vm.startPrank(alice);
         THREE_POOL_TOKEN.transfer(address(fraxStrategy), HARVEST_MIN);
@@ -177,7 +209,6 @@ contract SnLTest is BaseSetup {
         vm.warp(block.timestamp + MIN_REPORT_DELAY);
 
         vm.startPrank(BASED_ADDRESS);
-
 
         assertTrue(fraxStrategy.canHarvest());
         assertTrue(mimStrategy.canHarvest());
@@ -194,13 +225,17 @@ contract SnLTest is BaseSetup {
     }
 
     // Stop loss
-    function test_guard_should_return_false_multiple_strategies_no_threshold_broken_stop_loss() public {
+    function test_guard_should_return_false_multiple_strategies_no_threshold_broken_stop_loss()
+        public
+    {
         assertTrue(!guard.canUpdateStopLoss());
         assertTrue(!guard.canEndStopLoss());
         assertTrue(!guard.canExecuteStopLossPrimer());
     }
 
-    function test_guard_should_returns_true_multiple_strategies_one_broken_treshold_stop_loss() public {
+    function test_guard_should_returns_true_multiple_strategies_one_broken_treshold_stop_loss()
+        public
+    {
         manipulatePool(false, 500, frax_lp, frax);
         assertTrue(guard.canUpdateStopLoss());
         assertTrue(!guard.canEndStopLoss());
@@ -208,7 +243,6 @@ contract SnLTest is BaseSetup {
     }
 
     function test_guard_should_execute_if_threshold_broken_stop_loss() public {
-
         manipulatePool(false, 500, frax_lp, frax);
 
         assertTrue(fraxStrategy.canStopLoss());
@@ -225,8 +259,9 @@ contract SnLTest is BaseSetup {
         vm.stopPrank();
     }
 
-    function test_guard_should_return_true_multiple_strategies_multiple_thresholds_broken() public {
-
+    function test_guard_should_return_true_multiple_strategies_multiple_thresholds_broken()
+        public
+    {
         manipulatePool(false, 500, frax_lp, frax);
         manipulatePool(false, 5000, mim_lp, mim);
 
@@ -246,8 +281,9 @@ contract SnLTest is BaseSetup {
         vm.stopPrank();
     }
 
-    function test_guard_should_reset_stop_loss_primer_if_returned_within_threshold() public {
-
+    function test_guard_should_reset_stop_loss_primer_if_returned_within_threshold()
+        public
+    {
         manipulatePool(false, 500, frax_lp, frax);
         manipulatePool(false, 5000, mim_lp, mim);
 
@@ -282,15 +318,17 @@ contract SnLTest is BaseSetup {
         vm.startPrank(BASED_ADDRESS);
         guard.endStopLossPrimer();
 
-        (, , primerTimestamp) = guard.strategyCheck(address(fraxStrategy)); 
+        (, , primerTimestamp) = guard.strategyCheck(address(fraxStrategy));
         assertEq(primerTimestamp, 0);
-        (, , primerTimestamp) = guard.strategyCheck(address(mimStrategy)); 
+        (, , primerTimestamp) = guard.strategyCheck(address(mimStrategy));
         assertGt(primerTimestamp, 0);
         assertTrue(guard.canEndStopLoss());
         vm.stopPrank();
     }
 
-    function test_guard_should_execute_stop_loss_after_designated_time() public {
+    function test_guard_should_execute_stop_loss_after_designated_time()
+        public
+    {
         manipulatePool(false, 500, frax_lp, frax);
         manipulatePool(false, 5000, mim_lp, mim);
 
@@ -335,10 +373,15 @@ contract SnLTest is BaseSetup {
 
         assertTrue(!fraxStrategy.canStopLoss());
         assertEq(ERC20(frax_lp).balanceOf(address(fraxStrategy)), 0);
-        assertEq(fraxStrategy.estimatedTotalAssets(), THREE_POOL_TOKEN.balanceOf(address(fraxStrategy)));
+        assertEq(
+            fraxStrategy.estimatedTotalAssets(),
+            THREE_POOL_TOKEN.balanceOf(address(fraxStrategy))
+        );
         uint64 primerTimestamp;
         bool active;
-        (active, , primerTimestamp) = guard.strategyCheck(address(fraxStrategy)); 
+        (active, , primerTimestamp) = guard.strategyCheck(
+            address(fraxStrategy)
+        );
         assertEq(primerTimestamp, 0);
         assertTrue(!active);
 
@@ -359,9 +402,12 @@ contract SnLTest is BaseSetup {
         }
         assertTrue(!mimStrategy.canStopLoss());
         assertEq(ERC20(mim_lp).balanceOf(address(mimStrategy)), 0);
-        assertEq(mimStrategy.estimatedTotalAssets(), THREE_POOL_TOKEN.balanceOf(address(mimStrategy)));
+        assertEq(
+            mimStrategy.estimatedTotalAssets(),
+            THREE_POOL_TOKEN.balanceOf(address(mimStrategy))
+        );
 
-        (active, , primerTimestamp) = guard.strategyCheck(address(mimStrategy)); 
+        (active, , primerTimestamp) = guard.strategyCheck(address(mimStrategy));
         assertEq(primerTimestamp, 0);
         assertTrue(!active);
 
@@ -375,7 +421,9 @@ contract SnLTest is BaseSetup {
     // GIVEN a convex strategy not added to the stop loss logic
     // WHEN the stop loss check is run
     // THEN the logic should return false
-    function test_stop_loss_should_returns_false_if_strategy_not_added() public {
+    function test_stop_loss_should_returns_false_if_strategy_not_added()
+        public
+    {
         vm.startPrank(address(fraxStrategy));
         assertTrue(!snl.stopLossCheck());
         vm.stopPrank();
@@ -386,7 +434,12 @@ contract SnLTest is BaseSetup {
     // THEN the stop loss logic should hold the strategy data
     function test_stop_loss_add_strategy() public {
         vm.startPrank(BASED_ADDRESS);
-        ConvexStrategy testStrategy = new ConvexStrategy(IGVault(address(gVault)), BASED_ADDRESS, frax_lp_pid, frax_lp);
+        ConvexStrategy testStrategy = new ConvexStrategy(
+            IGVault(address(gVault)),
+            BASED_ADDRESS,
+            frax_lp_pid,
+            frax_lp
+        );
         gVault.addStrategy(address(testStrategy), 1000);
         vm.stopPrank();
 
@@ -419,7 +472,7 @@ contract SnLTest is BaseSetup {
         vm.startPrank(BASED_ADDRESS);
         snl.setStrategy(address(fraxStrategy), 1, 400);
         vm.stopPrank();
-        
+
         vm.startPrank(address(fraxStrategy));
         assertTrue(snl.stopLossCheck());
         vm.stopPrank();
@@ -428,7 +481,9 @@ contract SnLTest is BaseSetup {
     // GIVEN a convex strategy added to the stop loss logic
     // WHEN the underlying pool balance moves outside the health threshold
     // THEN the stop loss logic should return true
-    function test_stop_loss_should_return_true_if_moving_outside_threshold() public {
+    function test_stop_loss_should_return_true_if_moving_outside_threshold()
+        public
+    {
         vm.startPrank(BASED_ADDRESS);
         snl.setStrategy(address(fraxStrategy), 1e18, 400);
         vm.stopPrank();

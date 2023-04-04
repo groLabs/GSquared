@@ -8,7 +8,6 @@ contract GVaultTest is Test, BaseSetup {
     using stdStorage for StdStorage;
 
     function testDepositWithdraws() public {
-
         genThreeCrv(uint256(1E25), alice);
         vm.startPrank(alice);
 
@@ -27,7 +26,7 @@ contract GVaultTest is Test, BaseSetup {
         assertGt(gVault.balanceOf(alice), 0);
 
         gVault.approve(address(gVault), MAX_UINT);
-        
+
         alice3CrvBalance = THREE_POOL_TOKEN.balanceOf(alice);
         uint256 alicegVaultBalance = gVault.balanceOf(alice);
         gVault.withdraw(10E18, alice, alice);
@@ -44,7 +43,7 @@ contract GVaultTest is Test, BaseSetup {
         vm.stopPrank();
     }
 
-    function addStrategies() public returns (address[4] memory strategies){
+    function addStrategies() public returns (address[4] memory strategies) {
         vm.startPrank(BASED_ADDRESS);
 
         strategy = new MockStrategy(address(gVault));
@@ -66,7 +65,6 @@ contract GVaultTest is Test, BaseSetup {
     }
 
     function testDeposits() public {
-
         genThreeCrv(uint256(1E25), alice);
         genThreeCrv(uint256(1E25), bob);
 
@@ -96,7 +94,6 @@ contract GVaultTest is Test, BaseSetup {
     }
 
     function testDepositZeroShare() public {
-
         genThreeCrv(uint256(1E25), alice);
 
         vm.startPrank(alice);
@@ -109,7 +106,6 @@ contract GVaultTest is Test, BaseSetup {
     }
 
     function testMint() public {
-
         genThreeCrv(uint256(1E25), alice);
         genThreeCrv(uint256(1E25), bob);
 
@@ -139,7 +135,6 @@ contract GVaultTest is Test, BaseSetup {
     }
 
     function testMintZeroShare() public {
-
         genThreeCrv(uint256(1E25), alice);
 
         vm.startPrank(alice);
@@ -152,7 +147,6 @@ contract GVaultTest is Test, BaseSetup {
     }
 
     function testWithdrawZeroShare() public {
-
         genThreeCrv(uint256(1E25), alice);
 
         vm.startPrank(alice);
@@ -168,7 +162,6 @@ contract GVaultTest is Test, BaseSetup {
     }
 
     function testiWithdrawToMuch() public {
-
         genThreeCrv(uint256(1E25), alice);
 
         vm.startPrank(alice);
@@ -178,13 +171,14 @@ contract GVaultTest is Test, BaseSetup {
         gVault.mint(1E20, alice);
 
         assertGt(gVault.balanceOf(alice), 0);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientShares.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.InsufficientShares.selector)
+        );
         gVault.withdraw(1E25, alice, alice);
         vm.stopPrank();
     }
 
     function testRedeemZero() public {
-
         genThreeCrv(uint256(1E25), alice);
 
         vm.startPrank(alice);
@@ -200,7 +194,6 @@ contract GVaultTest is Test, BaseSetup {
     }
 
     function testRedeemToMuch() public {
-
         genThreeCrv(uint256(1E25), alice);
 
         vm.startPrank(alice);
@@ -210,7 +203,9 @@ contract GVaultTest is Test, BaseSetup {
         gVault.mint(1E20, alice);
 
         assertGt(gVault.balanceOf(alice), 0);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientShares.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.InsufficientShares.selector)
+        );
         gVault.redeem(1E25, alice, alice);
         vm.stopPrank();
     }
@@ -272,7 +267,7 @@ contract GVaultTest is Test, BaseSetup {
         assertEq(gVault.previewMint(100E18), 100E18);
         vm.stopPrank();
     }
-    
+
     function testPreviewWithdrawal() public {
         assertEq(gVault.previewWithdraw(100E18), 100E18);
         genThreeCrv(uint256(1E25), alice);
@@ -287,7 +282,7 @@ contract GVaultTest is Test, BaseSetup {
         assertEq(gVault.previewWithdraw(100E18), 100E18);
         vm.stopPrank();
     }
-    
+
     function testPreviewRedeem() public {
         assertEq(gVault.previewRedeem(100E18), 100E18);
         genThreeCrv(uint256(1E25), alice);
@@ -306,7 +301,7 @@ contract GVaultTest is Test, BaseSetup {
     function testTotalAssets(uint256 amount, bool gain) public {
         vm.assume(amount > 1E20);
         vm.assume(amount < 1E25);
-        
+
         genThreeCrv(uint256(2E25), alice);
 
         vm.startPrank(alice);
@@ -316,18 +311,29 @@ contract GVaultTest is Test, BaseSetup {
         gVault.mint(1E25, alice);
         vm.stopPrank();
         assertEq(gVault.totalAssets(), 1E25);
-        assertEq(gVault.totalAssets() * 1E18 / gVault.totalSupply(), gVault.getPricePerShare());
+        assertEq(
+            (gVault.totalAssets() * 1E18) / gVault.totalSupply(),
+            gVault.getPricePerShare()
+        );
 
         vm.startPrank(BASED_ADDRESS);
         strategy.runHarvest();
         amount = gain ? amount * 2 : amount / 2;
-        setStorage(address(strategy), THREE_POOL_TOKEN.balanceOf.selector, address(THREE_POOL_TOKEN), amount);
+        setStorage(
+            address(strategy),
+            THREE_POOL_TOKEN.balanceOf.selector,
+            address(THREE_POOL_TOKEN),
+            amount
+        );
         strategy.runHarvest();
         vm.warp(block.timestamp + gVault.releaseTime());
         vm.stopPrank();
 
         assertEq(gVault.totalAssets(), amount);
-        assertEq(gVault.totalAssets() * 1E18 / gVault.totalSupply(), gVault.getPricePerShare());
+        assertEq(
+            (gVault.totalAssets() * 1E18) / gVault.totalSupply(),
+            gVault.getPricePerShare()
+        );
     }
 
     function testConvertToShare() public {
@@ -339,7 +345,6 @@ contract GVaultTest is Test, BaseSetup {
         THREE_POOL_TOKEN.approve(address(gVault), MAX_UINT);
         gVault.mint(1E25, alice);
         assertEq(gVault.convertToShares(1E18), 1E18);
-
 
         THREE_POOL_TOKEN.transfer(address(strategy), 1E25);
         vm.stopPrank();
@@ -382,18 +387,22 @@ contract GVaultTest is Test, BaseSetup {
         vm.stopPrank();
 
         vm.startPrank(BASED_ADDRESS);
-        vm.expectRevert(abi.encodeWithSelector(Errors.StrategyNotActive.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.StrategyNotActive.selector)
+        );
         gVault.setDebtRatio(ZERO, 0);
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.VaultDebtRatioTooHigh.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.VaultDebtRatioTooHigh.selector)
+        );
         gVault.setDebtRatio(address(strategy), 11000);
 
         uint256 debt;
-        ( , debt, , , , ) = gVault.strategies(address(strategy));
+        (, debt, , , , ) = gVault.strategies(address(strategy));
         assertEq(debt, 10000);
 
         gVault.setDebtRatio(address(strategy), 4000);
-        ( , debt, , , , ) = gVault.strategies(address(strategy));
+        (, debt, , , , ) = gVault.strategies(address(strategy));
         assertEq(debt, 4000);
         vm.stopPrank();
     }
@@ -405,14 +414,15 @@ contract GVaultTest is Test, BaseSetup {
 
         vm.startPrank(BASED_ADDRESS);
         strategy = new MockStrategy(address(gVault));
-        vm.expectRevert(abi.encodeWithSelector(StrategyQueue.MaxStrategyExceeded.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(StrategyQueue.MaxStrategyExceeded.selector)
+        );
         gVault.addStrategy(address(strategy), 0);
         assertEq(gVault.getNoOfStrategies(), 5);
         vm.stopPrank();
     }
 
     function testAddStrategy() public {
-
         vm.startPrank(BASED_ADDRESS);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         gVault.addStrategy(ZERO, 0);
@@ -422,13 +432,17 @@ contract GVaultTest is Test, BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(Errors.StrategyActive.selector));
         gVault.addStrategy(address(strategy), 0);
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.VaultDebtRatioTooHigh.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.VaultDebtRatioTooHigh.selector)
+        );
         gVault.addStrategy(address(strategyNew), 1000);
 
-		GVault gVaultNew = new GVault(THREE_POOL_TOKEN);
+        GVault gVaultNew = new GVault(THREE_POOL_TOKEN);
         strategy = new MockStrategy(address(gVaultNew));
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectVaultOnStrategy.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.IncorrectVaultOnStrategy.selector)
+        );
         gVault.addStrategy(address(strategy), 1000);
 
         gVault.addStrategy(address(strategyNew), 0);
@@ -438,7 +452,6 @@ contract GVaultTest is Test, BaseSetup {
     }
 
     function testRemoevStrategy() public {
-
         vm.startPrank(BASED_ADDRESS);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         gVault.addStrategy(ZERO, 0);
@@ -448,13 +461,17 @@ contract GVaultTest is Test, BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(Errors.StrategyActive.selector));
         gVault.addStrategy(address(strategy), 0);
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.VaultDebtRatioTooHigh.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.VaultDebtRatioTooHigh.selector)
+        );
         gVault.addStrategy(address(strategyNew), 1000);
 
-		GVault gVaultNew = new GVault(THREE_POOL_TOKEN);
+        GVault gVaultNew = new GVault(THREE_POOL_TOKEN);
         strategy = new MockStrategy(address(gVaultNew));
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectVaultOnStrategy.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.IncorrectVaultOnStrategy.selector)
+        );
         gVault.addStrategy(address(strategy), 1000);
 
         gVault.addStrategy(address(strategyNew), 0);
@@ -464,7 +481,6 @@ contract GVaultTest is Test, BaseSetup {
     }
 
     function testRemoveStrategy() public {
-
         vm.startPrank(BASED_ADDRESS);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         gVault.addStrategy(ZERO, 0);
@@ -474,13 +490,17 @@ contract GVaultTest is Test, BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(Errors.StrategyActive.selector));
         gVault.addStrategy(address(strategy), 0);
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.VaultDebtRatioTooHigh.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.VaultDebtRatioTooHigh.selector)
+        );
         gVault.addStrategy(address(strategyNew), 1000);
 
-		GVault gVaultNew = new GVault(THREE_POOL_TOKEN);
+        GVault gVaultNew = new GVault(THREE_POOL_TOKEN);
         strategy = new MockStrategy(address(gVaultNew));
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectVaultOnStrategy.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.IncorrectVaultOnStrategy.selector)
+        );
         gVault.addStrategy(address(strategy), 1000);
 
         gVault.addStrategy(address(strategyNew), 0);
@@ -488,7 +508,7 @@ contract GVaultTest is Test, BaseSetup {
         assertEq(gVault.withdrawalQueueAt(1), address(strategyNew));
         vm.stopPrank();
     }
-        
+
     function test_credit_available() public {
         // take snapshot to be able to test both func signatures of credit available
         // check current credit
@@ -518,10 +538,9 @@ contract GVaultTest is Test, BaseSetup {
         vm.stopPrank();
     }
 
-
     function test_strategy_debt(uint128 _amount) public {
-        if(_amount > 1E26) _amount = 1E26;
-        if(_amount < 1E21) _amount = 1E21;
+        if (_amount > 1E26) _amount = 1E26;
+        if (_amount < 1E21) _amount = 1E21;
         uint256 amount = uint256(_amount);
         // test if a strategy shows the correct debt outstanding
         uint256 debtOutstanding;
@@ -535,7 +554,7 @@ contract GVaultTest is Test, BaseSetup {
         strategy.runHarvest();
         vm.stopPrank();
         (debtOutstanding, debtRatio) = gVault.excessDebt(address(strategy));
-        assertEq(debtOutstanding,  0);
+        assertEq(debtOutstanding, 0);
 
         vm.startPrank(alice);
         THREE_POOL_TOKEN.transfer(address(strategy), 1E23);
@@ -546,14 +565,14 @@ contract GVaultTest is Test, BaseSetup {
         gVault.setDebtRatio(address(strategy), 5000);
         vm.stopPrank();
         // check for the correct debt outstanding
-        ( , , , uint256 totalDebt, , ) = gVault.strategies(address(strategy));
+        (, , , uint256 totalDebt, , ) = gVault.strategies(address(strategy));
         (debtOutstanding, debtRatio) = gVault.excessDebt(address(strategy));
-        assertApproxEqRel(debtOutstanding * 10000 / totalDebt, 5000, 1E16);
+        assertApproxEqRel((debtOutstanding * 10000) / totalDebt, 5000, 1E16);
     }
 
     function test_report_to_much_loss(uint128 _amount) public {
-        if(_amount > 1E26) _amount = 1E26;
-        if(_amount < 1E21) _amount = 1E21;
+        if (_amount > 1E26) _amount = 1E26;
+        if (_amount < 1E21) _amount = 1E21;
         uint256 amount = uint256(_amount);
         // the current version of the
         //   strategy uses estimated total assets for its report
@@ -572,13 +591,15 @@ contract GVaultTest is Test, BaseSetup {
         strategy.runHarvest();
         strategy.setTooMuchLoss();
         strategy._takeFunds(shares);
-        vm.expectRevert(abi.encodeWithSelector(Errors.StrategyLossTooHigh.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.StrategyLossTooHigh.selector)
+        );
         strategy.runHarvest();
     }
 
     function test_report_loss(uint128 _amount) public {
-        if(_amount > 1E26) _amount = 1E26;
-        if(_amount < 1E21) _amount = 1E21;
+        if (_amount > 1E26) _amount = 1E26;
+        if (_amount < 1E21) _amount = 1E21;
         uint256 amount = uint256(_amount);
         uint256 shares = depositIntoVault(address(alice), amount);
 
@@ -588,10 +609,18 @@ contract GVaultTest is Test, BaseSetup {
         // to check loss reported correctly
         assertEq(gVault.getPricePerShare(), 1e18);
         strategy.runHarvest();
-        ( , , , uint256 initDebt, uint256 initProfit, uint256 initLoss) = gVault.strategies(address(strategy));
-        strategy._takeFunds(shares/2);
+        (, , , uint256 initDebt, uint256 initProfit, uint256 initLoss) = gVault
+            .strategies(address(strategy));
+        strategy._takeFunds(shares / 2);
         strategy.runHarvest();
-        ( , , , uint256 finalDebt, uint256 finalProfit, uint256 finalLoss) = gVault.strategies(address(strategy));
+        (
+            ,
+            ,
+            ,
+            uint256 finalDebt,
+            uint256 finalProfit,
+            uint256 finalLoss
+        ) = gVault.strategies(address(strategy));
         assertLt(gVault.getPricePerShare(), 1e18);
         assertLt(finalDebt, initDebt);
         assertGt(finalLoss, initLoss);
@@ -599,8 +628,8 @@ contract GVaultTest is Test, BaseSetup {
     }
 
     function test_report_gain(uint128 _amount) public {
-        if(_amount > 1E26) _amount = 1E26;
-        if(_amount < 1E21) _amount = 1E21;
+        if (_amount > 1E26) _amount = 1E26;
+        if (_amount < 1E21) _amount = 1E21;
         uint256 amount = uint256(_amount);
         uint256 shares = depositIntoVault(address(alice), amount);
 
@@ -611,16 +640,24 @@ contract GVaultTest is Test, BaseSetup {
         assertEq(gVault.getPricePerShare(), 1e18);
         strategy.runHarvest();
         vm.stopPrank();
-        
+
         genThreeCrv(uint256(1E25), alice);
-        ( , , , uint256 initDebt, uint256 initProfit, uint256 initLoss) = gVault.strategies(address(strategy));
+        (, , , uint256 initDebt, uint256 initProfit, uint256 initLoss) = gVault
+            .strategies(address(strategy));
         vm.startPrank(alice);
         THREE_POOL_TOKEN.transfer(address(strategy), 1E24);
         vm.stopPrank();
 
         vm.startPrank(BASED_ADDRESS);
         strategy.runHarvest();
-        ( , , , uint256 finalDebt, uint256 finalProfit, uint256 finalLoss) = gVault.strategies(address(strategy));
+        (
+            ,
+            ,
+            ,
+            uint256 finalDebt,
+            uint256 finalProfit,
+            uint256 finalLoss
+        ) = gVault.strategies(address(strategy));
         vm.stopPrank();
         vm.warp(block.timestamp + 10000);
         assertGt(gVault.getPricePerShare(), 1e18);
@@ -629,9 +666,7 @@ contract GVaultTest is Test, BaseSetup {
         assertGt(finalProfit, initProfit);
     }
 
-
     // OTHERS TEST
-
 
     // Test queue
 
@@ -644,7 +679,7 @@ contract GVaultTest is Test, BaseSetup {
 
         MockStrategy strategy_2 = new MockStrategy(address(gVault));
         gVault.addStrategy(address(strategy_2), 0);
-        
+
         assertEq(gVault.withdrawalQueueAt(1), address(strategy_2));
         assertEq(gVault.withdrawalQueueAt(2), ZERO);
 
@@ -654,7 +689,6 @@ contract GVaultTest is Test, BaseSetup {
         assertEq(gVault.withdrawalQueueAt(1), address(strategy_2));
         assertEq(gVault.withdrawalQueueAt(2), address(strategy_3));
         assertEq(gVault.withdrawalQueueAt(3), ZERO);
-
     }
 
     // Given a vault with one or more strategies
@@ -666,7 +700,7 @@ contract GVaultTest is Test, BaseSetup {
         vm.stopPrank();
 
         address[4] memory strategies = addStrategies();
-        
+
         for (uint256 i; i < 4; i++) {
             assertEq(gVault.getStrategyPositions(strategies[i]), i);
         }
@@ -694,11 +728,15 @@ contract GVaultTest is Test, BaseSetup {
         MockStrategy strategyNew = new MockStrategy(address(gVault));
         gVault.addStrategy(address(strategyNew), 0);
         vm.stopPrank();
-        uint256 newStrategyId = gVault.getStrategyPositions(address(strategyNew));
+        uint256 newStrategyId = gVault.getStrategyPositions(
+            address(strategyNew)
+        );
         assertTrue(newStrategyId != removedId);
 
         for (uint256 i = 0; i < 4; i++) {
-            assertTrue(newStrategyId != gVault.getStrategyPositions(strategies[i]));
+            assertTrue(
+                newStrategyId != gVault.getStrategyPositions(strategies[i])
+            );
         }
     }
 
@@ -717,10 +755,8 @@ contract GVaultTest is Test, BaseSetup {
         assertEq(gVault.getStrategyPositions(strategies[3]), 3);
         gVault.moveStrategy(strategies[3], 1);
 
-
         assertEq(gVault.getStrategyPositions(strategies[3]), 1);
         gVault.moveStrategy(strategies[3], 2);
-
 
         assertEq(gVault.getStrategyPositions(strategies[3]), 2);
         vm.stopPrank();
@@ -729,7 +765,9 @@ contract GVaultTest is Test, BaseSetup {
     // Given a vault with one or more strategies
     // When a strategy is moved to the same position
     // Then it should remain there
-    function test_it_should_not_move_the_strategy_if_same_pos_specified() public {
+    function test_it_should_not_move_the_strategy_if_same_pos_specified()
+        public
+    {
         vm.startPrank(BASED_ADDRESS);
         gVault.removeStrategy(address(strategy));
         vm.stopPrank();
@@ -741,7 +779,9 @@ contract GVaultTest is Test, BaseSetup {
         assertEq(gVault.getStrategyPositions(strategies[2]), 2);
         assertEq(gVault.getStrategyPositions(strategies[1]), 1);
         assertEq(gVault.getStrategyPositions(strategies[0]), 0);
-        vm.expectRevert(abi.encodeWithSelector(StrategyQueue.StrategyNotMoved.selector, 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(StrategyQueue.StrategyNotMoved.selector, 1)
+        );
         gVault.moveStrategy(strategies[2], 2);
         assertEq(gVault.getStrategyPositions(strategies[3]), 3);
         assertEq(gVault.getStrategyPositions(strategies[2]), 2);
