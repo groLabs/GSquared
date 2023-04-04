@@ -10,14 +10,13 @@ name: foundry-test
 
 env:
   FOUNDRY_PROFILE: ci
-  WEB3_ALCHEMY_PROJECT_ID: Q5dMZcBXQgzhVeNixaf0cnKlZEDXbd7x
 
 jobs:
   check:
     strategy:
       fail-fast: true
 
-    name: Foundry project
+    name: Forge Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -42,4 +41,4 @@ jobs:
 
       - name: Run Forge tests
         run: |
-          forge test --fork-url https://eth-mainnet.alchemyapi.io/v2/\$WEB3_ALCHEMY_PROJECT_ID -vvv
+          forge test --fork-url ${{ secrets.ALCHEMY_RPC_URL }} -vvv
