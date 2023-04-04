@@ -1,7 +1,10 @@
 on:
   push:
+    branches:
+      - main
     branches-ignore:
       - feat/eth-mainnet-testing
+  pull_request:
 
 name: Smart Contract Unit tests
 

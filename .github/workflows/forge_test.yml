@@ -1,0 +1,45 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - "contracts/**"
+
+name: foundry-test
+
+env:
+  FOUNDRY_PROFILE: ci
+  WEB3_ALCHEMY_PROJECT_ID: Q5dMZcBXQgzhVeNixaf0cnKlZEDXbd7x
+
+jobs:
+  check:
+    strategy:
+      fail-fast: true
+
+    name: Foundry project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+
+      - name: Install hardhat & dependencies
+        run: npm install
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge build
+        run: |
+          forge --version
+          forge build --sizes
+
+      - name: Run Forge tests
+        run: |
+          forge test https://eth-mainnet.alchemyapi.io/v2/\$WEB3_ALCHEMY_PROJECT_ID -vvv
