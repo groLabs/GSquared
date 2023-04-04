@@ -47,19 +47,19 @@ contract GVaultTest is Test, BaseSetup {
     function addStrategies() public returns (address[4] memory strategies){
         vm.startPrank(BASED_ADDRESS);
 
-        strategy = new TestStrategy(address(gVault));
+        strategy = new MockStrategy(address(gVault));
         gVault.addStrategy(address(strategy), 0);
         strategies[0] = address(strategy);
 
-        strategy = new TestStrategy(address(gVault));
+        strategy = new MockStrategy(address(gVault));
         gVault.addStrategy(address(strategy), 0);
         strategies[1] = address(strategy);
 
-        strategy = new TestStrategy(address(gVault));
+        strategy = new MockStrategy(address(gVault));
         gVault.addStrategy(address(strategy), 0);
         strategies[2] = address(strategy);
 
-        strategy = new TestStrategy(address(gVault));
+        strategy = new MockStrategy(address(gVault));
         gVault.addStrategy(address(strategy), 0);
         strategies[3] = address(strategy);
         vm.stopPrank();
@@ -319,10 +319,10 @@ contract GVaultTest is Test, BaseSetup {
         assertEq(gVault.totalAssets() * 1E18 / gVault.totalSupply(), gVault.getPricePerShare());
 
         vm.startPrank(BASED_ADDRESS);
-        strategy.harvest();
+        strategy.runHarvest();
         amount = gain ? amount * 2 : amount / 2;
         setStorage(address(strategy), THREE_POOL_TOKEN.balanceOf.selector, address(THREE_POOL_TOKEN), amount);
-        strategy.harvest();
+        strategy.runHarvest();
         vm.warp(block.timestamp + gVault.releaseTime());
         vm.stopPrank();
 
@@ -342,7 +342,9 @@ contract GVaultTest is Test, BaseSetup {
 
 
         THREE_POOL_TOKEN.transfer(address(strategy), 1E25);
-        strategy.harvest();
+        vm.stopPrank();
+        vm.startPrank(BASED_ADDRESS);
+        strategy.runHarvest();
         vm.warp(block.timestamp + 10000);
         assertLt(gVault.convertToShares(1E18), 1E18);
         vm.stopPrank();
@@ -359,7 +361,9 @@ contract GVaultTest is Test, BaseSetup {
         assertEq(gVault.convertToAssets(1E18), 1E18);
 
         THREE_POOL_TOKEN.transfer(address(strategy), 1E25);
-        strategy.harvest();
+        vm.stopPrank();
+        vm.startPrank(BASED_ADDRESS);
+        strategy.runHarvest();
         vm.warp(block.timestamp + 10000);
         assertGt(gVault.convertToAssets(1E18), 1E18);
         vm.stopPrank();
@@ -400,7 +404,7 @@ contract GVaultTest is Test, BaseSetup {
         assertEq(gVault.getNoOfStrategies(), 5);
 
         vm.startPrank(BASED_ADDRESS);
-        strategy = new TestStrategy(address(gVault));
+        strategy = new MockStrategy(address(gVault));
         vm.expectRevert(abi.encodeWithSelector(StrategyQueue.MaxStrategyExceeded.selector));
         gVault.addStrategy(address(strategy), 0);
         assertEq(gVault.getNoOfStrategies(), 5);
@@ -413,7 +417,7 @@ contract GVaultTest is Test, BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         gVault.addStrategy(ZERO, 0);
 
-        TestStrategy strategyNew = new TestStrategy(address(gVault));
+        MockStrategy strategyNew = new MockStrategy(address(gVault));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.StrategyActive.selector));
         gVault.addStrategy(address(strategy), 0);
@@ -422,7 +426,7 @@ contract GVaultTest is Test, BaseSetup {
         gVault.addStrategy(address(strategyNew), 1000);
 
 		GVault gVaultNew = new GVault(THREE_POOL_TOKEN);
-        strategy = new TestStrategy(address(gVaultNew));
+        strategy = new MockStrategy(address(gVaultNew));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectVaultOnStrategy.selector));
         gVault.addStrategy(address(strategy), 1000);
@@ -439,7 +443,7 @@ contract GVaultTest is Test, BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         gVault.addStrategy(ZERO, 0);
 
-        TestStrategy strategyNew = new TestStrategy(address(gVault));
+        MockStrategy strategyNew = new MockStrategy(address(gVault));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.StrategyActive.selector));
         gVault.addStrategy(address(strategy), 0);
@@ -448,7 +452,7 @@ contract GVaultTest is Test, BaseSetup {
         gVault.addStrategy(address(strategyNew), 1000);
 
 		GVault gVaultNew = new GVault(THREE_POOL_TOKEN);
-        strategy = new TestStrategy(address(gVaultNew));
+        strategy = new MockStrategy(address(gVaultNew));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectVaultOnStrategy.selector));
         gVault.addStrategy(address(strategy), 1000);
@@ -465,7 +469,7 @@ contract GVaultTest is Test, BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         gVault.addStrategy(ZERO, 0);
 
-        TestStrategy strategyNew = new TestStrategy(address(gVault));
+        MockStrategy strategyNew = new MockStrategy(address(gVault));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.StrategyActive.selector));
         gVault.addStrategy(address(strategy), 0);
@@ -474,7 +478,7 @@ contract GVaultTest is Test, BaseSetup {
         gVault.addStrategy(address(strategyNew), 1000);
 
 		GVault gVaultNew = new GVault(THREE_POOL_TOKEN);
-        strategy = new TestStrategy(address(gVaultNew));
+        strategy = new MockStrategy(address(gVaultNew));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectVaultOnStrategy.selector));
         gVault.addStrategy(address(strategy), 1000);
@@ -523,12 +527,12 @@ contract GVaultTest is Test, BaseSetup {
         uint256 debtOutstanding;
         uint256 debtRatio;
 
-        // fund vault then harvest to have funds sent to strategy
+        // fund vault then runHarvest to have funds sent to strategy
         uint256 shares = depositIntoVault(address(alice), amount);
         genThreeCrv(1E25, alice);
 
         vm.startPrank(BASED_ADDRESS);
-        strategy.harvest();
+        strategy.runHarvest();
         vm.stopPrank();
         (debtOutstanding, debtRatio) = gVault.excessDebt(address(strategy));
         assertEq(debtOutstanding,  0);
@@ -558,18 +562,18 @@ contract GVaultTest is Test, BaseSetup {
         // with brownie.reverts(error_string("IncorrectStrategyAccounting()")):
         //     primary_mock_strategy.setTooMuchGain()
         //     mock_usdc.transfer(primary_mock_strategy.address, 10000 * 1e6, {"from": bob})
-        //     primary_mock_strategy.harvest()
+        //     primary_mock_strategy.runHarvest()
         // chain.revert()
         // Should not be possible for a strategy
         // to report a higher loss than actually possible to the vault
         uint256 shares = depositIntoVault(address(alice), amount);
 
         vm.startPrank(BASED_ADDRESS);
-        strategy.harvest();
+        strategy.runHarvest();
         strategy.setTooMuchLoss();
         strategy._takeFunds(shares);
         vm.expectRevert(abi.encodeWithSelector(Errors.StrategyLossTooHigh.selector));
-        strategy.harvest();
+        strategy.runHarvest();
     }
 
     function test_report_loss(uint128 _amount) public {
@@ -583,10 +587,10 @@ contract GVaultTest is Test, BaseSetup {
         // PPS should decrease after a loss
         // to check loss reported correctly
         assertEq(gVault.getPricePerShare(), 1e18);
-        strategy.harvest();
+        strategy.runHarvest();
         ( , , , uint256 initDebt, uint256 initProfit, uint256 initLoss) = gVault.strategies(address(strategy));
         strategy._takeFunds(shares/2);
-        strategy.harvest();
+        strategy.runHarvest();
         ( , , , uint256 finalDebt, uint256 finalProfit, uint256 finalLoss) = gVault.strategies(address(strategy));
         assertLt(gVault.getPricePerShare(), 1e18);
         assertLt(finalDebt, initDebt);
@@ -605,7 +609,7 @@ contract GVaultTest is Test, BaseSetup {
         // PPS should decrease after a loss
         // to check loss reported correctly
         assertEq(gVault.getPricePerShare(), 1e18);
-        strategy.harvest();
+        strategy.runHarvest();
         vm.stopPrank();
         
         genThreeCrv(uint256(1E25), alice);
@@ -615,7 +619,7 @@ contract GVaultTest is Test, BaseSetup {
         vm.stopPrank();
 
         vm.startPrank(BASED_ADDRESS);
-        strategy.harvest();
+        strategy.runHarvest();
         ( , , , uint256 finalDebt, uint256 finalProfit, uint256 finalLoss) = gVault.strategies(address(strategy));
         vm.stopPrank();
         vm.warp(block.timestamp + 10000);
@@ -638,13 +642,13 @@ contract GVaultTest is Test, BaseSetup {
         assertEq(gVault.withdrawalQueueAt(1), ZERO);
         vm.startPrank(BASED_ADDRESS);
 
-        TestStrategy strategy_2 = new TestStrategy(address(gVault));
+        MockStrategy strategy_2 = new MockStrategy(address(gVault));
         gVault.addStrategy(address(strategy_2), 0);
         
         assertEq(gVault.withdrawalQueueAt(1), address(strategy_2));
         assertEq(gVault.withdrawalQueueAt(2), ZERO);
 
-        TestStrategy strategy_3 = new TestStrategy(address(gVault));
+        MockStrategy strategy_3 = new MockStrategy(address(gVault));
         gVault.addStrategy(address(strategy_3), 0);
 
         assertEq(gVault.withdrawalQueueAt(1), address(strategy_2));
@@ -687,7 +691,7 @@ contract GVaultTest is Test, BaseSetup {
         address[4] memory strategies = addStrategies();
 
         vm.startPrank(BASED_ADDRESS);
-        TestStrategy strategyNew = new TestStrategy(address(gVault));
+        MockStrategy strategyNew = new MockStrategy(address(gVault));
         gVault.addStrategy(address(strategyNew), 0);
         vm.stopPrank();
         uint256 newStrategyId = gVault.getStrategyPositions(address(strategyNew));

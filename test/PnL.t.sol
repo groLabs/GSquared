@@ -286,8 +286,8 @@ contract PnLTest is Test, BaseSetup {
         (uint256[2] memory initialAssets, , ) = gTranche.pnlDistribution();
         
         setStorage(address(strategy), THREE_POOL_TOKEN.balanceOf.selector, address(THREE_POOL_TOKEN), amount*6);
-        vm.startPrank(alice);
-        strategy.harvest();
+        vm.startPrank(BASED_ADDRESS);
+        strategy.runHarvest();
         vm.stopPrank();
 
 

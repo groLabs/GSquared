@@ -71,7 +71,7 @@ contract TrancheTest is Test, BaseSetup {
         vm.stopPrank();
         
         vm.startPrank(BASED_ADDRESS);
-        //convexStrategy.runHarvest();
+        convexStrategy.runHarvest();
         vm.stopPrank();
 
         vm.startPrank(alice);
@@ -88,8 +88,8 @@ contract TrancheTest is Test, BaseSetup {
 
         uint256 finalSenior = gTranche.trancheBalances(true);
         uint256 finalJunior = gTranche.trancheBalances(false);
-        // assertApproxEqRel(initialJunior - 40E18, finalJunior, 1E16);
-        // assertApproxEqRel(initialSenior - 20E18, finalSenior, 1E16);
+        assertApproxEqRel(initialJunior - 100E18, finalJunior, 1E16);
+        assertApproxEqRel(initialSenior - 4000E18, finalSenior, 1E16);
 
         vm.stopPrank();
     }
@@ -129,15 +129,19 @@ contract TrancheTest is Test, BaseSetup {
         uint256 initialSeniorTrancheAssets = gTranche.trancheBalances(true);
 
         console2.log('senior %s junior ', gTranche.trancheBalances(true), gTranche.trancheBalances(false));
+        vm.stopPrank();
         if (_loss) {
             uint256 loss = assets - assets * change / 10000;
             //setStorage(address(convexStrategy), ERC20(fraxConvexRewards).balanceOf.selector, fraxConvexRewards, loss);
+            manipulatePool(false, change, frax_lp, frax);
         } else {
             uint256 gain = assets + assets * change / 10000;
+            manipulatePool(true, change, frax_lp, frax);
             //setStorage(address(convexStrategy), ERC20(fraxConvexRewards).balanceOf.selector, fraxConvexRewards, gain);
         }
         
 
+        vm.startPrank(BASED_ADDRESS);
         convexStrategy.runHarvest();
         vm.stopPrank();
 
@@ -151,15 +155,15 @@ contract TrancheTest is Test, BaseSetup {
         vm.stopPrank();
 
         console2.log('senior %s junior ', gTranche.trancheBalances(true), gTranche.trancheBalances(false));
-        // if (_loss) {
-        //     if (change <= 5000) {
-        //         assertGe(gTranche.trancheBalances(true), initialSeniorTrancheAssets);
-        //     } else {
-        //         assertLe(gTranche.trancheBalances(true), initialSeniorTrancheAssets);
-        //     }
-        // } else {
-        //     assertGe(gTranche.trancheBalances(true), initialSeniorTrancheAssets);
-        // }
+        if (_loss) {
+            if (change <= 5000) {
+                assertGe(gTranche.trancheBalances(true), initialSeniorTrancheAssets);
+            } else {
+                assertLe(gTranche.trancheBalances(true), initialSeniorTrancheAssets);
+            }
+        } else {
+            assertGe(gTranche.trancheBalances(true), initialSeniorTrancheAssets);
+        }
         console2.log('vault 3 assets %s strategy assets %s', gVault.totalAssets(), convexStrategy.estimatedTotalAssets());
         console2.log('crv assets vault %s strategy assets %s', THREE_POOL_TOKEN.balanceOf(address(gVault)), ERC20(fraxConvexRewards).balanceOf(address(convexStrategy)));
     }
@@ -321,4 +325,6 @@ contract TrancheTest is Test, BaseSetup {
         assertApproxEqAbs(gTranche.trancheBalances(false), delta(initialJuniorTrancheAssets, withdrawnJunior), 1E6);
         assertApproxEqAbs(gTranche.trancheBalances(true), delta(initialSeniorTrancheAssets, withdrawnSenior), 1E6);
     }
+
+
 }

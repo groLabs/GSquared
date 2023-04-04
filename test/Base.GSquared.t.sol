@@ -13,7 +13,7 @@ import "../contracts/pnl/PnLFixedRate.sol";
 import "../contracts/strategy/stop-loss/StopLossLogic.sol";
 import "../contracts/strategy/keeper/GStrategyGuard.sol";
 import "../contracts/strategy/keeper/GStrategyResolver.sol";
-import "../contracts/mocks/TestStrategy.sol";
+import "../contracts/mocks/MockStrategy.sol";
 import "../contracts/strategy/ConvexStrategy.sol";
 
 interface IConvexRewards {
@@ -42,7 +42,7 @@ contract BaseSetup is Test {
 
     GTranche gTranche;
     GVault gVault;
-    TestStrategy strategy;
+    MockStrategy strategy;
     CurveOracle curveOracle;
     GRouter gRouter;
     RouterOracle routerOracle;
@@ -82,7 +82,7 @@ contract BaseSetup is Test {
 		PWRD = new SeniorTranche('PWRD', 'PWRD');
 		curveOracle = new CurveOracle();
 		gVault = new GVault(THREE_POOL_TOKEN);
-        strategy = new TestStrategy(address(gVault));
+        strategy = new MockStrategy(address(gVault));
         gVault.addStrategy(address(strategy), 10000);
 
 		TRANCHE_TOKENS[0] = address(GVT);

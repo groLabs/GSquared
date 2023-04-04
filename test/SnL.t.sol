@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./Base.GSquared.t.sol";
-import "../contracts/strategy/ConvexStrategy.sol";
 
 contract SnLTest is BaseSetup {
     uint256 constant MIN_REPORT_DELAY = 172801;
