@@ -582,9 +582,6 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
                         Legacy logic (GTokens)
     //////////////////////////////////////////////////////////////*/
 
-    // Current BASE of legacy GVT (Junior tranche token)
-    uint256 internal constant JUNIOR_INIT_BASE = 5000000000000000;
-
     /// @notice This function exists to support the older versions of the GToken
     ///     return value of underlying token based on caller
     function gTokenTotalAssets() external view returns (uint256) {
