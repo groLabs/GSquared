@@ -312,8 +312,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
             int256 profit,
             int256 loss
         ) = _pnlDistribution();
-        IGToken trancheToken = getTrancheToken(_tranche);
-        factor = trancheToken.factor();
+        factor = _tranche
+            ? _calcFactor(_tranche, _totalValue[1])
+            : _calcFactor(_tranche, _totalValue[0]);
         if (_withdraw) {
             calcAmount = _tranche
                 ? _amount
@@ -581,6 +582,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     /*//////////////////////////////////////////////////////////////
                         Legacy logic (GTokens)
     //////////////////////////////////////////////////////////////*/
+    uint256 internal constant JUNIOR_INIT_BASE = 5000000000000000;
 
     /// @notice This function exists to support the older versions of the GToken
     ///     return value of underlying token based on caller
@@ -606,5 +608,29 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         amount = (_amount * DEFAULT_FACTOR) / _factor;
         if (amount > _total) return _total;
         return amount;
+    }
+
+    /// @notice calculate the tranches factor
+    /// @param _tranche junior or senior tranche
+    /// @param _totalAssets total value in tranche
+    /// @return factor factor to be applied to tranche
+    /// @dev The factor is used to either determine the value of the tranche
+    ///     or the number of tokens to be issued for a given amount
+    function _calcFactor(bool _tranche, uint256 _totalAssets)
+        internal
+        view
+        returns (uint256 factor)
+    {
+        IGToken trancheToken = getTrancheToken(_tranche);
+        uint256 init_base = _tranche ? DEFAULT_FACTOR : JUNIOR_INIT_BASE;
+        uint256 supply = trancheToken.totalSupplyBase();
+
+        if (supply == 0) {
+            return init_base;
+        }
+
+        if (_totalAssets > 0) {
+            return (supply * DEFAULT_FACTOR) / _totalAssets;
+        }
     }
 }
