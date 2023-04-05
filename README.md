@@ -69,3 +69,10 @@ To run tests:
 ```bash
 brownie test --network hardhat-fork
 ```
+
+To run Solidity Forge tests:
+```bash
+forge build
+
+forge test --fork-url https://RPC_NODE_URL -vvv
+```

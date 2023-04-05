@@ -1,15 +1,14 @@
 on:
   push:
-    branches-ignore:
-      - feat/eth-mainnet-testing
+    branches:
+      - main
+  pull_request:
 
 name: Smart Contract Unit tests
 
 env:
   ETHERSCAN_TOKEN: EIR8RN3REQHWQ8UW11Z9NBVMVA3H7GE56Z
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  WEB3_INFURA_PROJECT_ID: 4f67c945bb4549e8948eb241e2f86ba3
-  WEB3_ALCHEMY_PROJECT_ID: Q5dMZcBXQgzhVeNixaf0cnKlZEDXbd7x
 
   # increasing available memory for node reduces issues with ganache crashing
   # https://nodejs.org/api/cli.html#cli_max_old_space_size_size_in_megabytes
@@ -46,7 +45,7 @@ jobs:
       run: pip install -r requirements.txt
 
     - name: Set correct provider
-      run: brownie networks modify mainnet host=https://eth-mainnet.alchemyapi.io/v2/\$WEB3_ALCHEMY_PROJECT_ID
+      run: brownie networks modify mainnet host=${{ secrets.ALCHEMY_RPC_URL }}
 
     - name: Run Tests
       run: brownie test --network hardhat-fork

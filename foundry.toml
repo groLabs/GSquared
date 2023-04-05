@@ -1,0 +1,14 @@
+[profile.default]
+src = 'contracts'
+out = 'out'
+libs = ['node_modules', 'lib']
+test = 'test'
+cache_path  = 'forge-cache'
+
+[fuzz]
+runs = 100
+max_test_rejects = 655360
+seed = '0x3e8'
+dictionary_weight = 40
+include_storage = true
+include_push_bytes = true

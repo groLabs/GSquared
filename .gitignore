@@ -18,3 +18,6 @@ mainnet_fork_deployments.json
 artifacts
 docs
 nohup.out
+.idea
+out/
+forge-cache

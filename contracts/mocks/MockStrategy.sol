@@ -11,16 +11,6 @@ library TestStratErrors {
     error NotKeeper(); // 0xf512b278
 }
 
-/// GVault Strategy parameters
-struct StrategyParams {
-    bool active;
-    uint256 debtRatio;
-    uint256 lastReport;
-    uint256 totalDebt;
-    uint256 totalGain;
-    uint256 totalLoss;
-}
-
 contract MockStrategy {
     /*//////////////////////////////////////////////////////////////
                         CONSTANTS & IMMUTABLES
@@ -85,13 +75,14 @@ contract MockStrategy {
                             CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(IGVault _vault) {
+    constructor(address _vault) {
+        IGVault _v = IGVault(_vault);
         owner = msg.sender;
         keepers[msg.sender] = true;
-        vault = _vault;
-        ERC20 _asset = _vault.asset();
+        vault = _v;
+        ERC20 _asset = _v.asset();
         asset = _asset;
-        _asset.approve(address(_vault), type(uint256).max); // Max approve asset for Vault to save gas
+        _asset.approve(_vault, type(uint256).max); // Max approve asset for Vault to save gas
     }
 
     /*//////////////////////////////////////////////////////////////
