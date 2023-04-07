@@ -1,0 +1,25 @@
+name: lint
+on:
+    push:
+        branches:
+        - master
+    pull_request:
+        paths:
+        - "contracts/**"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 16.x
+
+      - name: Install Dependencies
+        run: npm i --frozen-lockfile
+
+      - name: Prettier
+        run: npm run prettier-check
