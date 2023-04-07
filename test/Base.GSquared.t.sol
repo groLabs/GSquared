@@ -250,6 +250,28 @@ contract BaseSetup is Test {
     ) public {
         uint256 tokenAmount = IERC20(token).balanceOf(pool);
         tokenAmount = ((tokenAmount * 10000) / (10000 - change)) * 10;
+        _manipulatePool(profit, change, pool, token, tokenAmount);
+    }
+
+    // Manipulate pool with smaller token amount
+    function manipulatePoolSmallerTokenAmount(
+        bool profit,
+        uint256 change,
+        address pool,
+        address token
+    ) public {
+        uint256 tokenAmount = IERC20(token).balanceOf(pool);
+        tokenAmount = ((tokenAmount * 10000) / (10000 - change));
+        _manipulatePool(profit, change, pool, token, tokenAmount);
+    }
+
+    function _manipulatePool(
+        bool profit,
+        uint256 change,
+        address pool,
+        address token,
+        uint256 tokenAmount
+    ) internal {
         genStable(tokenAmount, token, BASED_ADDRESS);
 
         vm.startPrank(BASED_ADDRESS);

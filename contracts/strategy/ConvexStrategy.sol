@@ -26,7 +26,7 @@ library StrategyErrors {
     error LpToken(); // 0xaeca768b
     error ConvexToken(); // 0xaeca768b
     error LTMinAmountExpected(); // 0x3d93e699
-    error ExcessDebtGtThanAssets();
+    error ExcessDebtGtThanAssets(); // 0x961696d0
 }
 
 /// Convex booster interface

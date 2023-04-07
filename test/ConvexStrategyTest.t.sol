@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./Base.GSquared.t.sol";
+import {StrategyErrors} from "../contracts/strategy/ConvexStrategy.sol";
 
 contract ConvexStrategyTest is BaseSetup {
     uint256 constant MIN_REPORT_DELAY = 172801;
@@ -211,6 +212,7 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
     }
 
+    // Test case for potential MEV attack vector
     function test_strategy_manipulation_during_devest_assets_from_convex_harvest()
         public
     {
@@ -223,62 +225,20 @@ contract ConvexStrategyTest is BaseSetup {
         IERC20 convexPool = IERC20(fraxConvexRewards);
         convexStrategy.runHarvest();
         uint256 initInvestment = convexPool.balanceOf(address(convexStrategy));
-        console2.log(
-            "pre strat estimate %s debt %s",
-            convexStrategy.estimatedTotalAssets(),
-            gVault.getStrategyDebt(0)
-        );
 
         gVault.setDebtRatio(address(convexStrategy), 5000);
-        uint256 calc_amount = (initInvestment * 5000) / 10000;
-
-        console2.log(
-            "init tokenAmount %s",
-            ICurveMeta(frax_lp).calc_withdraw_one_coin(calc_amount, 1)
-        );
         vm.stopPrank();
-        console2.log(
-            "pre pool manipulation %s init %s",
-            convexPool.balanceOf(address(convexStrategy)),
-            initInvestment
-        );
-        manipulatePool(false, 9999, frax_lp, address(frax));
+        manipulatePoolSmallerTokenAmount(false, 9999, frax_lp, address(frax));
         vm.startPrank(BASED_ADDRESS);
-        console2.log(
-            "post strat manipulation estimate %s debt %s",
-            convexStrategy.estimatedTotalAssets(),
-            gVault.getStrategyDebt(0)
+        // Expect to revert because of excess debt
+        vm.expectRevert(
+            abi.encodeWithSelector(StrategyErrors.ExcessDebtGtThanAssets.selector)
         );
-        console2.log(
-            "post tokenAmount %s",
-            ICurveMeta(frax_lp).calc_withdraw_one_coin(calc_amount, 1)
-        );
-        console2.log(
-            "alice balance %s %s",
-            gVault.balanceOf(alice),
-            gVault.previewRedeem(gVault.balanceOf(alice))
-        );
-
-        console2.log(
-            "pre pool withdrawal %s init %s",
-            convexPool.balanceOf(address(convexStrategy)),
-            initInvestment
-        );
-        vm.expectRevert();
         convexStrategy.runHarvest();
-        console2.log(
-            "post pool withdrawal %s init %s",
-            convexPool.balanceOf(address(convexStrategy)),
-            initInvestment
-        );
-        console2.log(
-            "post strat withdrawal estimate %s debt %s",
-            convexStrategy.estimatedTotalAssets(),
-            gVault.getStrategyDebt(0)
-        );
+        // Make sure convex strategy has the same amount of assets after harvest failed
         assertApproxEqRel(
             convexPool.balanceOf(address(convexStrategy)),
-            calc_amount,
+            initInvestment,
             1E16
         );
         vm.stopPrank();
@@ -314,7 +274,7 @@ contract ConvexStrategyTest is BaseSetup {
             convexPool.balanceOf(address(convexStrategy)),
             initInvestment
         );
-        manipulatePool(false, 9999, frax_lp, address(frax));
+        manipulatePoolSmallerTokenAmount(false, 9999, frax_lp, address(frax));
         vm.startPrank(alice);
         console2.log(
             "post strat manipulation estimate %s debt %s",
