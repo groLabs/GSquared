@@ -27,6 +27,7 @@ library StrategyErrors {
     error ConvexToken(); // 0xaeca768b
     error LTMinAmountExpected(); // 0x3d93e699
     error ExcessDebtGtThanAssets(); // 0x961696d0
+    error LPNotZero();
 }
 
 /// Convex booster interface
@@ -937,6 +938,10 @@ contract ConvexStrategy {
             if (newMetaPool != address(0)) {
                 sellAllRewards();
                 divestAll(true);
+                if (lpToken.balanceOf(address(this)) > 0) {
+                    revert StrategyErrors.LPNotZero();
+                }
+
                 migratePool();
             }
             (profit, loss, debtRepayment, balance) = realisePnl(

@@ -213,7 +213,7 @@ contract ConvexStrategyTest is BaseSetup {
     }
 
     // Test case for potential MEV attack vector
-    function test_strategy_manipulation_during_devest_assets_from_convex_harvest()
+    function test_strategy_manipulation_during_divest_assets_from_convex_harvest()
         public
     {
         depositIntoVault(bob, 1E24);
@@ -246,7 +246,7 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
     }
 
-    function test_strategy_manipulation_during_devest_assets_from_convex1()
+    function test_strategy_manipulation_during_divest_assets_from_convex1()
         public
     {
         depositIntoVault(bob, 1E24);
@@ -281,7 +281,7 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
     }
 
-    function test_strategy_can_devest_assets_from_convex(uint128 _deposit)
+    function test_strategy_can_divest_assets_from_convex(uint128 _deposit)
         public
     {
         uint256 deposit = uint256(_deposit);
@@ -301,6 +301,36 @@ contract ConvexStrategyTest is BaseSetup {
             initInvestment / 2,
             1E16
         );
+        vm.stopPrank();
+    }
+    
+    // Given a strategy with more debt than assets
+    // When the strategy is trying to migrate
+    // Then the migration should revert
+    function test_strategy_change_convex_pool_fails_when_loss() public {
+        uint256 deposit = uint256(1E24);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E24) deposit = 1E24;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.setBaseSlippage(50);
+        IERC20 convexPoolFrax = IERC20(fraxConvexRewards);
+        IERC20 convexPoolMusd = IERC20(musdConvexRewards);
+        convexStrategy.runHarvest();
+
+        convexStrategy.setPool(musd_lp_pid, musd_curve);
+
+        vm.stopPrank();
+        manipulatePoolSmallerTokenAmount(false, 9999, frax_lp, address(frax));
+
+        vm.startPrank(BASED_ADDRESS);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                StrategyErrors.LPNotZero.selector
+            )
+        );
+        convexStrategy.runHarvest();
+
         vm.stopPrank();
     }
 
