@@ -74,6 +74,10 @@ contract SnLTest is BaseSetup {
         musdStrategy.setStopLossLogic(address(snl));
         mimStrategy.setStopLossLogic(address(snl));
 
+        fraxStrategy.setBaseSlippage(20);
+        musdStrategy.setBaseSlippage(20);
+        mimStrategy.setBaseSlippage(20);
+
         snl.setStrategy(address(fraxStrategy), 1e18, 400);
         snl.setStrategy(address(musdStrategy), 1e18, 400);
         snl.setStrategy(address(mimStrategy), 1e18, 400);
