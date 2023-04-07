@@ -26,6 +26,7 @@ library StrategyErrors {
     error LpToken(); // 0xaeca768b
     error ConvexToken(); // 0xaeca768b
     error LTMinAmountExpected(); // 0x3d93e699
+    error ExcessDebtGtThanAssets();
 }
 
 /// Convex booster interface
@@ -781,9 +782,8 @@ contract ConvexStrategy {
 
         if (_rewards > MIN_REWARD_SELL_AMOUNT) balance = sellAllRewards();
         if (_excessDebt > assets) {
-            debtRepayment = balance + divestAll(false);
-            loss = debt - debtRepayment;
-            balance = debtRepayment;
+            // if we have more excess debt, this is an edge case and we shouldn't do any harvest at this point
+            revert StrategyErrors.ExcessDebtGtThanAssets();
         } else {
             if (assets > debt) {
                 profit = assets - debt;
