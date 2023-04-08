@@ -829,8 +829,8 @@ contract ConvexStrategy {
         if (_slippage) {
             uint256 ratio = curveValue();
             if (
-                (meta_amount * ratio) / PERCENTAGE_DECIMAL_FACTOR <
-                ((_debt * (PERCENTAGE_DECIMAL_FACTOR - baseSlippage)) /
+                (meta_amount * ratio) / PERCENTAGE_DECIMAL_FACTOR >
+                ((_debt * (PERCENTAGE_DECIMAL_FACTOR + baseSlippage)) /
                     PERCENTAGE_DECIMAL_FACTOR)
             ) {
                 revert StrategyErrors.LTMinAmountExpected();
