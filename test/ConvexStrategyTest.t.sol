@@ -252,9 +252,7 @@ contract ConvexStrategyTest is BaseSetup {
     // Given a strategy with an investment in Convex and and excess debt
     // when the metapool is balanced
     // then the harvest should pass and pay back the excess debt
-    function test_strategy_harvest_pays_back_excess_debt()
-        public
-    {
+    function test_strategy_harvest_pays_back_excess_debt() public {
         depositIntoVault(bob, 1E24);
         uint256 deposit = uint256(1E21);
         if (deposit < 1E20) deposit = 1E20;
@@ -267,11 +265,13 @@ contract ConvexStrategyTest is BaseSetup {
 
         gVault.setDebtRatio(address(convexStrategy), 7000);
         vm.stopPrank();
-        uint256 calcAmount = initInvestment * 7000 / 10000;
+        uint256 calcAmount = (initInvestment * 7000) / 10000;
         vm.startPrank(BASED_ADDRESS);
         (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
         convexStrategy.runHarvest();
-        (uint256 finalExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
+        (uint256 finalExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
         // Make sure convex strategy has the expect amount of lp tokens and less debt
         assertApproxEqRel(
             convexPool.balanceOf(address(convexStrategy)),
@@ -301,18 +301,18 @@ contract ConvexStrategyTest is BaseSetup {
 
         gVault.setDebtRatio(address(convexStrategy), 7000);
         vm.stopPrank();
-        uint256 calcAmount = initInvestment * 7000 / 10000;
+        uint256 calcAmount = (initInvestment * 7000) / 10000;
         manipulatePoolSmallerTokenAmount(false, 6000, frax_lp, address(frax));
         vm.startPrank(BASED_ADDRESS);
         (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
         // Expect to revert because of excess debt
         vm.expectRevert(
-            abi.encodeWithSelector(
-                StrategyErrors.LTMinAmountExpected.selector
-            )
+            abi.encodeWithSelector(StrategyErrors.LTMinAmountExpected.selector)
         );
         convexStrategy.runHarvest();
-        (uint256 finalExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
+        (uint256 finalExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
         // Make sure convex strategy has the same amount of assets and excess debt after harvest failed
         assertApproxEqRel(
             convexPool.balanceOf(address(convexStrategy)),
@@ -375,7 +375,7 @@ contract ConvexStrategyTest is BaseSetup {
         );
         vm.stopPrank();
     }
-    
+
     // Given a strategy with more debt than assets
     // When the strategy is trying to migrate
     // Then the migration should revert
@@ -397,9 +397,7 @@ contract ConvexStrategyTest is BaseSetup {
 
         vm.startPrank(BASED_ADDRESS);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                StrategyErrors.LPNotZero.selector
-            )
+            abi.encodeWithSelector(StrategyErrors.LPNotZero.selector)
         );
         convexStrategy.runHarvest();
 
