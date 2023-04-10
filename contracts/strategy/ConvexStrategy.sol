@@ -28,6 +28,7 @@ library StrategyErrors {
     error LTMinAmountExpected(); // 0x3d93e699
     error ExcessDebtGtThanAssets(); // 0x961696d0
     error LPNotZero();
+    error SlippageProtection();
 }
 
 /// Convex booster interface
@@ -843,8 +844,7 @@ contract ConvexStrategy {
             // Check if the left side (scaled meta_amount) is greater than the right side (scaled _debt with slippage)
             // This is done to ensure that the meta_amount is not too small, given the debt and slippage constraints
             if (leftSide > rightSide) {
-                // Revert the transaction with an error message, indicating that the minimum amount expected was not met
-                revert StrategyErrors.LTMinAmountExpected();
+                revert StrategyErrors.SlippageProtection();
             }
         }
         Rewards(rewardContract).withdrawAndUnwrap(meta_amount, false);

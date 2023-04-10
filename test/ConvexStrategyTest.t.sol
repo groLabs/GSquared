@@ -307,7 +307,7 @@ contract ConvexStrategyTest is BaseSetup {
         (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
         // Expect to revert because of excess debt
         vm.expectRevert(
-            abi.encodeWithSelector(StrategyErrors.LTMinAmountExpected.selector)
+            abi.encodeWithSelector(StrategyErrors.SlippageProtection.selector)
         );
         convexStrategy.runHarvest();
         (uint256 finalExcessDebt, ) = gVault.excessDebt(
