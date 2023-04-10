@@ -842,7 +842,6 @@ contract ConvexStrategy {
 
             // Check if the left side (scaled meta_amount) is greater than the right side (scaled _debt with slippage)
             // This is done to ensure that the meta_amount is not too small, given the debt and slippage constraints
-            // NOTE: If rightSide < leftSide, we get more meta_amount than we need, which is fine
             if (leftSide > rightSide) {
                 // Revert the transaction with an error message, indicating that the minimum amount expected was not met
                 revert StrategyErrors.LTMinAmountExpected();
