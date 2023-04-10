@@ -826,13 +826,25 @@ contract ConvexStrategy {
             [0, _debt],
             false
         );
+        // Check if slippage protection is enabled
         if (_slippage) {
+            // Calculate the ratio based on the curve
             uint256 ratio = curveValue();
-            if (
-                (meta_amount * ratio) / PERCENTAGE_DECIMAL_FACTOR >
-                ((_debt * (PERCENTAGE_DECIMAL_FACTOR + baseSlippage)) /
-                    PERCENTAGE_DECIMAL_FACTOR)
-            ) {
+
+            // This represents the scaled meta_amount adjusted by the calculated ratio
+            uint256 leftSide = (meta_amount * ratio) /
+                PERCENTAGE_DECIMAL_FACTOR;
+
+            // This represents the scaled _debt adjusted by the baseSlippage
+            uint256 rightSide = (_debt *
+                (PERCENTAGE_DECIMAL_FACTOR + baseSlippage)) /
+                PERCENTAGE_DECIMAL_FACTOR;
+
+            // Check if the left side (scaled meta_amount) is greater than the right side (scaled _debt with slippage)
+            // This is done to ensure that the meta_amount is not too small, given the debt and slippage constraints
+            // NOTE: If rightSide < leftSide, we get more meta_amount than we need, which is fine
+            if (leftSide > rightSide) {
+                // Revert the transaction with an error message, indicating that the minimum amount expected was not met
                 revert StrategyErrors.LTMinAmountExpected();
             }
         }
