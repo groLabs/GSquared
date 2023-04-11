@@ -14,6 +14,7 @@ import "../contracts/strategy/stop-loss/StopLossLogic.sol";
 import "../contracts/strategy/keeper/GStrategyGuard.sol";
 import "../contracts/strategy/keeper/GStrategyResolver.sol";
 import "../contracts/mocks/MockStrategy.sol";
+import "../contracts/mocks/MockConvexStrategyFactory.sol";
 import "../contracts/strategy/ConvexStrategy.sol";
 
 interface IConvexRewards {
@@ -95,7 +96,9 @@ contract BaseSetup is Test {
         PWRD = new SeniorTranche("PWRD", "PWRD");
         curveOracle = new CurveOracle();
         gVault = new GVault(THREE_POOL_TOKEN);
-        strategy = new MockStrategy(address(gVault));
+        MockStrategy strategyImpl = new MockStrategy();
+        MockConvexStrategyFactory factory = new MockConvexStrategyFactory(address(strategyImpl));
+        strategy = MockStrategy(factory.createProxyStrategy(address(gVault)));
         gVault.addStrategy(address(strategy), 10000);
 
         TRANCHE_TOKENS[0] = address(GVT);

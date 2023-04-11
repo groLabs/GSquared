@@ -7,6 +7,7 @@ import "../interfaces/IStop.sol";
 import "../interfaces/IStrategy.sol";
 import "../interfaces/IGVault.sol";
 import {ERC20} from "../solmate/src/tokens/ERC20.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 // High level Responsibilities:
 // - Borrow funds from the vault (1)
@@ -152,7 +153,7 @@ interface IUniV3_POOL {
  *       and convex strategies to optimize yield/risk, and routes all assets through the following flow:
  *           3crv => metaLp => convex.
  */
-contract ConvexStrategy {
+contract ConvexStrategy is Initializable {
     /*//////////////////////////////////////////////////////////////
                         CONSTANTS & IMMUTABLES
     //////////////////////////////////////////////////////////////*/
@@ -294,20 +295,20 @@ contract ConvexStrategy {
     event LogStopLossErrorBytes(uint256 stopLossAttempts, bytes data);
 
     /*//////////////////////////////////////////////////////////////
-                            CONSTRUCTOR
+                            INITIALIZER
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Strategy constructor
+    /// @notice Strategy initialization
     /// @param _vault Vault that holds the strategy
     /// @param _pid PID of Convex reward pool
     /// @param _metaPool Underlying meta pool
     ///     - used when LP token and Meta pool dont match (older metapools)
-    constructor(
+    function initialize(
         IGVault _vault,
         address _owner,
         uint256 _pid,
         address _metaPool
-    ) {
+    ) public initializer {
         owner = _owner;
         VAULT = _vault;
         ERC20 _asset = _vault.asset();

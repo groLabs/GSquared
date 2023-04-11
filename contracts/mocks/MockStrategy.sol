@@ -4,6 +4,7 @@ pragma solidity 0.8.10;
 import "../interfaces/IStrategy.sol";
 import "../interfaces/IGVault.sol";
 import {ERC20} from "../solmate/src/tokens/ERC20.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 library TestStratErrors {
     error NotOwner(); // 0x30cd7471
@@ -11,7 +12,7 @@ library TestStratErrors {
     error NotKeeper(); // 0xf512b278
 }
 
-contract MockStrategy {
+contract MockStrategy is Initializable {
     /*//////////////////////////////////////////////////////////////
                         CONSTANTS & IMMUTABLES
     //////////////////////////////////////////////////////////////*/
@@ -72,10 +73,10 @@ contract MockStrategy {
     event LogAdditionalRewards(address[] rewardTokens);
 
     /*//////////////////////////////////////////////////////////////
-                            CONSTRUCTOR
+                            INITIALIZER
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _vault) {
+    function initialize(address _vault) public initializer {
         IGVault _v = IGVault(_vault);
         owner = msg.sender;
         keepers[msg.sender] = true;
