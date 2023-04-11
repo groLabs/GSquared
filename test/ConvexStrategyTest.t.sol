@@ -2,7 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./Base.GSquared.t.sol";
-import {StrategyErrors} from "../contracts/strategy/ConvexStrategy.sol";
+import {StrategyErrors, ConvexStrategy} from "../contracts/strategy/ConvexStrategy.sol";
+import {ConvexStrategyFactory} from "../contracts/strategy/ConvexStrategyFactory.sol";
 
 contract ConvexStrategyTest is BaseSetup {
     uint256 constant MIN_REPORT_DELAY = 172801;
@@ -36,11 +37,13 @@ contract ConvexStrategyTest is BaseSetup {
         BaseSetup.setUp();
 
         vm.startPrank(BASED_ADDRESS);
-        convexStrategy = new ConvexStrategy(
-            IGVault(address(gVault)),
-            BASED_ADDRESS,
-            frax_lp_pid,
-            frax_lp
+        convexStrategy = ConvexStrategy(
+            factory.createProxyStrategy(
+                IGVault(address(gVault)),
+                BASED_ADDRESS,
+                frax_lp_pid,
+                frax_lp
+            )
         );
         StopLossLogic snl = new StopLossLogic();
 

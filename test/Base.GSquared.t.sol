@@ -16,6 +16,7 @@ import "../contracts/strategy/keeper/GStrategyResolver.sol";
 import "../contracts/mocks/MockStrategy.sol";
 import "../contracts/mocks/MockConvexStrategyFactory.sol";
 import "../contracts/strategy/ConvexStrategy.sol";
+import "../contracts/strategy/ConvexStrategyFactory.sol";
 
 interface IConvexRewards {
     function rewardRate() external view returns (uint256);
@@ -61,6 +62,9 @@ contract BaseSetup is Test {
 
     Utils internal utils;
 
+    ConvexStrategyFactory factory;
+    MockConvexStrategyFactory mockFactory;
+
     address payable[] internal users;
     address internal alice;
     address internal bob;
@@ -96,9 +100,15 @@ contract BaseSetup is Test {
         PWRD = new SeniorTranche("PWRD", "PWRD");
         curveOracle = new CurveOracle();
         gVault = new GVault(THREE_POOL_TOKEN);
-        MockStrategy strategyImpl = new MockStrategy();
-        MockConvexStrategyFactory factory = new MockConvexStrategyFactory(address(strategyImpl));
-        strategy = MockStrategy(factory.createProxyStrategy(address(gVault)));
+        MockStrategy mockStrategyImpl = new MockStrategy();
+        ConvexStrategy strategyImpl = new ConvexStrategy();
+        // Set deployed factories
+        factory = new ConvexStrategyFactory(address(strategyImpl));
+        mockFactory = new MockConvexStrategyFactory(address(mockStrategyImpl));
+        strategy = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVault))
+        );
+        strategy.setKeeper(BASED_ADDRESS);
         gVault.addStrategy(address(strategy), 10000);
 
         TRANCHE_TOKENS[0] = address(GVT);

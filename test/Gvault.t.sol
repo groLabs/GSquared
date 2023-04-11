@@ -46,19 +46,31 @@ contract GVaultTest is Test, BaseSetup {
     function addStrategies() public returns (address[4] memory strategies) {
         vm.startPrank(BASED_ADDRESS);
 
-        strategy = new MockStrategy(address(gVault));
+        strategy = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVault))
+        );
+        strategy.setKeeper(BASED_ADDRESS);
         gVault.addStrategy(address(strategy), 0);
         strategies[0] = address(strategy);
 
-        strategy = new MockStrategy(address(gVault));
+        strategy = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVault))
+        );
+        strategy.setKeeper(BASED_ADDRESS);
         gVault.addStrategy(address(strategy), 0);
         strategies[1] = address(strategy);
 
-        strategy = new MockStrategy(address(gVault));
+        strategy = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVault))
+        );
+        strategy.setKeeper(BASED_ADDRESS);
         gVault.addStrategy(address(strategy), 0);
         strategies[2] = address(strategy);
 
-        strategy = new MockStrategy(address(gVault));
+        strategy = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVault))
+        );
+        strategy.setKeeper(BASED_ADDRESS);
         gVault.addStrategy(address(strategy), 0);
         strategies[3] = address(strategy);
         vm.stopPrank();
@@ -413,7 +425,9 @@ contract GVaultTest is Test, BaseSetup {
         assertEq(gVault.getNoOfStrategies(), 5);
 
         vm.startPrank(BASED_ADDRESS);
-        strategy = new MockStrategy(address(gVault));
+        strategy = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVault))
+        );
         vm.expectRevert(
             abi.encodeWithSelector(StrategyQueue.MaxStrategyExceeded.selector)
         );
@@ -427,7 +441,9 @@ contract GVaultTest is Test, BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         gVault.addStrategy(ZERO, 0);
 
-        MockStrategy strategyNew = new MockStrategy(address(gVault));
+        MockStrategy strategyNew = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVault))
+        );
 
         vm.expectRevert(abi.encodeWithSelector(Errors.StrategyActive.selector));
         gVault.addStrategy(address(strategy), 0);
@@ -438,7 +454,9 @@ contract GVaultTest is Test, BaseSetup {
         gVault.addStrategy(address(strategyNew), 1000);
 
         GVault gVaultNew = new GVault(THREE_POOL_TOKEN);
-        strategy = new MockStrategy(address(gVaultNew));
+        strategy = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVaultNew))
+        );
 
         vm.expectRevert(
             abi.encodeWithSelector(Errors.IncorrectVaultOnStrategy.selector)
@@ -456,7 +474,9 @@ contract GVaultTest is Test, BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         gVault.addStrategy(ZERO, 0);
 
-        MockStrategy strategyNew = new MockStrategy(address(gVault));
+        MockStrategy strategyNew = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVault))
+        );
 
         vm.expectRevert(abi.encodeWithSelector(Errors.StrategyActive.selector));
         gVault.addStrategy(address(strategy), 0);
@@ -467,7 +487,9 @@ contract GVaultTest is Test, BaseSetup {
         gVault.addStrategy(address(strategyNew), 1000);
 
         GVault gVaultNew = new GVault(THREE_POOL_TOKEN);
-        strategy = new MockStrategy(address(gVaultNew));
+        strategy = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVaultNew))
+        );
 
         vm.expectRevert(
             abi.encodeWithSelector(Errors.IncorrectVaultOnStrategy.selector)
@@ -485,7 +507,9 @@ contract GVaultTest is Test, BaseSetup {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         gVault.addStrategy(ZERO, 0);
 
-        MockStrategy strategyNew = new MockStrategy(address(gVault));
+        MockStrategy strategyNew = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVault))
+        );
 
         vm.expectRevert(abi.encodeWithSelector(Errors.StrategyActive.selector));
         gVault.addStrategy(address(strategy), 0);
@@ -496,7 +520,9 @@ contract GVaultTest is Test, BaseSetup {
         gVault.addStrategy(address(strategyNew), 1000);
 
         GVault gVaultNew = new GVault(THREE_POOL_TOKEN);
-        strategy = new MockStrategy(address(gVaultNew));
+        strategy = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVaultNew))
+        );
 
         vm.expectRevert(
             abi.encodeWithSelector(Errors.IncorrectVaultOnStrategy.selector)
@@ -677,13 +703,17 @@ contract GVaultTest is Test, BaseSetup {
         assertEq(gVault.withdrawalQueueAt(1), ZERO);
         vm.startPrank(BASED_ADDRESS);
 
-        MockStrategy strategy_2 = new MockStrategy(address(gVault));
+        MockStrategy strategy_2 = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVault))
+        );
         gVault.addStrategy(address(strategy_2), 0);
 
         assertEq(gVault.withdrawalQueueAt(1), address(strategy_2));
         assertEq(gVault.withdrawalQueueAt(2), ZERO);
 
-        MockStrategy strategy_3 = new MockStrategy(address(gVault));
+        MockStrategy strategy_3 = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVault))
+        );
         gVault.addStrategy(address(strategy_3), 0);
 
         assertEq(gVault.withdrawalQueueAt(1), address(strategy_2));
@@ -725,7 +755,9 @@ contract GVaultTest is Test, BaseSetup {
         address[4] memory strategies = addStrategies();
 
         vm.startPrank(BASED_ADDRESS);
-        MockStrategy strategyNew = new MockStrategy(address(gVault));
+        MockStrategy strategyNew = MockStrategy(
+            mockFactory.createProxyStrategy(address(gVault))
+        );
         gVault.addStrategy(address(strategyNew), 0);
         vm.stopPrank();
         uint256 newStrategyId = gVault.getStrategyPositions(

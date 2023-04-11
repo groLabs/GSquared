@@ -19,9 +19,8 @@ contract ConvexStrategyFactory {
         address _owner,
         uint256 _pid,
         address _metaPool
-    ) public returns (address) {
-        address strategy = implementation.clone();
+    ) public returns (address strategy) {
+        strategy = implementation.clone();
         ConvexStrategy(strategy).initialize(_vault, _owner, _pid, _metaPool);
-        return strategy;
     }
 }

@@ -14,9 +14,11 @@ contract MockConvexStrategyFactory {
         implementation = _implementation;
     }
 
-    function createProxyStrategy(address _vault) public returns (address) {
-        address strategy = implementation.clone();
+    function createProxyStrategy(address _vault)
+        public
+        returns (address strategy)
+    {
+        strategy = implementation.clone();
         MockStrategy(strategy).initialize(_vault);
-        return strategy;
     }
 }

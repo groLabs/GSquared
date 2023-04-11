@@ -20,8 +20,8 @@ contract MockStrategy is Initializable {
     uint256 internal constant PERCENTAGE_DECIMAL_FACTOR = 1E4;
     uint256 internal constant DEFAULT_DECIMALS_FACTOR = 1E18;
 
-    IGVault public immutable vault;
-    ERC20 public immutable asset;
+    IGVault public vault;
+    ERC20 public asset;
 
     uint256 internal constant MAX_REPORT_DELAY = 604800;
     uint256 internal constant MIN_REPORT_DELAY = 172800;

@@ -204,8 +204,8 @@ contract ConvexStrategy is Initializable {
     uint256 internal constant CRV_ETH_INDEX = 1;
 
     // Vault and core asset associated with strategy
-    IGVault internal immutable VAULT;
-    ERC20 internal immutable ASSET;
+    IGVault internal VAULT;
+    ERC20 internal ASSET;
 
     // CVX rewards calculation parameters
     uint256 internal constant TOTAL_CLIFFS = 1000;

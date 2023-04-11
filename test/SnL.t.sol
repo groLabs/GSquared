@@ -50,23 +50,30 @@ contract SnLTest is BaseSetup {
         BaseSetup.setUp();
 
         vm.startPrank(BASED_ADDRESS);
-        fraxStrategy = new ConvexStrategy(
-            IGVault(address(gVault)),
-            BASED_ADDRESS,
-            frax_lp_pid,
-            frax_lp
+
+        fraxStrategy = ConvexStrategy(
+            factory.createProxyStrategy(
+                IGVault(address(gVault)),
+                BASED_ADDRESS,
+                frax_lp_pid,
+                frax_lp
+            )
         );
-        musdStrategy = new ConvexStrategy(
-            IGVault(address(gVault)),
-            BASED_ADDRESS,
-            musd_lp_pid,
-            musd_curve
+        musdStrategy = ConvexStrategy(
+            factory.createProxyStrategy(
+                IGVault(address(gVault)),
+                BASED_ADDRESS,
+                musd_lp_pid,
+                musd_curve
+            )
         );
-        mimStrategy = new ConvexStrategy(
-            IGVault(address(gVault)),
-            BASED_ADDRESS,
-            mim_lp_pid,
-            mim_lp
+        mimStrategy = ConvexStrategy(
+            factory.createProxyStrategy(
+                IGVault(address(gVault)),
+                BASED_ADDRESS,
+                mim_lp_pid,
+                mim_lp
+            )
         );
         snl = new StopLossLogic();
 
@@ -120,11 +127,13 @@ contract SnLTest is BaseSetup {
         public
     {
         vm.startPrank(BASED_ADDRESS);
-        ConvexStrategy testStrategy = new ConvexStrategy(
-            IGVault(address(gVault)),
-            BASED_ADDRESS,
-            frax_lp_pid,
-            frax_lp
+        ConvexStrategy testStrategy = ConvexStrategy(
+            factory.createProxyStrategy(
+                IGVault(address(gVault)),
+                BASED_ADDRESS,
+                frax_lp_pid,
+                frax_lp
+            )
         );
         testStrategy.setKeeper(BASED_ADDRESS);
         guard.addStrategy(address(testStrategy), HOUR_IN_SECONDS);
@@ -218,7 +227,6 @@ contract SnLTest is BaseSetup {
         assertTrue(mimStrategy.canHarvest());
         assertTrue(musdStrategy.canHarvest());
         assertTrue(guard.canHarvest());
-
         guard.harvest();
 
         assertTrue(!fraxStrategy.canHarvest());
@@ -438,11 +446,13 @@ contract SnLTest is BaseSetup {
     // THEN the stop loss logic should hold the strategy data
     function test_stop_loss_add_strategy() public {
         vm.startPrank(BASED_ADDRESS);
-        ConvexStrategy testStrategy = new ConvexStrategy(
-            IGVault(address(gVault)),
-            BASED_ADDRESS,
-            frax_lp_pid,
-            frax_lp
+        ConvexStrategy testStrategy = ConvexStrategy(
+            factory.createProxyStrategy(
+                IGVault(address(gVault)),
+                BASED_ADDRESS,
+                frax_lp_pid,
+                frax_lp
+            )
         );
         gVault.addStrategy(address(testStrategy), 1000);
         vm.stopPrank();

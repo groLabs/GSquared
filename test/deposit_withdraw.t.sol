@@ -28,11 +28,13 @@ contract TrancheTest is Test, BaseSetup {
     }
 
     function setupConvexStrategy() public {
-        convexStrategy = new ConvexStrategy(
-            IGVault(address(gVault)),
-            BASED_ADDRESS,
-            frax_lp_pid,
-            frax_lp
+        convexStrategy = ConvexStrategy(
+            factory.createProxyStrategy(
+                IGVault(address(gVault)),
+                BASED_ADDRESS,
+                frax_lp_pid,
+                frax_lp
+            )
         );
         StopLossLogic snl = new StopLossLogic();
 
