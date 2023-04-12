@@ -10,10 +10,17 @@ contract ConvexStrategyFactory {
 
     address public immutable implementation;
 
+    /// @notice Factory constructor
+    /// @param _implementation Address of the strategy implementation
     constructor(address _implementation) {
         implementation = _implementation;
     }
 
+    /// @notice Strategy initialization
+    /// @param _vault Vault that holds the strategy
+    /// @param _pid PID of Convex reward pool
+    /// @param _metaPool Underlying meta pool
+    ///     - used when LP token and Meta pool dont match (older metapools)
     function createProxyStrategy(
         IGVault _vault,
         address _owner,

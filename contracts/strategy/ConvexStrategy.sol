@@ -315,9 +315,12 @@ contract ConvexStrategy is Initializable {
         ASSET = _asset;
         _asset.approve(address(_vault), type(uint256).max); // Max approve asset for Vault to save gas
 
+        // Setting base values for strategy. As it won't be possible to call initialize() again,
+        // it is safe to set these values here.
         baseSlippage = 10;
         debtThreshold = 20_000 * DEFAULT_DECIMALS_FACTOR;
         profitThreshold = 20_000 * DEFAULT_DECIMALS_FACTOR;
+
         ERC20(CRV).approve(CRV_ETH, type(uint256).max);
         ERC20(CVX).approve(CVX_ETH, type(uint256).max);
         ERC20(WETH).approve(UNI_V3, type(uint256).max);
