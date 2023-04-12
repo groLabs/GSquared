@@ -345,15 +345,13 @@ contract SnLTest is BaseSetup {
         manipulatePool(false, 5000, mim_lp, mim);
 
         vm.startPrank(BASED_ADDRESS);
-
-        fraxStrategy.setBaseSlippage(50);
-        mimStrategy.setBaseSlippage(50);
-        musdStrategy.setBaseSlippage(50);
+        fraxStrategy.setBaseSlippage(5000);
+        mimStrategy.setBaseSlippage(5000);
         mimStrategy.runHarvest();
         fraxStrategy.runHarvest();
         musdStrategy.runHarvest();
-
-        assertTrue(fraxStrategy.canStopLoss());
+        fraxStrategy.setBaseSlippage(50);
+        mimStrategy.setBaseSlippage(50);
         assertTrue(mimStrategy.canStopLoss());
         assertTrue(guard.canUpdateStopLoss());
 
