@@ -240,15 +240,15 @@ contract ConvexStrategy is Initializable {
     address public owner; // contract owner
     mapping(address => bool) public keepers;
 
-    uint256 public baseSlippage = 10;
+    uint256 public baseSlippage;
     uint256 public stopLossAttempts;
     address public stopLossLogic;
     bool public emergencyMode;
     bool public stop;
 
     // Strategy harvest thresholds
-    uint256 internal debtThreshold = 20_000 * DEFAULT_DECIMALS_FACTOR;
-    uint256 internal profitThreshold = 20_000 * DEFAULT_DECIMALS_FACTOR;
+    uint256 internal debtThreshold;
+    uint256 internal profitThreshold;
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -315,6 +315,9 @@ contract ConvexStrategy is Initializable {
         ASSET = _asset;
         _asset.approve(address(_vault), type(uint256).max); // Max approve asset for Vault to save gas
 
+        baseSlippage = 10;
+        debtThreshold = 20_000 * DEFAULT_DECIMALS_FACTOR;
+        profitThreshold = 20_000 * DEFAULT_DECIMALS_FACTOR;
         ERC20(CRV).approve(CRV_ETH, type(uint256).max);
         ERC20(CVX).approve(CVX_ETH, type(uint256).max);
         ERC20(WETH).approve(UNI_V3, type(uint256).max);
