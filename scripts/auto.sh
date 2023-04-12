@@ -1,8 +1,6 @@
 #!/bin/bash
-# Bash Menu Script Example
 
 unset options
-PS3='Please enter your choice: '
 options=("setup" "migrate" "harvest" "deploy strategy" "Quit")
 select opt in "${options[@]}"
 do
