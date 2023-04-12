@@ -7,6 +7,7 @@ import "../interfaces/IStop.sol";
 import "../interfaces/IStrategy.sol";
 import "../interfaces/IGVault.sol";
 import {ERC20} from "../solmate/src/tokens/ERC20.sol";
+import "forge-std/console2.sol";
 
 // High level Responsibilities:
 // - Borrow funds from the vault (1)
@@ -787,21 +788,23 @@ contract ConvexStrategy {
             // if we have more excess debt, this is an edge case and we shouldn't do any harvest at this point
             revert StrategyErrors.ExcessDebtGtThanAssets();
         } else {
+
             if (assets > debt) {
                 profit = assets - debt;
+                uint256 profitToRepay = 0;
                 if (profit > profitThreshold) {
-                    uint256 profitToRepay = (profit *
+                    profitToRepay = (profit *
                         (PERCENTAGE_DECIMAL_FACTOR - _debtRatio)) /
                         PERCENTAGE_DECIMAL_FACTOR;
-                    if (profitToRepay + _excessDebt > balance) {
-                        balance += divest(
-                            profitToRepay + _excessDebt - balance,
-                            true
-                        );
-                        debtRepayment = balance;
-                    } else {
-                        debtRepayment = profitToRepay + _excessDebt;
-                    }
+                }
+                if (profitToRepay + _excessDebt > balance) {
+                    balance += divest(
+                        profitToRepay + _excessDebt - balance,
+                        true
+                    );
+                    debtRepayment = balance;
+                } else {
+                    debtRepayment = profitToRepay + _excessDebt;
                 }
             } else if (assets < debt) {
                 loss = debt - assets;
