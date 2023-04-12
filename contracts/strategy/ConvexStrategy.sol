@@ -28,8 +28,8 @@ library StrategyErrors {
     error ConvexToken(); // 0xaeca768b
     error LTMinAmountExpected(); // 0x3d93e699
     error ExcessDebtGtThanAssets(); // 0x961696d0
-    error LPNotZero();
-    error SlippageProtection();
+    error LPNotZero(); // 0xe4e07afa
+    error SlippageProtection(); // 0x17d431f4
 }
 
 /// Convex booster interface
@@ -833,7 +833,11 @@ contract ConvexStrategy is Initializable {
             // Calculate the ratio based on the curve
             uint256 ratio = curveValue();
 
-            // This represents the scaled meta_amount adjusted by the calculated ratio
+            // This represents the scaled meta_amount adjusted by the calculated ratio.
+            // a LOWER meta_amount is better, because it signifies the quantity of
+            //   metaLP tokens burned to get _debt amount of 3CRV.
+            // a HIGHER meta_amount indicates the pool is imbalanced and the swap is a bad deal.
+            // Remember that during divest(), the swap direction is metaLP => 3CRV
             uint256 leftSide = (meta_amount * ratio) /
                 PERCENTAGE_DECIMAL_FACTOR;
 
@@ -843,7 +847,7 @@ contract ConvexStrategy is Initializable {
                 PERCENTAGE_DECIMAL_FACTOR;
 
             // Check if the left side (scaled meta_amount) is greater than the right side (scaled _debt with slippage)
-            // This is done to ensure that the meta_amount is not too small, given the debt and slippage constraints
+            // This is done to ensure that the meta_amount is not too large, given the debt and slippage constraints
             if (leftSide > rightSide) {
                 revert StrategyErrors.SlippageProtection();
             }
