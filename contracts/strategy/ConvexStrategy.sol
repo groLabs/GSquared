@@ -830,7 +830,7 @@ contract ConvexStrategy {
         );
         // Check if slippage protection is enabled
         if (_slippage) {
-            // Calculate the ratio based on the curve
+            // Calculate the ratio based on the curve virtual price
             uint256 ratio = curveValue();
 
             // This represents the scaled meta_amount adjusted by the calculated ratio.
