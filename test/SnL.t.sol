@@ -288,8 +288,18 @@ contract SnLTest is BaseSetup {
     function test_guard_should_reset_stop_loss_primer_if_returned_within_threshold()
         public
     {
-        (uint256 crvFraxSwap, ) = manipulatePoolSmallerTokenAmount(false, 9000, frax_lp, frax);
-        (uint256 crvMimSwap, ) = manipulatePoolSmallerTokenAmount(false, 5000, mim_lp, mim);
+        (uint256 crvFraxSwap, ) = manipulatePoolSmallerTokenAmount(
+            false,
+            9000,
+            frax_lp,
+            frax
+        );
+        (uint256 crvMimSwap, ) = manipulatePoolSmallerTokenAmount(
+            false,
+            5000,
+            mim_lp,
+            mim
+        );
 
         assertTrue(fraxStrategy.canStopLoss());
         assertTrue(mimStrategy.canStopLoss());
@@ -307,8 +317,18 @@ contract SnLTest is BaseSetup {
 
         vm.stopPrank();
 
-        reverseManipulation(true, crvFraxSwap, frax_lp, address(THREE_POOL_TOKEN));
-        reverseManipulation(true, crvMimSwap, mim_lp, address(THREE_POOL_TOKEN));
+        reverseManipulation(
+            true,
+            crvFraxSwap,
+            frax_lp,
+            address(THREE_POOL_TOKEN)
+        );
+        reverseManipulation(
+            true,
+            crvMimSwap,
+            mim_lp,
+            address(THREE_POOL_TOKEN)
+        );
 
         bool active; // Is the strategy active
         uint64 timeLimit;

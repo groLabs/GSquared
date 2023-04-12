@@ -266,7 +266,7 @@ contract BaseSetup is Test {
         return (amount, tokenAmount);
     }
 
-    function reverseManipulation (
+    function reverseManipulation(
         bool profit,
         uint256 tokenAmount,
         address pool,

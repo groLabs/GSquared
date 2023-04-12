@@ -343,16 +343,27 @@ contract ConvexStrategyTest is BaseSetup {
         gVault.setDebtRatio(address(convexStrategy), 5000);
         uint256 calcAmount = (initInvestment * 5000) / 10000;
         vm.stopPrank();
-        (uint256 poolTokens, uint256 investment) = manipulatePoolSmallerTokenAmount(true, 9000, frax_lp, address(THREE_POOL_TOKEN));
+        (
+            uint256 poolTokens,
+            uint256 investment
+        ) = manipulatePoolSmallerTokenAmount(
+                true,
+                9000,
+                frax_lp,
+                address(THREE_POOL_TOKEN)
+            );
         vm.startPrank(BASED_ADDRESS);
-        (uint256 initExcessDebt, ) = gVault.excessDebt(
-            address(convexStrategy)
-        );
+        (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
 
         convexStrategy.runHarvest();
 
         vm.stopPrank();
-        (uint256 finalTokens, ) = reverseManipulation(false, poolTokens, frax_lp, address(frax));
+        (uint256 finalTokens, ) = reverseManipulation(
+            false,
+            poolTokens,
+            frax_lp,
+            address(frax)
+        );
         (uint256 finalExcessDebt, ) = gVault.excessDebt(
             address(convexStrategy)
         );
@@ -388,15 +399,26 @@ contract ConvexStrategyTest is BaseSetup {
         gVault.setDebtRatio(address(convexStrategy), 5000);
         uint256 calcAmount = (initInvestment * 5000) / 10000;
         vm.stopPrank();
-        (uint256 poolTokens, uint256 investment) = manipulatePoolSmallerTokenAmount(true, 50, frax_lp, address(THREE_POOL_TOKEN));
+        (
+            uint256 poolTokens,
+            uint256 investment
+        ) = manipulatePoolSmallerTokenAmount(
+                true,
+                50,
+                frax_lp,
+                address(THREE_POOL_TOKEN)
+            );
         vm.startPrank(BASED_ADDRESS);
-        (uint256 initExcessDebt, ) = gVault.excessDebt(
-            address(convexStrategy)
-        );
+        (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
 
         convexStrategy.runHarvest();
         vm.stopPrank();
-        (uint256 finalTokens, ) = reverseManipulation(false, poolTokens, frax_lp, address(frax));
+        (uint256 finalTokens, ) = reverseManipulation(
+            false,
+            poolTokens,
+            frax_lp,
+            address(frax)
+        );
         (uint256 finalExcessDebt, ) = gVault.excessDebt(
             address(convexStrategy)
         );
@@ -432,13 +454,26 @@ contract ConvexStrategyTest is BaseSetup {
         gVault.setDebtRatio(address(convexStrategy), 7000);
         vm.stopPrank();
         uint256 calcAmount = (initInvestment * 7000) / 10000;
-        (uint256 poolTokens, uint256 investment) = manipulatePoolSmallerTokenAmount(true, 9000, frax_lp, address(THREE_POOL_TOKEN));
+        (
+            uint256 poolTokens,
+            uint256 investment
+        ) = manipulatePoolSmallerTokenAmount(
+                true,
+                9000,
+                frax_lp,
+                address(THREE_POOL_TOKEN)
+            );
         vm.startPrank(BASED_ADDRESS);
         (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
 
         convexStrategy.runHarvest();
         vm.stopPrank();
-        (uint256 finalTokens, ) = reverseManipulation(false, poolTokens, frax_lp, address(frax));
+        (uint256 finalTokens, ) = reverseManipulation(
+            false,
+            poolTokens,
+            frax_lp,
+            address(frax)
+        );
         (uint256 finalExcessDebt, ) = gVault.excessDebt(
             address(convexStrategy)
         );
@@ -473,13 +508,26 @@ contract ConvexStrategyTest is BaseSetup {
         gVault.setDebtRatio(address(convexStrategy), 7000);
         vm.stopPrank();
         uint256 calcAmount = (initInvestment * 7000) / 10000;
-        (uint256 poolTokens, uint256 investment) = manipulatePoolSmallerTokenAmount(true, 50, frax_lp, address(THREE_POOL_TOKEN));
+        (
+            uint256 poolTokens,
+            uint256 investment
+        ) = manipulatePoolSmallerTokenAmount(
+                true,
+                50,
+                frax_lp,
+                address(THREE_POOL_TOKEN)
+            );
         vm.startPrank(BASED_ADDRESS);
         (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
 
         convexStrategy.runHarvest();
         vm.stopPrank();
-        (uint256 finalTokens, ) = reverseManipulation(false, poolTokens, frax_lp, address(frax));
+        (uint256 finalTokens, ) = reverseManipulation(
+            false,
+            poolTokens,
+            frax_lp,
+            address(frax)
+        );
         (uint256 finalExcessDebt, ) = gVault.excessDebt(
             address(convexStrategy)
         );

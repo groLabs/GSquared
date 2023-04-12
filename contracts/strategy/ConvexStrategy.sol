@@ -787,13 +787,12 @@ contract ConvexStrategy {
             // if we have more excess debt, this is an edge case and we shouldn't do any harvest at this point
             revert StrategyErrors.ExcessDebtGtThanAssets();
         } else {
-
             if (assets > debt) {
                 profit = assets - debt;
                 uint256 profitToRepay = 0;
                 if (profit > profitThreshold) {
-                    profitToRepay = (profit *
-                        (PERCENTAGE_DECIMAL_FACTOR - _debtRatio)) /
+                    profitToRepay =
+                        (profit * (PERCENTAGE_DECIMAL_FACTOR - _debtRatio)) /
                         PERCENTAGE_DECIMAL_FACTOR;
                 }
                 if (profitToRepay + _excessDebt > balance) {
