@@ -793,19 +793,20 @@ contract ConvexStrategy is Initializable {
         } else {
             if (assets > debt) {
                 profit = assets - debt;
+                uint256 profitToRepay = 0;
                 if (profit > profitThreshold) {
-                    uint256 profitToRepay = (profit *
-                        (PERCENTAGE_DECIMAL_FACTOR - _debtRatio)) /
+                    profitToRepay =
+                        (profit * (PERCENTAGE_DECIMAL_FACTOR - _debtRatio)) /
                         PERCENTAGE_DECIMAL_FACTOR;
-                    if (profitToRepay + _excessDebt > balance) {
-                        balance += divest(
-                            profitToRepay + _excessDebt - balance,
-                            true
-                        );
-                        debtRepayment = balance;
-                    } else {
-                        debtRepayment = profitToRepay + _excessDebt;
-                    }
+                }
+                if (profitToRepay + _excessDebt > balance) {
+                    balance += divest(
+                        profitToRepay + _excessDebt - balance,
+                        true
+                    );
+                    debtRepayment = balance;
+                } else {
+                    debtRepayment = profitToRepay + _excessDebt;
                 }
             } else if (assets < debt) {
                 loss = debt - assets;
