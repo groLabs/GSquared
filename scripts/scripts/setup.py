@@ -54,10 +54,15 @@ gvt = JuniorTranche.at(GVT_ADDRESS)  # admin.deploy(JuniorTranche, "junior", "jn
 salt = 12345
 
 
-def migration_data():
+def load_deployed_contracts():
     # Load contract addresses
     with open("mainnet_fork_deployments.json") as json_file:
         contract_data = json.load(json_file)
+    return contract_data
+
+
+def migration_data():
+    contract_data = load_deployed_contracts()
 
     data_payload = {}
     data_payload[1] = dai_vault_adapter.migrate.encode_input(
@@ -434,3 +439,12 @@ def deploy():
 
     with open("mainnet_fork_deployments.json", "w") as write_file:
         json.dump(deployments, write_file, indent=4)
+
+
+def deploy_strategy(debt_ratio, pid):
+    pool_info = convex_deposit().poolInfo(pid)
+
+    contract_data = load_deployed_contracts()
+    gVault = GVault.at(contract_data["GVault"])
+    snl = StopLossLogic.at(contract_data["StopLossLogic"])
+    setup_strategy(admin, gVault, snl, pid, pool_info[0], debt_ratio)

@@ -3,7 +3,7 @@
 
 unset options
 PS3='Please enter your choice: '
-options=("setup" "migrate" "harvest" "Quit")
+options=("setup" "migrate" "harvest" "deploy strategy" "Quit")
 select opt in "${options[@]}"
 do
     case $opt in
@@ -21,6 +21,12 @@ do
             (cd ..; brownie run scripts/scripts/setup.py harvest_all --network $ETH_NETWORK)
             (cd ..; brownie run scripts/scripts/setup.py schedule_migration --network $ETH_NETWORK)
             (cd ..; brownie run scripts/scripts/setup.py migrate $min_3crv $min_shares --network $ETH_NETWORK)
+            ;;
+        "deploy strategy")
+	    read -p 'convex pid: ' pid
+	    read -p 'strategy debt ratio: ' debt_ratio
+            (cd ..; rm -r build)
+            (cd ..; brownie run scripts/scripts/setup.py deploy_strategy $debt_ratio $pid --network $ETH_NETWORK)
             ;;
         "Quit")
             break

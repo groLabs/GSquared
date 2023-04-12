@@ -13,6 +13,10 @@ def curve_pools(address_curve):
     return Contract(address_curve)
 
 
+def convex_deposit():
+    return Contract(CONVEX_DEPOSIT)
+
+
 def convex_pool():
     def _convex_pool(address_convex):
         return Contract(address_convex)
@@ -35,14 +39,16 @@ def prep_vault(user, vault, lp_token_3pool):
     vault.deposit(lp_token_3pool.balanceOf(user), user, {"from": user})
 
 
-def generate_strategy(admin, pid, lp, vault, snl, amount=2000):
+def generate_strategy(admin, pid, lp, vault, snl, amount=2000, connect=True):
     strategy_convex = admin.deploy(
         ConvexStrategy, vault, admin, pid, lp, publish_source=PUBLISH_SOURCE
     )
+    print(f"convex strategy deployed {strategy_convex.address}")
     strategy_convex.setKeeper(admin, {"from": admin})
-    setup_strategy_in_vault(strategy_convex, vault, admin, amount)
     strategy_convex.setStopLossLogic(snl, {"from": admin})
-    snl.setStrategy(strategy_convex, 1e18, 400, {"from": admin})
+    if connect:
+        setup_strategy_in_vault(strategy_convex, vault, admin, amount)
+        snl.setStrategy(strategy_convex, 1e18, 400, {"from": admin})
     return strategy_convex
 
 
@@ -75,6 +81,11 @@ def setup_strategies(admin, test_vault, test_snl):
     )
 
     return strategy_frax, strategy_mim, strategy_lusd
+
+
+def setup_strategy(admin, vault, snl, pid, lp, debt_ratio):
+    strategy = generate_strategy(admin, pid, lp, vault, snl, debt_ratio, False)
+    return strategy
 
 
 def setup_frax_strategy(admin, test_vault, test_snl):
