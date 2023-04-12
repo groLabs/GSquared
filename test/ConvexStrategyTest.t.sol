@@ -323,6 +323,172 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
     }
 
+    // Test case for potential MEV attack vector
+    // Given a strategy with an investment in Convex and and excess debt
+    // when the metapool is partly imbalanced (assets greater than excess debt) with a profit
+    // then the harvest should go through and profit should be made
+    function test_strategy_manipulation_during_divest_assets_from_convex_harvest_profit_large()
+        public
+    {
+        depositIntoVault(bob, 1E24);
+        uint256 deposit = uint256(1E21);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E26) deposit = 1E26;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        IERC20 convexPool = IERC20(fraxConvexRewards);
+        convexStrategy.runHarvest();
+        uint256 initInvestment = convexPool.balanceOf(address(convexStrategy));
+
+        gVault.setDebtRatio(address(convexStrategy), 5000);
+        uint256 calcAmount = (initInvestment * 5000) / 10000;
+        vm.stopPrank();
+        (uint256 poolTokens, uint256 investment) = manipulatePoolSmallerTokenAmount(true, 9000, frax_lp, address(THREE_POOL_TOKEN));
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.runHarvest();
+        vm.stopPrank();
+        (uint256 finalTokens, ) = reverseManipulation(false, poolTokens, frax_lp, address(frax));
+        console2.log("pooltokens %s investment %s finalTokens %s", poolTokens, investment, finalTokens);
+        console2.log("current %s init %s", convexPool.balanceOf(address(convexStrategy)), initInvestment);
+        (uint256 finalExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
+        // Make sure convex strategy has the expect amount of assets
+        assertApproxEqRel(
+            convexPool.balanceOf(address(convexStrategy)),
+            calcAmount,
+            1E16
+        );
+        // attacker has made a loss
+        assertLt(finalTokens, investment);
+        assertEq(finalExcessDebt, 0);
+    }
+
+    // Test case for potential MEV attack vector
+    // Given a strategy with an investment in Convex and and excess debt
+    // when the metapool is partly imbalanced (assets greater than excess debt) with a profit
+    // then the harvest should go through and profit should be made
+    function test_strategy_manipulation_during_divest_assets_from_convex_harvest_profit_small()
+        public
+    {
+        depositIntoVault(bob, 1E24);
+        uint256 deposit = uint256(1E21);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E26) deposit = 1E26;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        IERC20 convexPool = IERC20(fraxConvexRewards);
+        convexStrategy.runHarvest();
+        uint256 initInvestment = convexPool.balanceOf(address(convexStrategy));
+
+        gVault.setDebtRatio(address(convexStrategy), 5000);
+        uint256 calcAmount = (initInvestment * 5000) / 10000;
+        vm.stopPrank();
+        (uint256 poolTokens, uint256 investment) = manipulatePoolSmallerTokenAmount(true, 50, frax_lp, address(THREE_POOL_TOKEN));
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.runHarvest();
+        vm.stopPrank();
+        (uint256 finalTokens, ) = reverseManipulation(false, poolTokens, frax_lp, address(frax));
+        console2.log("pooltokens %s investment %s finalTokens %s", poolTokens, investment, finalTokens);
+        console2.log("current %s init %s", convexPool.balanceOf(address(convexStrategy)), initInvestment);
+        (uint256 finalExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
+        // Make sure convex strategy has the expect amount of assets
+        assertApproxEqRel(
+            convexPool.balanceOf(address(convexStrategy)),
+            calcAmount,
+            1E16
+        );
+        // attacker has made a loss
+        assertLt(finalTokens, investment);
+        assertEq(finalExcessDebt, 0);
+    }
+
+    // Test case for potential MEV attack vector
+    // Given a strategy with an investment in Convex and and excess debt
+    // when the metapool is partly imbalanced (assets greater than excess debt) with a profit
+    // then the harvest should go through and profit should be made
+    function test_strategy_harvest_should_revert_during_partial_divest_if_pool_imbalanced_profit_large()
+        public
+    {
+        depositIntoVault(bob, 1E24);
+        uint256 deposit = uint256(1E21);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E26) deposit = 1E26;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        IERC20 convexPool = IERC20(fraxConvexRewards);
+        convexStrategy.runHarvest();
+        uint256 initInvestment = convexPool.balanceOf(address(convexStrategy));
+
+        gVault.setDebtRatio(address(convexStrategy), 7000);
+        vm.stopPrank();
+        uint256 calcAmount = (initInvestment * 7000) / 10000;
+        (uint256 poolTokens, uint256 investment) = manipulatePoolSmallerTokenAmount(true, 9000, frax_lp, address(THREE_POOL_TOKEN));
+        vm.startPrank(BASED_ADDRESS);
+        (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
+        convexStrategy.runHarvest();
+        vm.stopPrank();
+        (uint256 finalTokens, ) = reverseManipulation(false, poolTokens, frax_lp, address(frax));
+        console2.log("pooltokens %s investment %s finalTokens %s", poolTokens, investment, finalTokens);
+        console2.log("current %s init %s", convexPool.balanceOf(address(convexStrategy)), initInvestment);
+        (uint256 finalExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
+        // Make sure convex strategy has the expect amount of assets
+        assertApproxEqRel(
+            convexPool.balanceOf(address(convexStrategy)),
+            calcAmount,
+            1E16
+        );
+        // attacker has made a loss
+        assertLt(finalTokens, investment);
+        assertEq(finalExcessDebt, 0);
+    }
+
+    // Test case for potential MEV attack vector
+    // Given a strategy with an investment in Convex and and excess debt
+    // when the metapool is partly imbalanced (assets greater than excess debt)
+    // then the harvest should revert
+    function test_strategy_harvest_should_revert_during_partial_divest_if_pool_imbalanced_profit_small()
+        public
+    {
+        depositIntoVault(bob, 1E24);
+        uint256 deposit = uint256(1E21);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E26) deposit = 1E26;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        IERC20 convexPool = IERC20(fraxConvexRewards);
+        convexStrategy.runHarvest();
+        uint256 initInvestment = convexPool.balanceOf(address(convexStrategy));
+
+        gVault.setDebtRatio(address(convexStrategy), 7000);
+        vm.stopPrank();
+        uint256 calcAmount = (initInvestment * 7000) / 10000;
+        (uint256 poolTokens, uint256 investment) = manipulatePoolSmallerTokenAmount(true, 50, frax_lp, address(THREE_POOL_TOKEN));
+        vm.startPrank(BASED_ADDRESS);
+        (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
+        convexStrategy.runHarvest();
+        vm.stopPrank();
+        (uint256 finalTokens, ) = reverseManipulation(false, poolTokens, frax_lp, address(frax));
+        console2.log("pooltokens %s investment %s finalTokens %s", poolTokens, investment, finalTokens);
+        console2.log("current %s init %s", convexPool.balanceOf(address(convexStrategy)), initInvestment);
+        (uint256 finalExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
+        // Make sure convex strategy has the expect amount of assets
+        assertApproxEqRel(
+            convexPool.balanceOf(address(convexStrategy)),
+            calcAmount,
+            1E16
+        );
+        // attacker has made a loss
+        assertLt(finalTokens, investment);
+        assertEq(finalExcessDebt, 0);
+    }
+
     function test_strategy_manipulation_during_divest_assets_from_convex()
         public
     {
