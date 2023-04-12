@@ -7,7 +7,6 @@ import "../interfaces/IStop.sol";
 import "../interfaces/IStrategy.sol";
 import "../interfaces/IGVault.sol";
 import {ERC20} from "../solmate/src/tokens/ERC20.sol";
-import "forge-std/console2.sol";
 
 // High level Responsibilities:
 // - Borrow funds from the vault (1)

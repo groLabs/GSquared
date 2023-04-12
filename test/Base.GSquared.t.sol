@@ -249,7 +249,7 @@ contract BaseSetup is Test {
         address token
     ) public {
         uint256 tokenAmount = IERC20(token).balanceOf(pool);
-        tokenAmount = ((tokenAmount * 10000) / (10000 - change)) * 10;
+        tokenAmount = ((tokenAmount * 10000) / (10000 - change));
         _manipulatePool(profit, pool, token, tokenAmount);
     }
 
@@ -261,7 +261,7 @@ contract BaseSetup is Test {
         address token
     ) public returns (uint256, uint256) {
         uint256 tokenAmount = IERC20(token).balanceOf(pool);
-        tokenAmount = ((tokenAmount * 10000) / (10000 - change));
+        tokenAmount = ((tokenAmount * change) / (10000));
         uint256 amount = _manipulatePool(profit, pool, token, tokenAmount);
         return (amount, tokenAmount);
     }

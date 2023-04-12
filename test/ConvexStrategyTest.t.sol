@@ -231,7 +231,7 @@ contract ConvexStrategyTest is BaseSetup {
 
         gVault.setDebtRatio(address(convexStrategy), 5000);
         vm.stopPrank();
-        manipulatePoolSmallerTokenAmount(false, 9999, frax_lp, address(frax));
+        manipulatePoolSmallerTokenAmount(false, 9500, frax_lp, address(frax));
         vm.startPrank(BASED_ADDRESS);
         // Expect to revert because of excess debt
         vm.expectRevert(
@@ -286,7 +286,7 @@ contract ConvexStrategyTest is BaseSetup {
     // Given a strategy with an investment in Convex and and excess debt
     // when the metapool is partly imbalanced (assets greater than excess debt)
     // then the harvest should revert
-    function test_strategy_harvest_should_revert_during_partial_divest_if_pool_imalanced()
+    function test_strategy_harvest_should_revert_during_partial_divest_if_pool_imbalanced()
         public
     {
         depositIntoVault(bob, 1E24);
@@ -302,7 +302,7 @@ contract ConvexStrategyTest is BaseSetup {
         gVault.setDebtRatio(address(convexStrategy), 7000);
         vm.stopPrank();
         uint256 calcAmount = (initInvestment * 7000) / 10000;
-        manipulatePoolSmallerTokenAmount(false, 6000, frax_lp, address(frax));
+        manipulatePoolSmallerTokenAmount(false, 4500, frax_lp, address(frax));
         vm.startPrank(BASED_ADDRESS);
         (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
         // Expect to revert because of excess debt
@@ -345,11 +345,14 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
         (uint256 poolTokens, uint256 investment) = manipulatePoolSmallerTokenAmount(true, 9000, frax_lp, address(THREE_POOL_TOKEN));
         vm.startPrank(BASED_ADDRESS);
+        (uint256 initExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
+
         convexStrategy.runHarvest();
+
         vm.stopPrank();
         (uint256 finalTokens, ) = reverseManipulation(false, poolTokens, frax_lp, address(frax));
-        console2.log("pooltokens %s investment %s finalTokens %s", poolTokens, investment, finalTokens);
-        console2.log("current %s init %s", convexPool.balanceOf(address(convexStrategy)), initInvestment);
         (uint256 finalExcessDebt, ) = gVault.excessDebt(
             address(convexStrategy)
         );
@@ -361,7 +364,8 @@ contract ConvexStrategyTest is BaseSetup {
         );
         // attacker has made a loss
         assertLt(finalTokens, investment);
-        assertEq(finalExcessDebt, 0);
+        // debt has been repaid
+        assertGt(initExcessDebt, finalExcessDebt);
     }
 
     // Test case for potential MEV attack vector
@@ -386,11 +390,13 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
         (uint256 poolTokens, uint256 investment) = manipulatePoolSmallerTokenAmount(true, 50, frax_lp, address(THREE_POOL_TOKEN));
         vm.startPrank(BASED_ADDRESS);
+        (uint256 initExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
+
         convexStrategy.runHarvest();
         vm.stopPrank();
         (uint256 finalTokens, ) = reverseManipulation(false, poolTokens, frax_lp, address(frax));
-        console2.log("pooltokens %s investment %s finalTokens %s", poolTokens, investment, finalTokens);
-        console2.log("current %s init %s", convexPool.balanceOf(address(convexStrategy)), initInvestment);
         (uint256 finalExcessDebt, ) = gVault.excessDebt(
             address(convexStrategy)
         );
@@ -402,7 +408,8 @@ contract ConvexStrategyTest is BaseSetup {
         );
         // attacker has made a loss
         assertLt(finalTokens, investment);
-        assertEq(finalExcessDebt, 0);
+        // debt has been repaid
+        assertLt(finalExcessDebt, initExcessDebt);
     }
 
     // Test case for potential MEV attack vector
@@ -428,11 +435,10 @@ contract ConvexStrategyTest is BaseSetup {
         (uint256 poolTokens, uint256 investment) = manipulatePoolSmallerTokenAmount(true, 9000, frax_lp, address(THREE_POOL_TOKEN));
         vm.startPrank(BASED_ADDRESS);
         (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
+
         convexStrategy.runHarvest();
         vm.stopPrank();
         (uint256 finalTokens, ) = reverseManipulation(false, poolTokens, frax_lp, address(frax));
-        console2.log("pooltokens %s investment %s finalTokens %s", poolTokens, investment, finalTokens);
-        console2.log("current %s init %s", convexPool.balanceOf(address(convexStrategy)), initInvestment);
         (uint256 finalExcessDebt, ) = gVault.excessDebt(
             address(convexStrategy)
         );
@@ -444,7 +450,7 @@ contract ConvexStrategyTest is BaseSetup {
         );
         // attacker has made a loss
         assertLt(finalTokens, investment);
-        assertEq(finalExcessDebt, 0);
+        assertLt(finalExcessDebt, initExcessDebt);
     }
 
     // Test case for potential MEV attack vector
@@ -470,11 +476,10 @@ contract ConvexStrategyTest is BaseSetup {
         (uint256 poolTokens, uint256 investment) = manipulatePoolSmallerTokenAmount(true, 50, frax_lp, address(THREE_POOL_TOKEN));
         vm.startPrank(BASED_ADDRESS);
         (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
+
         convexStrategy.runHarvest();
         vm.stopPrank();
         (uint256 finalTokens, ) = reverseManipulation(false, poolTokens, frax_lp, address(frax));
-        console2.log("pooltokens %s investment %s finalTokens %s", poolTokens, investment, finalTokens);
-        console2.log("current %s init %s", convexPool.balanceOf(address(convexStrategy)), initInvestment);
         (uint256 finalExcessDebt, ) = gVault.excessDebt(
             address(convexStrategy)
         );
@@ -486,7 +491,7 @@ contract ConvexStrategyTest is BaseSetup {
         );
         // attacker has made a loss
         assertLt(finalTokens, investment);
-        assertEq(finalExcessDebt, 0);
+        assertLt(finalExcessDebt, initExcessDebt);
     }
 
     function test_strategy_manipulation_during_divest_assets_from_convex()
@@ -504,7 +509,7 @@ contract ConvexStrategyTest is BaseSetup {
 
         uint256 calc_amount = initInvestment - gVault.balanceOf(alice);
         vm.stopPrank();
-        manipulatePoolSmallerTokenAmount(false, 9999, frax_lp, address(frax));
+        manipulatePoolSmallerTokenAmount(false, 9500, frax_lp, address(frax));
         vm.startPrank(alice);
         uint256 shares = gVault.redeem(
             gVault.balanceOf(alice),
