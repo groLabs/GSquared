@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./Base.GSquared.t.sol";
+import {StrategyErrors} from "../contracts/strategy/ConvexStrategy.sol";
 
 contract ConvexStrategyTest is BaseSetup {
     uint256 constant MIN_REPORT_DELAY = 172801;
@@ -211,7 +212,367 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
     }
 
-    function test_strategy_can_devest_assets_from_convex(uint128 _deposit)
+    // Test case for potential MEV attack vector
+    // Given a strategy with an investment in Convex and and excess debt
+    // when the metapool is severly imbalanced
+    // then the harvest should revert
+    function test_strategy_manipulation_during_divest_assets_from_convex_harvest()
+        public
+    {
+        depositIntoVault(bob, 1E24);
+        uint256 deposit = uint256(1E21);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E26) deposit = 1E26;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        IERC20 convexPool = IERC20(fraxConvexRewards);
+        convexStrategy.runHarvest();
+        uint256 initInvestment = convexPool.balanceOf(address(convexStrategy));
+
+        gVault.setDebtRatio(address(convexStrategy), 5000);
+        vm.stopPrank();
+        manipulatePoolSmallerTokenAmount(false, 9500, frax_lp, address(frax));
+        vm.startPrank(BASED_ADDRESS);
+        // Expect to revert because of excess debt
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                StrategyErrors.ExcessDebtGtThanAssets.selector
+            )
+        );
+        convexStrategy.runHarvest();
+        // Make sure convex strategy has the same amount of assets after harvest failed
+        assertApproxEqRel(
+            convexPool.balanceOf(address(convexStrategy)),
+            initInvestment,
+            1E16
+        );
+        vm.stopPrank();
+    }
+
+    // Given a strategy with an investment in Convex and and excess debt
+    // when the metapool is balanced
+    // then the harvest should pass and pay back the excess debt
+    function test_strategy_harvest_pays_back_excess_debt() public {
+        depositIntoVault(bob, 1E24);
+        uint256 deposit = uint256(1E21);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E26) deposit = 1E26;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        IERC20 convexPool = IERC20(fraxConvexRewards);
+        convexStrategy.runHarvest();
+        uint256 initInvestment = convexPool.balanceOf(address(convexStrategy));
+
+        gVault.setDebtRatio(address(convexStrategy), 7000);
+        vm.stopPrank();
+        uint256 calcAmount = (initInvestment * 7000) / 10000;
+        vm.startPrank(BASED_ADDRESS);
+        (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
+        convexStrategy.runHarvest();
+        (uint256 finalExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
+        // Make sure convex strategy has the expect amount of lp tokens and less debt
+        assertApproxEqRel(
+            convexPool.balanceOf(address(convexStrategy)),
+            calcAmount,
+            1E16
+        );
+        assertGt(initExcessDebt, finalExcessDebt);
+        vm.stopPrank();
+    }
+
+    // Test case for potential MEV attack vector
+    // Given a strategy with an investment in Convex and and excess debt
+    // when the metapool is partly imbalanced (assets greater than excess debt)
+    // then the harvest should revert
+    function test_strategy_harvest_should_revert_during_partial_divest_if_pool_imbalanced()
+        public
+    {
+        depositIntoVault(bob, 1E24);
+        uint256 deposit = uint256(1E21);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E26) deposit = 1E26;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        IERC20 convexPool = IERC20(fraxConvexRewards);
+        convexStrategy.runHarvest();
+        uint256 initInvestment = convexPool.balanceOf(address(convexStrategy));
+
+        gVault.setDebtRatio(address(convexStrategy), 7000);
+        vm.stopPrank();
+        uint256 calcAmount = (initInvestment * 7000) / 10000;
+        manipulatePoolSmallerTokenAmount(false, 4500, frax_lp, address(frax));
+        vm.startPrank(BASED_ADDRESS);
+        (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
+        // Expect to revert because of excess debt
+        vm.expectRevert(
+            abi.encodeWithSelector(StrategyErrors.SlippageProtection.selector)
+        );
+        convexStrategy.runHarvest();
+        (uint256 finalExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
+        // Make sure convex strategy has the same amount of assets and excess debt after harvest failed
+        assertApproxEqRel(
+            convexPool.balanceOf(address(convexStrategy)),
+            initInvestment,
+            1E16
+        );
+        assertEq(initExcessDebt, finalExcessDebt);
+        vm.stopPrank();
+    }
+
+    // Test case for potential MEV attack vector
+    // Given a strategy with an investment in Convex and and excess debt
+    // when the metapool is partly imbalanced (assets greater than excess debt) with a profit
+    // then the harvest should go through and profit should be made
+    function test_strategy_manipulation_during_divest_assets_from_convex_harvest_profit_large()
+        public
+    {
+        depositIntoVault(bob, 1E24);
+        uint256 deposit = uint256(1E21);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E26) deposit = 1E26;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        IERC20 convexPool = IERC20(fraxConvexRewards);
+        convexStrategy.runHarvest();
+        uint256 initInvestment = convexPool.balanceOf(address(convexStrategy));
+
+        gVault.setDebtRatio(address(convexStrategy), 5000);
+        uint256 calcAmount = (initInvestment * 5000) / 10000;
+        vm.stopPrank();
+        (
+            uint256 poolTokens,
+            uint256 investment
+        ) = manipulatePoolSmallerTokenAmount(
+                true,
+                9000,
+                frax_lp,
+                address(THREE_POOL_TOKEN)
+            );
+        vm.startPrank(BASED_ADDRESS);
+        (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
+
+        convexStrategy.runHarvest();
+
+        vm.stopPrank();
+        (uint256 finalTokens, ) = reverseManipulation(
+            false,
+            poolTokens,
+            frax_lp,
+            address(frax)
+        );
+        (uint256 finalExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
+        // Make sure convex strategy has the expect amount of assets
+        assertApproxEqRel(
+            convexPool.balanceOf(address(convexStrategy)),
+            calcAmount,
+            1E16
+        );
+        // attacker has made a loss
+        assertLt(finalTokens, investment);
+        // debt has been repaid
+        assertGt(initExcessDebt, finalExcessDebt);
+    }
+
+    // Test case for potential MEV attack vector
+    // Given a strategy with an investment in Convex and and excess debt
+    // when the metapool is partly imbalanced (assets greater than excess debt) with a profit
+    // then the harvest should go through and profit should be made
+    function test_strategy_manipulation_during_divest_assets_from_convex_harvest_profit_small()
+        public
+    {
+        depositIntoVault(bob, 1E24);
+        uint256 deposit = uint256(1E21);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E26) deposit = 1E26;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        IERC20 convexPool = IERC20(fraxConvexRewards);
+        convexStrategy.runHarvest();
+        uint256 initInvestment = convexPool.balanceOf(address(convexStrategy));
+
+        gVault.setDebtRatio(address(convexStrategy), 5000);
+        uint256 calcAmount = (initInvestment * 5000) / 10000;
+        vm.stopPrank();
+        (
+            uint256 poolTokens,
+            uint256 investment
+        ) = manipulatePoolSmallerTokenAmount(
+                true,
+                50,
+                frax_lp,
+                address(THREE_POOL_TOKEN)
+            );
+        vm.startPrank(BASED_ADDRESS);
+        (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
+
+        convexStrategy.runHarvest();
+        vm.stopPrank();
+        (uint256 finalTokens, ) = reverseManipulation(
+            false,
+            poolTokens,
+            frax_lp,
+            address(frax)
+        );
+        (uint256 finalExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
+        // Make sure convex strategy has the expect amount of assets
+        assertApproxEqRel(
+            convexPool.balanceOf(address(convexStrategy)),
+            calcAmount,
+            1E16
+        );
+        // attacker has made a loss
+        assertLt(finalTokens, investment);
+        // debt has been repaid
+        assertLt(finalExcessDebt, initExcessDebt);
+    }
+
+    // Test case for potential MEV attack vector
+    // Given a strategy with an investment in Convex and and excess debt
+    // when the metapool is partly imbalanced (assets greater than excess debt) with a profit
+    // then the harvest should go through and profit should be made
+    function test_strategy_harvest_should_revert_during_partial_divest_if_pool_imbalanced_profit_large()
+        public
+    {
+        depositIntoVault(bob, 1E24);
+        uint256 deposit = uint256(1E21);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E26) deposit = 1E26;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        IERC20 convexPool = IERC20(fraxConvexRewards);
+        convexStrategy.runHarvest();
+        uint256 initInvestment = convexPool.balanceOf(address(convexStrategy));
+
+        gVault.setDebtRatio(address(convexStrategy), 7000);
+        vm.stopPrank();
+        uint256 calcAmount = (initInvestment * 7000) / 10000;
+        (
+            uint256 poolTokens,
+            uint256 investment
+        ) = manipulatePoolSmallerTokenAmount(
+                true,
+                9000,
+                frax_lp,
+                address(THREE_POOL_TOKEN)
+            );
+        vm.startPrank(BASED_ADDRESS);
+        (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
+
+        convexStrategy.runHarvest();
+        vm.stopPrank();
+        (uint256 finalTokens, ) = reverseManipulation(
+            false,
+            poolTokens,
+            frax_lp,
+            address(frax)
+        );
+        (uint256 finalExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
+        // Make sure convex strategy has the expect amount of assets
+        assertApproxEqRel(
+            convexPool.balanceOf(address(convexStrategy)),
+            calcAmount,
+            1E16
+        );
+        // attacker has made a loss
+        assertLt(finalTokens, investment);
+        assertLt(finalExcessDebt, initExcessDebt);
+    }
+
+    // Test case for potential MEV attack vector
+    // Given a strategy with an investment in Convex and and excess debt
+    // when the metapool is partly imbalanced (assets greater than excess debt)
+    // then the harvest should revert
+    function test_strategy_harvest_should_revert_during_partial_divest_if_pool_imbalanced_profit_small()
+        public
+    {
+        depositIntoVault(bob, 1E24);
+        uint256 deposit = uint256(1E21);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E26) deposit = 1E26;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        IERC20 convexPool = IERC20(fraxConvexRewards);
+        convexStrategy.runHarvest();
+        uint256 initInvestment = convexPool.balanceOf(address(convexStrategy));
+
+        gVault.setDebtRatio(address(convexStrategy), 7000);
+        vm.stopPrank();
+        uint256 calcAmount = (initInvestment * 7000) / 10000;
+        (
+            uint256 poolTokens,
+            uint256 investment
+        ) = manipulatePoolSmallerTokenAmount(
+                true,
+                50,
+                frax_lp,
+                address(THREE_POOL_TOKEN)
+            );
+        vm.startPrank(BASED_ADDRESS);
+        (uint256 initExcessDebt, ) = gVault.excessDebt(address(convexStrategy));
+
+        convexStrategy.runHarvest();
+        vm.stopPrank();
+        (uint256 finalTokens, ) = reverseManipulation(
+            false,
+            poolTokens,
+            frax_lp,
+            address(frax)
+        );
+        (uint256 finalExcessDebt, ) = gVault.excessDebt(
+            address(convexStrategy)
+        );
+        // Make sure convex strategy has the expect amount of assets
+        assertApproxEqRel(
+            convexPool.balanceOf(address(convexStrategy)),
+            calcAmount,
+            1E16
+        );
+        // attacker has made a loss
+        assertLt(finalTokens, investment);
+        assertLt(finalExcessDebt, initExcessDebt);
+    }
+
+    function test_strategy_manipulation_during_divest_assets_from_convex()
+        public
+    {
+        depositIntoVault(bob, 1E24);
+        uint256 deposit = uint256(1E21);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E26) deposit = 1E26;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        IERC20 convexPool = IERC20(fraxConvexRewards);
+        convexStrategy.runHarvest();
+        uint256 initInvestment = convexPool.balanceOf(address(convexStrategy));
+
+        uint256 calc_amount = initInvestment - gVault.balanceOf(alice);
+        vm.stopPrank();
+        manipulatePoolSmallerTokenAmount(false, 9500, frax_lp, address(frax));
+        vm.startPrank(alice);
+        uint256 shares = gVault.redeem(
+            gVault.balanceOf(alice),
+            address(alice),
+            address(alice)
+        );
+        assertApproxEqRel(
+            convexPool.balanceOf(address(convexStrategy)),
+            calc_amount,
+            1E16
+        );
+        vm.stopPrank();
+    }
+
+    function test_strategy_can_divest_assets_from_convex(uint128 _deposit)
         public
     {
         uint256 deposit = uint256(_deposit);
@@ -231,6 +592,34 @@ contract ConvexStrategyTest is BaseSetup {
             initInvestment / 2,
             1E16
         );
+        vm.stopPrank();
+    }
+
+    // Given a strategy with more debt than assets
+    // When the strategy is trying to migrate
+    // Then the migration should revert
+    function test_strategy_change_convex_pool_fails_when_loss() public {
+        uint256 deposit = uint256(1E24);
+        if (deposit < 1E20) deposit = 1E20;
+        if (deposit > 1E24) deposit = 1E24;
+        depositIntoVault(alice, deposit);
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.setBaseSlippage(50);
+        IERC20 convexPoolFrax = IERC20(fraxConvexRewards);
+        IERC20 convexPoolMusd = IERC20(musdConvexRewards);
+        convexStrategy.runHarvest();
+
+        convexStrategy.setPool(musd_lp_pid, musd_curve);
+
+        vm.stopPrank();
+        manipulatePoolSmallerTokenAmount(false, 9999, frax_lp, address(frax));
+
+        vm.startPrank(BASED_ADDRESS);
+        vm.expectRevert(
+            abi.encodeWithSelector(StrategyErrors.LPNotZero.selector)
+        );
+        convexStrategy.runHarvest();
+
         vm.stopPrank();
     }
 

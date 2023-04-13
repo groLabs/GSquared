@@ -74,6 +74,10 @@ contract SnLTest is BaseSetup {
         musdStrategy.setStopLossLogic(address(snl));
         mimStrategy.setStopLossLogic(address(snl));
 
+        fraxStrategy.setBaseSlippage(20);
+        musdStrategy.setBaseSlippage(20);
+        mimStrategy.setBaseSlippage(20);
+
         snl.setStrategy(address(fraxStrategy), 1e18, 400);
         snl.setStrategy(address(musdStrategy), 1e18, 400);
         snl.setStrategy(address(mimStrategy), 1e18, 400);
@@ -284,8 +288,18 @@ contract SnLTest is BaseSetup {
     function test_guard_should_reset_stop_loss_primer_if_returned_within_threshold()
         public
     {
-        manipulatePool(false, 500, frax_lp, frax);
-        manipulatePool(false, 5000, mim_lp, mim);
+        (uint256 crvFraxSwap, ) = manipulatePoolSmallerTokenAmount(
+            false,
+            9000,
+            frax_lp,
+            frax
+        );
+        (uint256 crvMimSwap, ) = manipulatePoolSmallerTokenAmount(
+            false,
+            5000,
+            mim_lp,
+            mim
+        );
 
         assertTrue(fraxStrategy.canStopLoss());
         assertTrue(mimStrategy.canStopLoss());
@@ -303,8 +317,18 @@ contract SnLTest is BaseSetup {
 
         vm.stopPrank();
 
-        manipulatePool(true, 500, frax_lp, address(THREE_POOL_TOKEN));
-        manipulatePool(true, 500, mim_lp, address(THREE_POOL_TOKEN));
+        reverseManipulation(
+            true,
+            crvFraxSwap,
+            frax_lp,
+            address(THREE_POOL_TOKEN)
+        );
+        reverseManipulation(
+            true,
+            crvMimSwap,
+            mim_lp,
+            address(THREE_POOL_TOKEN)
+        );
 
         bool active; // Is the strategy active
         uint64 timeLimit;
@@ -329,19 +353,25 @@ contract SnLTest is BaseSetup {
     function test_guard_should_execute_stop_loss_after_designated_time()
         public
     {
-        manipulatePool(false, 500, frax_lp, frax);
-        manipulatePool(false, 5000, mim_lp, mim);
+        manipulatePool(false, 50, mim_lp, mim);
 
         vm.startPrank(BASED_ADDRESS);
+        fraxStrategy.setBaseSlippage(5000);
+        mimStrategy.setBaseSlippage(5000);
 
-        fraxStrategy.setBaseSlippage(50);
-        mimStrategy.setBaseSlippage(50);
-        musdStrategy.setBaseSlippage(50);
         mimStrategy.runHarvest();
         fraxStrategy.runHarvest();
         musdStrategy.runHarvest();
+        vm.stopPrank();
 
-        assertTrue(fraxStrategy.canStopLoss());
+        manipulatePool(false, 50, frax_lp, frax);
+        vm.startPrank(BASED_ADDRESS);
+
+        mimStrategy.runHarvest();
+        fraxStrategy.runHarvest();
+        musdStrategy.runHarvest();
+        fraxStrategy.setBaseSlippage(50);
+        mimStrategy.setBaseSlippage(50);
         assertTrue(mimStrategy.canStopLoss());
         assertTrue(guard.canUpdateStopLoss());
 

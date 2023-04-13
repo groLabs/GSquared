@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
     paths:
       - "contracts/**"
@@ -41,4 +41,4 @@ jobs:
 
       - name: Run Forge tests
         run: |
-          forge test --fork-url ${{ secrets.ALCHEMY_RPC_URL }} -vvv
+          forge test --fork-url ${{ secrets.ALCHEMY_RPC_URL }} -vvv --fork-block-number 16025905

@@ -249,17 +249,59 @@ contract BaseSetup is Test {
         address token
     ) public {
         uint256 tokenAmount = IERC20(token).balanceOf(pool);
-        tokenAmount = ((tokenAmount * 10000) / (10000 - change)) * 10;
+        tokenAmount = ((tokenAmount * 10000) / (10000 - change));
+        _manipulatePool(profit, pool, token, tokenAmount);
+    }
+
+    // Manipulate pool with smaller token amount
+    function manipulatePoolSmallerTokenAmount(
+        bool profit,
+        uint256 change,
+        address pool,
+        address token
+    ) public returns (uint256, uint256) {
+        uint256 tokenAmount = IERC20(token).balanceOf(pool);
+        tokenAmount = ((tokenAmount * change) / (10000));
+        uint256 amount = _manipulatePool(profit, pool, token, tokenAmount);
+        return (amount, tokenAmount);
+    }
+
+    function reverseManipulation(
+        bool profit,
+        uint256 tokenAmount,
+        address pool,
+        address token
+    ) public returns (uint256, uint256) {
+        uint256 amount;
+        vm.startPrank(BASED_ADDRESS);
+        IERC20(token).approve(pool, type(uint256).max);
+        if (profit) {
+            amount = ICurveMeta(pool).exchange(1, 0, tokenAmount, 0);
+        } else {
+            amount = ICurveMeta(pool).exchange(0, 1, tokenAmount, 0);
+        }
+        vm.stopPrank();
+        return (amount, tokenAmount);
+    }
+
+    function _manipulatePool(
+        bool profit,
+        address pool,
+        address token,
+        uint256 tokenAmount
+    ) internal returns (uint256) {
         genStable(tokenAmount, token, BASED_ADDRESS);
 
         vm.startPrank(BASED_ADDRESS);
         IERC20(token).approve(pool, type(uint256).max);
+        uint256 amount;
         if (profit) {
-            ICurveMeta(pool).add_liquidity([0, tokenAmount], 0);
+            amount = ICurveMeta(pool).exchange(1, 0, tokenAmount, 0);
         } else {
-            ICurveMeta(pool).add_liquidity([tokenAmount, 0], 0);
+            amount = ICurveMeta(pool).exchange(0, 1, tokenAmount, 0);
         }
         vm.stopPrank();
+        return amount;
     }
 
     function depositIntoVault(address _user, uint256 _amount)

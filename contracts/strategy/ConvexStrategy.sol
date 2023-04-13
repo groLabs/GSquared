@@ -26,6 +26,9 @@ library StrategyErrors {
     error LpToken(); // 0xaeca768b
     error ConvexToken(); // 0xaeca768b
     error LTMinAmountExpected(); // 0x3d93e699
+    error ExcessDebtGtThanAssets(); // 0x961696d0
+    error LPNotZero(); // 0xe4e07afa
+    error SlippageProtection(); // 0x17d431f4
 }
 
 /// Convex booster interface
@@ -781,25 +784,25 @@ contract ConvexStrategy {
 
         if (_rewards > MIN_REWARD_SELL_AMOUNT) balance = sellAllRewards();
         if (_excessDebt > assets) {
-            debtRepayment = balance + divestAll(false);
-            loss = debt - debtRepayment;
-            balance = debtRepayment;
+            // if we have more excess debt, this is an edge case and we shouldn't do any harvest at this point
+            revert StrategyErrors.ExcessDebtGtThanAssets();
         } else {
             if (assets > debt) {
                 profit = assets - debt;
+                uint256 profitToRepay = 0;
                 if (profit > profitThreshold) {
-                    uint256 profitToRepay = (profit *
-                        (PERCENTAGE_DECIMAL_FACTOR - _debtRatio)) /
+                    profitToRepay =
+                        (profit * (PERCENTAGE_DECIMAL_FACTOR - _debtRatio)) /
                         PERCENTAGE_DECIMAL_FACTOR;
-                    if (profitToRepay + _excessDebt > balance) {
-                        balance += divest(
-                            profitToRepay + _excessDebt - balance,
-                            true
-                        );
-                        debtRepayment = balance;
-                    } else {
-                        debtRepayment = profitToRepay + _excessDebt;
-                    }
+                }
+                if (profitToRepay + _excessDebt > balance) {
+                    balance += divest(
+                        profitToRepay + _excessDebt - balance,
+                        true
+                    );
+                    debtRepayment = balance;
+                } else {
+                    debtRepayment = profitToRepay + _excessDebt;
                 }
             } else if (assets < debt) {
                 loss = debt - assets;
@@ -825,14 +828,28 @@ contract ConvexStrategy {
             [0, _debt],
             false
         );
+        // Check if slippage protection is enabled
         if (_slippage) {
+            // Calculate the ratio based on the curve virtual price
             uint256 ratio = curveValue();
-            if (
-                (meta_amount * ratio) / PERCENTAGE_DECIMAL_FACTOR <
-                ((_debt * (PERCENTAGE_DECIMAL_FACTOR - baseSlippage)) /
-                    PERCENTAGE_DECIMAL_FACTOR)
-            ) {
-                revert StrategyErrors.LTMinAmountExpected();
+
+            // This represents the scaled meta_amount adjusted by the calculated ratio.
+            // a LOWER meta_amount is better, because it signifies the quantity of
+            //   metaLP tokens burned to get _debt amount of 3CRV.
+            // a HIGHER meta_amount indicates the pool is imbalanced and the swap is a bad deal.
+            // Remember that during divest(), the swap direction is metaLP => 3CRV
+            uint256 leftSide = (meta_amount * ratio) /
+                PERCENTAGE_DECIMAL_FACTOR;
+
+            // This represents the scaled _debt adjusted by the baseSlippage
+            uint256 rightSide = (_debt *
+                (PERCENTAGE_DECIMAL_FACTOR + baseSlippage)) /
+                PERCENTAGE_DECIMAL_FACTOR;
+
+            // Check if the left side (scaled meta_amount) is greater than the right side (scaled _debt with slippage)
+            // This is done to ensure that the meta_amount is not too large, given the debt and slippage constraints
+            if (leftSide > rightSide) {
+                revert StrategyErrors.SlippageProtection();
             }
         }
         Rewards(rewardContract).withdrawAndUnwrap(meta_amount, false);
@@ -937,6 +954,10 @@ contract ConvexStrategy {
             if (newMetaPool != address(0)) {
                 sellAllRewards();
                 divestAll(true);
+                if (lpToken.balanceOf(address(this)) > 0) {
+                    revert StrategyErrors.LPNotZero();
+                }
+
                 migratePool();
             }
             (profit, loss, debtRepayment, balance) = realisePnl(

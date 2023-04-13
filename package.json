@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "prettier": "prettier --write 'contracts/*.sol' 'test/*.sol' 'contracts/**/*.sol'",
+    "prettier-check": "prettier --check 'contracts/*.sol' 'test/*.sol' 'contracts/**/*.sol'"
+  },
   "dependencies": {
     "@chainlink/contracts": "^0.5.1",
     "@openzeppelin/contracts": "4.4.0",
