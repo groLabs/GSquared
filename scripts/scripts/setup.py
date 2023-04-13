@@ -64,7 +64,6 @@ def load_deployed_contracts():
 def migration_data():
     contract_data = load_deployed_contracts()
 
-    print(contract_data.get("GMigration", ZERO))
     data_payload = {}
     data_payload[1] = dai_vault_adapter.migrate.encode_input(
         contract_data.get("GMigration", ZERO)
@@ -108,7 +107,7 @@ bot = load_account(local, "bot")
 
 
 def migrate(minThreeCrv, minShares):
-    timelock_admin = load_account(local, "DAO")
+    timelock_admin = load_account(local, "timelock_admin")
 
     print(minThreeCrv, minShares)
     minThreeCrv = int(float(minThreeCrv) * 1e18)
@@ -164,19 +163,11 @@ def migrate(minThreeCrv, minShares):
     # run migration
     gmigration = GMigration.at(contract_data.get("GMigration", ZERO))
     gtranche = GTranche.at(contract_data.get("GTranche", ZERO))
-    gVault = GVault.at(contract_data["GVault"])
-    print(contract_data.get("GMigration", ZERO))
     print("set gtranche in migration")
     gmigration.setGTranche(gtranche.address, {"from": admin.address})
     print("perapre migration")
     gmigration.prepareMigration(minThreeCrv, minShares, {"from": admin.address})
     print("execute migration")
-    ecrv = Contract(THREE_POOL_TOKEN_ADDRESS)
-    print(ecrv.balanceOf(gtranche.address))
-    print(ecrv.balanceOf(gmigration.address))
-    print(dai.balanceOf(gmigration.address), usdc.balanceOf(gmigration.address), usdt.balanceOf(gmigration.address))
-    print(totalAssets)
-    print(gVault.balanceOf(gmigration.address))
     gtranche.migrateFromOldTranche({"from": admin.address})
 
     # whitelist GTranche on GTokens and set controller
@@ -305,7 +296,7 @@ def harvest_all():
 def schedule_migration():
 
     contract_data, data_payload = migration_data()
-    timelock_admin = load_account(local, "DAO")
+    timelock_admin = load_account(local, "timelock_admin")
 
     print("set migration target for dai vault")
     gro_timelock_controller.schedule(
