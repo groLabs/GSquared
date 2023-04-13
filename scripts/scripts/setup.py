@@ -64,6 +64,7 @@ def load_deployed_contracts():
 def migration_data():
     contract_data = load_deployed_contracts()
 
+    print(contract_data.get("GMigration", ZERO))
     data_payload = {}
     data_payload[1] = dai_vault_adapter.migrate.encode_input(
         contract_data.get("GMigration", ZERO)
@@ -107,6 +108,7 @@ bot = load_account(local, "bot")
 
 
 def migrate(minThreeCrv, minShares):
+    timelock_admin = load_account(local, "DAO")
 
     print(minThreeCrv, minShares)
     minThreeCrv = int(float(minThreeCrv) * 1e18)
@@ -117,6 +119,7 @@ def migrate(minThreeCrv, minShares):
         chain.mine(timedelta=MIN_DELAY)
 
     contract_data, data_payload = migration_data()
+    print(data_payload)
 
     pwrd_init_factor = pwrd.factor()
     pwrd_init_total_supply = pwrd.totalSupply()
@@ -137,7 +140,7 @@ def migrate(minThreeCrv, minShares):
         data_payload[1],
         ZERO,
         salt,
-        {"from": admin.address},
+        {"from": timelock_admin.address},
     )
     print("execute usdc vault migration target")
     gro_timelock_controller.execute(
@@ -146,7 +149,7 @@ def migrate(minThreeCrv, minShares):
         data_payload[2],
         ZERO,
         salt,
-        {"from": admin.address},
+        {"from": timelock_admin.address},
     )
     print("execute usdt vault migration target")
     gro_timelock_controller.execute(
@@ -155,18 +158,25 @@ def migrate(minThreeCrv, minShares):
         data_payload[3],
         ZERO,
         salt,
-        {"from": admin.address},
+        {"from": timelock_admin.address},
     )
 
     # run migration
     gmigration = GMigration.at(contract_data.get("GMigration", ZERO))
     gtranche = GTranche.at(contract_data.get("GTranche", ZERO))
+    gVault = GVault.at(contract_data["GVault"])
+    print(contract_data.get("GMigration", ZERO))
     print("set gtranche in migration")
     gmigration.setGTranche(gtranche.address, {"from": admin.address})
     print("perapre migration")
     gmigration.prepareMigration(minThreeCrv, minShares, {"from": admin.address})
     print("execute migration")
-
+    ecrv = Contract(THREE_POOL_TOKEN_ADDRESS)
+    print(ecrv.balanceOf(gtranche.address))
+    print(ecrv.balanceOf(gmigration.address))
+    print(dai.balanceOf(gmigration.address), usdc.balanceOf(gmigration.address), usdt.balanceOf(gmigration.address))
+    print(totalAssets)
+    print(gVault.balanceOf(gmigration.address))
     gtranche.migrateFromOldTranche({"from": admin.address})
 
     # whitelist GTranche on GTokens and set controller
@@ -295,6 +305,7 @@ def harvest_all():
 def schedule_migration():
 
     contract_data, data_payload = migration_data()
+    timelock_admin = load_account(local, "DAO")
 
     print("set migration target for dai vault")
     gro_timelock_controller.schedule(
@@ -304,7 +315,7 @@ def schedule_migration():
         ZERO,
         salt,
         MIN_DELAY,
-        {"from": admin.address},
+        {"from": timelock_admin.address},
     )
     print("set migration target for usdc vault")
     gro_timelock_controller.schedule(
@@ -314,7 +325,7 @@ def schedule_migration():
         ZERO,
         salt,
         MIN_DELAY,
-        {"from": admin.address},
+        {"from": timelock_admin.address},
     )
     print("set migration target for usdt vault")
     gro_timelock_controller.schedule(
@@ -324,24 +335,24 @@ def schedule_migration():
         ZERO,
         salt,
         MIN_DELAY,
-        {"from": admin.address},
+        {"from": timelock_admin.address},
     )
 
     print("move gtranche to gvt whitelist")
     gro_timelock_controller.schedule(
-        gvt.address, 0, data_payload[4], ZERO, salt, MIN_DELAY, {"from": admin.address}
+        gvt.address, 0, data_payload[4], ZERO, salt, MIN_DELAY, {"from": timelock_admin.address}
     )
     print("move gtranche to gvt ownership")
     gro_timelock_controller.schedule(
-        gvt.address, 0, data_payload[5], ZERO, salt, MIN_DELAY, {"from": admin.address}
+        gvt.address, 0, data_payload[5], ZERO, salt, MIN_DELAY, {"from": timelock_admin.address}
     )
     print("move gtranche to pwrd whitelist")
     gro_timelock_controller.schedule(
-        pwrd.address, 0, data_payload[6], ZERO, salt, MIN_DELAY, {"from": admin.address}
+        pwrd.address, 0, data_payload[6], ZERO, salt, MIN_DELAY, {"from": timelock_admin.address}
     )
     print("move gtranche to pwrd ownership")
     gro_timelock_controller.schedule(
-        pwrd.address, 0, data_payload[7], ZERO, salt, MIN_DELAY, {"from": admin.address}
+        pwrd.address, 0, data_payload[7], ZERO, salt, MIN_DELAY, {"from": timelock_admin.address}
     )
 
 
@@ -402,7 +413,7 @@ def deploy():
 
     # add pnl to tranche
     print("add pnl to tranche...")
-    # gtranche.setPnL(pnl)
+    gtranche.setPnL(pnl)
 
     # add pnl to tranche
     print("deploy strategies...")
