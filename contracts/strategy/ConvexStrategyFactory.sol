@@ -2,18 +2,40 @@
 pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./ConvexStrategy.sol";
 import "../interfaces/IGVault.sol";
 
-contract ConvexStrategyFactory {
+contract ConvexStrategyFactory is Ownable {
     using Clones for address;
 
-    address public immutable implementation;
+    address public implementation;
+
+    event LogStrategyImplementationChanged(
+        address indexed oldImplementation,
+        address indexed newImplementation
+    );
 
     /// @notice Factory constructor
     /// @param _implementation Address of the strategy implementation
-    constructor(address _implementation) {
+    constructor(address _implementation) Ownable() {
+        address oldImplementation = implementation;
         implementation = _implementation;
+        emit LogStrategyImplementationChanged(
+            oldImplementation,
+            _implementation
+        );
+    }
+
+    /// @notice Set implementation address
+    /// @param _implementation Address of the strategy implementation
+    function setImplementation(address _implementation) public onlyOwner {
+        implementation = _implementation;
+    }
+
+    /// @notice Get implementation address
+    function getImplementation() public view returns (address) {
+        return implementation;
     }
 
     /// @notice Strategy initialization
