@@ -51,7 +51,7 @@ usdt = MockUSDT.at(USDT_ADDRESS)
 
 pwrd = SeniorTranche.at(PWRD_ADDRESS)  # admin.deploy(SeniorTranche, "senior", "snr")
 gvt = JuniorTranche.at(GVT_ADDRESS)  # admin.deploy(JuniorTranche, "junior", "jnr")
-salt = 12345
+salt = 123456789
 
 
 def load_deployed_contracts():
@@ -98,7 +98,7 @@ def load_account(local=False, account=None):
             private_key = web3.eth.account.decrypt(encrypted_key, pass_)
         return accounts.add(private_key)
     else:
-        web3.provider.make_request("hardhat_impersonateAccount", [account])
+        web3.provider.make_request("hardhat_impersonateAccount", [os.getenv(account)])
         return accounts.at(os.getenv(account), force=True)
 
 
