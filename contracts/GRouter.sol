@@ -12,6 +12,7 @@ import {ERC4626} from "./tokens/ERC4626.sol";
 import {Errors} from "./common/Errors.sol";
 import {GVault} from "./GVault.sol";
 import {GTranche} from "./GTranche.sol";
+import {console2} from "../lib/forge-std/src/console2.sol";
 
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \
@@ -75,7 +76,7 @@ contract GRouter is IGRouter {
     /*//////////////////////////////////////////////////////////////
                         CONSTRUCTOR / GETTERS
     //////////////////////////////////////////////////////////////*/
-
+    // TODO: Move token balances to the token
     constructor(
         GTranche _GTranche,
         GVault _vaultToken,

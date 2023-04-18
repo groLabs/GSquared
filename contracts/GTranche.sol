@@ -10,6 +10,7 @@ import {Errors} from "./common/Errors.sol";
 import {FixedTokensCurve} from "./utils/FixedTokensCurve.sol";
 import {GMigration} from "./GMigration.sol";
 import {IGToken} from "./interfaces/IGToken.sol";
+import {console2} from "../lib/forge-std/src/console2.sol";
 
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \

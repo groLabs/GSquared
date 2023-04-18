@@ -8,8 +8,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../common/Constants.sol";
+import {Errors} from "../common/Errors.sol";
 import "../common/Whitelist.sol";
 import "../interfaces/IERC20Detailed.sol";
+import "../interfaces/IController.sol";
 
 abstract contract GERC20 is Context, IERC20 {
     using Address for address;
@@ -20,6 +22,9 @@ abstract contract GERC20 is Context, IERC20 {
     mapping(address => mapping(address => uint256)) private _allowances;
 
     uint256 private _totalSupply;
+
+    // Tranche balance in common denominator
+    uint256 private _trancheBalance;
 
     string private _name;
     string private _symbol;
@@ -79,6 +84,13 @@ abstract contract GERC20 is Context, IERC20 {
      */
     function balanceOfBase(address account) public view returns (uint256) {
         return _balances[account];
+    }
+
+    /**
+     * @dev Returns balance of tranche token in common denominator
+     */
+    function trancheBalance() public view returns (uint256) {
+        return _trancheBalance;
     }
 
     /**
@@ -343,6 +355,19 @@ abstract contract GERC20 is Context, IERC20 {
         _decimals = decimals_;
     }
 
+    // TODO: Some accounting events?
+    function _increaseTrancheBalance(uint256 amount) internal {
+        _trancheBalance = _trancheBalance.add(amount);
+    }
+
+    function _decreaseTrancheBalance(uint256 amount) internal {
+        _trancheBalance = _trancheBalance.sub(amount);
+    }
+
+    function _setTrancheBalance(uint256 amount) internal {
+        _trancheBalance = amount;
+    }
+
     /**
      * @dev Hook that is called before any transfer of tokens. This includes
      * minting and burning.
@@ -364,90 +389,16 @@ abstract contract GERC20 is Context, IERC20 {
     ) internal virtual {}
 }
 
-interface IController {
-    function stablecoins() external view returns (address[3] memory);
-
-    function vaults() external view returns (address[3] memory);
-
-    function underlyingVaults(uint256 i) external view returns (address vault);
-
-    function curveVault() external view returns (address);
-
-    function pnl() external view returns (address);
-
-    function insurance() external view returns (address);
-
-    function lifeGuard() external view returns (address);
-
-    function buoy() external view returns (address);
-
-    function reward() external view returns (address);
-
-    function isValidBigFish(
-        bool pwrd,
-        bool deposit,
-        uint256 amount
-    ) external view returns (bool);
-
-    function withdrawHandler() external view returns (address);
-
-    function emergencyHandler() external view returns (address);
-
-    function depositHandler() external view returns (address);
-
-    function totalAssets() external view returns (uint256);
-
-    function gTokenTotalAssets() external view returns (uint256);
-
-    function eoaOnly(address sender) external;
-
-    function getSkimPercent() external view returns (uint256);
-
-    function gToken(bool _pwrd) external view returns (address);
-
-    function emergencyState() external view returns (bool);
-
-    function deadCoin() external view returns (uint256);
-
-    function distributeStrategyGainLoss(uint256 gain, uint256 loss) external;
-
-    function burnGToken(
-        bool pwrd,
-        bool all,
-        address account,
-        uint256 amount,
-        uint256 bonus
-    ) external;
-
-    function mintGToken(
-        bool pwrd,
-        address account,
-        uint256 amount
-    ) external;
-
-    function getUserAssets(bool pwrd, address account)
-        external
-        view
-        returns (uint256 deductUsd);
-
-    function referrals(address account) external view returns (address);
-
-    function addReferral(address account, address referral) external;
-
-    function getStrategiesTargetRatio()
-        external
-        view
-        returns (uint256[] memory);
-
-    function withdrawalFee(bool pwrd) external view returns (uint256);
-
-    function validGTokenDecrease(uint256 amount) external view returns (bool);
-}
-
 interface IToken {
     function factor() external view returns (uint256);
 
     function factor(uint256 totalAssets) external view returns (uint256);
+
+    function increaseTrancheBalance(uint256 amount) external;
+
+    function decreaseTrancheBalance(uint256 amount) external;
+
+    function setTrancheBalance(uint256 amount) external;
 
     function mint(
         address account,
@@ -540,11 +491,32 @@ abstract contract GToken is GERC20, Constants, Whitelist, IToken {
         return 0;
     }
 
+    function increaseTrancheBalance(uint256 amount) external {
+        _requireCallerIsGTranche();
+        _increaseTrancheBalance(amount);
+    }
+
+    function decreaseTrancheBalance(uint256 amount) external {
+        _requireCallerIsGTranche();
+        _decreaseTrancheBalance(amount);
+    }
+
+    function setTrancheBalance(uint256 amount) external {
+        _requireCallerIsGTranche();
+        _setTrancheBalance(amount);
+    }
+
     function totalAssets() public view override returns (uint256) {
         return ctrl.gTokenTotalAssets();
     }
 
     function getInitialBase() internal pure virtual returns (uint256) {
         return BASE;
+    }
+
+    function _requireCallerIsGTranche() internal view {
+        if (msg.sender != address(ctrl)) {
+            revert Errors.CallerNotGTranche();
+        }
     }
 }

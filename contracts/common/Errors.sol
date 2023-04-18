@@ -39,4 +39,7 @@ library Errors {
 
     //Whitelist
     error NotInWhitelist(); // 0x5b0aa2ba
+
+    // GToken
+    error CallerNotGTranche();
 }
