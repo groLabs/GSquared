@@ -10,7 +10,6 @@ import {Errors} from "./common/Errors.sol";
 import {FixedTokensCurve} from "./utils/FixedTokensCurve.sol";
 import {GMigration} from "./GMigration.sol";
 import {IGToken} from "./interfaces/IGToken.sol";
-import {console2} from "../lib/forge-std/src/console2.sol";
 
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \
@@ -551,6 +550,10 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     /// @dev Assumes same mapping of yield tokens but you can have more at increased indexes
     ///     in the new tranche. This function should be behind a timelock.
     /// @param _oldGTranche address of the old GTranche
+    //  TODO: The whole migration logic has to be reworked since:
+    //  TODO: finalizeMigration() is calling for Pnl distribution that is calling for setting tranche
+    //  TODO: balances. At that time, new controller/gtranche is set and you cannot set tranche balances
+    //  TODO: from old Tranche
     function migrate(address _oldGTranche) external onlyOwner {
         GTranche oldTranche = GTranche(_oldGTranche);
         IGToken juniorTranche = getTrancheToken(false);
@@ -574,7 +577,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
 
         updateDistribution(0, 0, true, false);
         hasMigrated = true;
-
+        // Log new tranche-tokens balances after migration
         emit LogMigration(
             juniorTranche.trancheBalance(),
             seniorTranche.trancheBalance(),

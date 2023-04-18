@@ -11,7 +11,7 @@ def test_pnl_asset_distribution(admin, users, tranche_fixed_rate, tokens):
 
 
 def test_deposit_works_within_utilzation_ratio_limit(
-    admin, users, tranche_fixed_rate, tokens
+    admin, users, tranche_fixed_rate, tokens, gTokens
 ):
     token_index = 0
     user = users[0]
@@ -24,14 +24,13 @@ def test_deposit_works_within_utilzation_ratio_limit(
         _amount / 4, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
     assert (
-        tranche_fixed_rate.trancheBalances(SENIOR_TRANCHE)
-        / tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE)
+        gTokens[1].trancheBalance() / gTokens[0].trancheBalance()
         <= 0.5
     )
 
 
 def test_deposit_fails_outside_utilzation_ratio_limit(
-    admin, users, tranche_fixed_rate, tokens
+    admin, users, tranche_fixed_rate, tokens, gTokens
 ):
     token_index = 0
     user = users[0]
@@ -49,9 +48,7 @@ def test_deposit_fails_outside_utilzation_ratio_limit(
             {"from": user.address},
         )
     assert (
-        tranche_fixed_rate.trancheBalances(SENIOR_TRANCHE)
-        / tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE)
-        == 0
+        gTokens[1].trancheBalance() / gTokens[0].trancheBalance() == 0
     )
 
 
@@ -68,9 +65,7 @@ def test_withdrawals_works_within_utilzation_ratio_limit(
     tranche_fixed_rate.deposit(
         _amount / 8, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_utilisation_ratio = tranche_fixed_rate.trancheBalances(
-        SENIOR_TRANCHE
-    ) / tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE)
+    initial_utilisation_ratio = gTokens[1].trancheBalance() / gTokens[0].trancheBalance()
     assert initial_utilisation_ratio <= 0.5
     tranche_fixed_rate.withdraw(
         gTokens[JUNIOR_TRANCHE_ID].balanceOf(user.address) / 5,
@@ -80,9 +75,7 @@ def test_withdrawals_works_within_utilzation_ratio_limit(
         {"from": user.address},
     )
     assert (
-        tranche_fixed_rate.trancheBalances(SENIOR_TRANCHE)
-        / tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE)
-        > initial_utilisation_ratio
+        gTokens[1].trancheBalance() / gTokens[0].trancheBalance() > initial_utilisation_ratio
     )
 
 
@@ -99,9 +92,7 @@ def test_withdrawals_fails_outside_utilzation_ratio_limit(
     tranche_fixed_rate.deposit(
         _amount / 2, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_utilisation_ratio = tranche_fixed_rate.trancheBalances(
-        SENIOR_TRANCHE
-    ) / tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE)
+    initial_utilisation_ratio = gTokens[1].trancheBalance() / gTokens[0].trancheBalance()
     assert initial_utilisation_ratio <= 1.0
     with pytest.raises(exceptions.VirtualMachineError):
         tranche_fixed_rate.withdraw(
@@ -111,28 +102,24 @@ def test_withdrawals_fails_outside_utilzation_ratio_limit(
             user.address,
             {"from": user.address},
         )
-    assert (
-        tranche_fixed_rate.trancheBalances(SENIOR_TRANCHE)
-        / tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE)
-        == initial_utilisation_ratio
-    )
+    assert (gTokens[1].trancheBalance() / gTokens[0].trancheBalance() == initial_utilisation_ratio)
 
 
 def test_senior_tranche_asserts_increase_on_deposit(
-    admin, users, tranche_fixed_rate, tokens
+    admin, users, tranche_fixed_rate, tokens, gTokens
 ):
     token_index = 0
     user = users[0]
     _amount = LARGE_NUMBER * 10 ** tokens[token_index].decimals()
     setup_token(tokens[token_index], _amount, user, tranche_fixed_rate)
-    assert tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE) == 0
+    assert gTokens[0].trancheBalance() == 0
     tranche_fixed_rate.deposit(
         _amount / 2, token_index, JUNIOR_TRANCHE, user.address, {"from": user.address}
     )
     tranche_fixed_rate.deposit(
         _amount / 4, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    assert tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE) > 0
+    assert gTokens[0].trancheBalance() > 0
 
 
 def test_senior_tranche_asserts_decrease_on_withdrawal(
@@ -142,14 +129,14 @@ def test_senior_tranche_asserts_decrease_on_withdrawal(
     user = users[0]
     _amount = LARGE_NUMBER * 10 ** tokens[token_index].decimals()
     setup_token(tokens[token_index], _amount, user, tranche_fixed_rate)
-    assert tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE) == 0
+    assert gTokens[0].trancheBalance() == 0
     tranche_fixed_rate.deposit(
         _amount / 2, token_index, JUNIOR_TRANCHE, user.address, {"from": user.address}
     )
     tranche_fixed_rate.deposit(
         _amount / 4, token_index, SENIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_ST_assets = tranche_fixed_rate.trancheBalances(SENIOR_TRANCHE)
+    initial_ST_assets = gTokens[1].trancheBalance()
     tranche_fixed_rate.withdraw(
         gTokens[SENIOR_TRANCHE_ID].balanceOf(user.address) / 2,
         token_index,
@@ -158,24 +145,24 @@ def test_senior_tranche_asserts_decrease_on_withdrawal(
         {"from": user.address},
     )
     assert math.isclose(
-        tranche_fixed_rate.trancheBalances(SENIOR_TRANCHE) / (initial_ST_assets / 2),
+        gTokens[1].trancheBalance() / (initial_ST_assets / 2),
         1,
         abs_tol=0.000001,
     )
 
 
 def test_junior_tranche_asserts_increase_on_deposit(
-    admin, users, tranche_fixed_rate, tokens
+    admin, users, tranche_fixed_rate, tokens, gTokens
 ):
     token_index = 0
     user = users[0]
     _amount = LARGE_NUMBER * 10 ** tokens[token_index].decimals()
-    assert tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE) == 0
+    assert gTokens[0].trancheBalance() == 0
     setup_token(tokens[token_index], _amount, user, tranche_fixed_rate)
     tranche_fixed_rate.deposit(
         _amount / 2, token_index, JUNIOR_TRANCHE, user.address, {"from": user.address}
     )
-    assert tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE) > 0
+    assert gTokens[0].trancheBalance() > 0
 
 
 def test_junior_tranche_asserts_decrease_on_withdrawal(
@@ -188,7 +175,7 @@ def test_junior_tranche_asserts_decrease_on_withdrawal(
     tranche_fixed_rate.deposit(
         _amount / 2, token_index, JUNIOR_TRANCHE, user.address, {"from": user.address}
     )
-    initial_JT_assets = tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE)
+    initial_JT_assets = gTokens[0].trancheBalance()
     tranche_fixed_rate.withdraw(
         gTokens[JUNIOR_TRANCHE].balanceOf(user.address) / 2,
         token_index,
@@ -197,7 +184,7 @@ def test_junior_tranche_asserts_decrease_on_withdrawal(
         {"from": user.address},
     )
     assert math.isclose(
-        tranche_fixed_rate.trancheBalances(JUNIOR_TRANCHE) / (initial_JT_assets / 2),
+        gTokens[0].trancheBalance() / (initial_JT_assets / 2),
         1,
         abs_tol=0.000001,
     )

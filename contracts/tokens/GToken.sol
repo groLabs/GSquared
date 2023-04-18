@@ -356,14 +356,6 @@ abstract contract GERC20 is Context, IERC20 {
     }
 
     // TODO: Some accounting events?
-    function _increaseTrancheBalance(uint256 amount) internal {
-        _trancheBalance = _trancheBalance.add(amount);
-    }
-
-    function _decreaseTrancheBalance(uint256 amount) internal {
-        _trancheBalance = _trancheBalance.sub(amount);
-    }
-
     function _setTrancheBalance(uint256 amount) internal {
         _trancheBalance = amount;
     }
