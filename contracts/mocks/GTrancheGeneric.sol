@@ -253,6 +253,8 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
     ) internal returns (uint256, uint256) {
         uint256 calc_amount;
         uint256[NO_OF_TRANCHES] memory _totalValue = pnlDistribution();
+        IGToken juniorTranche = getTrancheToken(false);
+        IGToken seniorTranche = getTrancheToken(true);
         if (_withdraw) {
             calc_amount = _tranche
                 ? _amount
@@ -264,8 +266,8 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
             if (_tranche) _totalValue[1] += calc_amount;
             else _totalValue[0] += calc_amount;
         }
-        trancheBalances[SENIOR_TRANCHE_ID] = _totalValue[1];
-        trancheBalances[JUNIOR_TRANCHE_ID] = _totalValue[0];
+        seniorTranche.setTrancheBalance(_totalValue[1]);
+        juniorTranche.setTrancheBalance(_totalValue[0]);
 
         uint256 _utilisation = (_totalValue[1] * DEFAULT_DECIMALS) /
             (_totalValue[0] + 1);
@@ -280,8 +282,10 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
         returns (uint256[NO_OF_TRANCHES] memory _trancheBalances)
     {
         uint256 totalValue = _calcUnfiedValue();
-        _trancheBalances[0] = trancheBalances[JUNIOR_TRANCHE_ID];
-        _trancheBalances[1] = trancheBalances[SENIOR_TRANCHE_ID];
+        IGToken juniorTranche = getTrancheToken(false);
+        IGToken seniorTranche = getTrancheToken(true);
+        _trancheBalances[0] = juniorTranche.trancheBalance();
+        _trancheBalances[1] = seniorTranche.trancheBalance();
         uint256 currentTotal = _trancheBalances[0] + _trancheBalances[1];
         if (currentTotal > totalValue) {
             if (currentTotal - totalValue > _trancheBalances[0]) {
@@ -419,10 +423,6 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
         uint256 juniorValue = _calcTokenValue(0, juniorShares, true);
         uint256 seniorValue = _calcTokenValue(0, seniorShares, true);
 
-        // update tranche $ balances
-        trancheBalances[SENIOR_TRANCHE_ID] += seniorValue;
-        trancheBalances[JUNIOR_TRANCHE_ID] += juniorValue;
-
         // update yield token balances
         tokenBalances[0] += _shares;
         hasMigratedFromOldTranche = true;
@@ -464,12 +464,8 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
     /// @param _oldGTranche address of the old GTranche
     function migrate(address _oldGTranche) external onlyOwner {
         GTranche oldTranche = GTranche(_oldGTranche);
-        uint256 oldSeniorTrancheBalance = oldTranche.trancheBalances(true);
-        uint256 oldJuniorTrancheBalance = oldTranche.trancheBalances(false);
-
-        trancheBalances[SENIOR_TRANCHE_ID] += oldSeniorTrancheBalance;
-        trancheBalances[JUNIOR_TRANCHE_ID] += oldJuniorTrancheBalance;
-
+        IGToken juniorTranche = getTrancheToken(false);
+        IGToken seniorTranche = getTrancheToken(true);
         uint256[] memory yieldTokenBalances = new uint256[](
             oldTranche.NO_OF_TOKENS()
         );
@@ -489,8 +485,8 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
         updateDistribution(0, 0, true, false);
 
         emit LogMigration(
-            trancheBalances[JUNIOR_TRANCHE_ID],
-            trancheBalances[SENIOR_TRANCHE_ID],
+            juniorTranche.trancheBalance(),
+            seniorTranche.trancheBalance(),
             yieldTokenBalances
         );
     }

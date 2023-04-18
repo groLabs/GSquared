@@ -394,10 +394,6 @@ interface IToken {
 
     function factor(uint256 totalAssets) external view returns (uint256);
 
-    function increaseTrancheBalance(uint256 amount) external;
-
-    function decreaseTrancheBalance(uint256 amount) external;
-
     function setTrancheBalance(uint256 amount) external;
 
     function mint(
@@ -489,16 +485,6 @@ abstract contract GToken is GERC20, Constants, Whitelist, IToken {
 
         // This case is totalSupply > 0 && totalAssets == 0, and only occurs on system loss
         return 0;
-    }
-
-    function increaseTrancheBalance(uint256 amount) external {
-        _requireCallerIsGTranche();
-        _increaseTrancheBalance(amount);
-    }
-
-    function decreaseTrancheBalance(uint256 amount) external {
-        _requireCallerIsGTranche();
-        _decreaseTrancheBalance(amount);
     }
 
     function setTrancheBalance(uint256 amount) external {

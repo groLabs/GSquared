@@ -79,9 +79,6 @@ contract FixedTokens {
 
     // Accounting for total amount of yield tokens in the contract
     uint256[NO_OF_TOKENS] public tokenBalances;
-    // Accounting for the total "value" (as defined in the oracle/relation module)
-    //  of the tranches: True => Senior Tranche, False => Junior Tranche
-    mapping(bool => uint256) public trancheBalances;
 
     /*//////////////////////////////////////////////////////////////
                                 EVENTS

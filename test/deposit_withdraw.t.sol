@@ -48,14 +48,14 @@ contract TrancheTest is Test, BaseSetup {
         setStorage(alice, DAI.balanceOf.selector, address(DAI), 100E20);
 
         DAI.approve(address(gRouter), MAX_UINT);
-        uint256 initialSenior = gTranche.trancheBalances(true);
-        uint256 initialJunior = gTranche.trancheBalances(false);
+        uint256 initialSenior = PWRD.trancheBalance();
+        uint256 initialJunior = GVT.trancheBalance();
 
         gRouter.deposit(100E18, 0, false, 0);
         gRouter.deposit(50E18, 0, true, 0);
 
-        uint256 finalSenior = gTranche.trancheBalances(true);
-        uint256 finalJunior = gTranche.trancheBalances(false);
+        uint256 finalSenior = PWRD.trancheBalance();
+        uint256 finalJunior = GVT.trancheBalance();
         assertApproxEqRel(initialJunior + 100E18, finalJunior, 1E15);
         assertApproxEqRel(initialSenior + 50E18, finalSenior, 1E15);
 
@@ -82,16 +82,16 @@ contract TrancheTest is Test, BaseSetup {
         GVT.approve(address(gRouter), MAX_UINT);
         PWRD.approve(address(gRouter), MAX_UINT);
 
-        uint256 initialSenior = gTranche.trancheBalances(true);
-        uint256 initialJunior = gTranche.trancheBalances(false);
+        uint256 initialSenior = PWRD.trancheBalance();
+        uint256 initialJunior = GVT.trancheBalance();
 
         uint256 withdrawJunior = (100E18 * 1E18) / GVT.getPricePerShare();
 
         gRouter.withdraw(4000E18, 0, true, 0);
         gRouter.withdraw(withdrawJunior, 0, false, 0);
 
-        uint256 finalSenior = gTranche.trancheBalances(true);
-        uint256 finalJunior = gTranche.trancheBalances(false);
+        uint256 finalSenior = PWRD.trancheBalance();
+        uint256 finalJunior = GVT.trancheBalance();
         // assertApproxEqRel(initialJunior - 40E18, finalJunior, 1E16);
         // assertApproxEqRel(initialSenior - 20E18, finalSenior, 1E16);
 
@@ -132,7 +132,7 @@ contract TrancheTest is Test, BaseSetup {
         uint256 utilisation = gTranche.utilisation();
         uint256 BP = change % 10000;
         uint256 assets = gVault.totalAssets();
-        uint256 initialSeniorTrancheAssets = gTranche.trancheBalances(true);
+        uint256 initialSeniorTrancheAssets = PWRD.trancheBalance();
 
         if (_loss) {
             uint256 loss = assets - (assets * change) / 10000;
@@ -157,12 +157,12 @@ contract TrancheTest is Test, BaseSetup {
 
         // if (_loss) {
         //     if (change <= 5000) {
-        //         assertGe(gTranche.trancheBalances(true), initialSeniorTrancheAssets);
+        //         assertGe(PWRD.trancheBalance(), initialSeniorTrancheAssets);
         //     } else {
-        //         assertLe(gTranche.trancheBalances(true), initialSeniorTrancheAssets);
+        //         assertLe(PWRD.trancheBalance(), initialSeniorTrancheAssets);
         //     }
         // } else {
-        //     assertGe(gTranche.trancheBalances(true), initialSeniorTrancheAssets);
+        //     assertGe(PWRD.trancheBalance(), initialSeniorTrancheAssets);
         // }
     }
 
@@ -205,8 +205,8 @@ contract TrancheTest is Test, BaseSetup {
         uint256 utilisation = gTranche.utilisation();
         uint256 BP = change % 10000;
         uint256 assets = gVault.totalAssets();
-        uint256 initialSeniorTrancheAssets = gTranche.trancheBalances(true);
-        uint256 initialJuniorTrancheAssets = gTranche.trancheBalances(false);
+        uint256 initialSeniorTrancheAssets = PWRD.trancheBalance();
+        uint256 initialJuniorTrancheAssets = GVT.trancheBalance();
 
         vm.startPrank(BASED_ADDRESS);
         uint256 gain = assets + (assets * change) / BP;
@@ -234,8 +234,8 @@ contract TrancheTest is Test, BaseSetup {
             10;
         vm.stopPrank();
 
-        assertEq(gTranche.trancheBalances(true), initialSeniorTrancheAssets);
-        assertGt(gTranche.trancheBalances(false), initialJuniorTrancheAssets);
+        assertEq(PWRD.trancheBalance(), initialSeniorTrancheAssets);
+        assertGt(GVT.trancheBalance(), initialJuniorTrancheAssets);
     }
 
     function testwithdrawNoImpact(
@@ -256,8 +256,8 @@ contract TrancheTest is Test, BaseSetup {
 
         runDeposit(users, deposit, i, k);
 
-        uint256 seniorTotal = gTranche.trancheBalances(true);
-        uint256 juniorTotal = gTranche.trancheBalances(false);
+        uint256 seniorTotal = PWRD.trancheBalance();
+        uint256 juniorTotal = GVT.trancheBalance();
         uint256 totalWithdrawnSenior;
         uint256 totalWithdrawnJunior;
 
@@ -271,12 +271,12 @@ contract TrancheTest is Test, BaseSetup {
         }
 
         assertApproxEqAbs(
-            gTranche.trancheBalances(true),
+            PWRD.trancheBalance(),
             delta(seniorTotal, totalWithdrawnSenior),
             1E6
         );
         assertApproxEqAbs(
-            gTranche.trancheBalances(false),
+            GVT.trancheBalance(),
             delta(juniorTotal, totalWithdrawnJunior),
             1E6
         );
@@ -335,7 +335,7 @@ contract TrancheTest is Test, BaseSetup {
         uint256 JuniorTrancheAssets;
 
         for (uint256 l; l < k; l++) {
-            JuniorTrancheAssets = gTranche.trancheBalances(false);
+            JuniorTrancheAssets = GVT.trancheBalance();
             vm.startPrank(user);
             if (l + 1 == k) {
                 seniorAmountWithdrawn += _withdraw(
@@ -350,13 +350,9 @@ contract TrancheTest is Test, BaseSetup {
                     address(user)
                 );
             }
-            assertApproxEqAbs(
-                gTranche.trancheBalances(false),
-                JuniorTrancheAssets,
-                1E6
-            );
+            assertApproxEqAbs(GVT.trancheBalance(), JuniorTrancheAssets, 1E6);
 
-            SeniorTrancheAssets = gTranche.trancheBalances(true);
+            SeniorTrancheAssets = PWRD.trancheBalance();
             if (l + 1 == k) {
                 juniorAmountWithdrawn += _withdraw(
                     false,
@@ -371,11 +367,7 @@ contract TrancheTest is Test, BaseSetup {
                 );
             }
             vm.stopPrank();
-            assertApproxEqAbs(
-                gTranche.trancheBalances(true),
-                SeniorTrancheAssets,
-                1E6
-            );
+            assertApproxEqAbs(PWRD.trancheBalance(), SeniorTrancheAssets, 1E6);
         }
     }
 
@@ -386,8 +378,8 @@ contract TrancheTest is Test, BaseSetup {
         uint256 userSeniorAssets = PWRD.balanceOf(user);
         uint256 userJuniorAssets = GVT.balanceOf(user);
 
-        uint256 initialSeniorTrancheAssets = gTranche.trancheBalances(true);
-        uint256 initialJuniorTrancheAssets = gTranche.trancheBalances(false);
+        uint256 initialSeniorTrancheAssets = PWRD.trancheBalance();
+        uint256 initialJuniorTrancheAssets = GVT.trancheBalance();
 
         (withdrawnSenior, withdrawnJunior) = userWithdrawCheck(
             user,
@@ -397,12 +389,12 @@ contract TrancheTest is Test, BaseSetup {
         );
 
         assertApproxEqAbs(
-            gTranche.trancheBalances(false),
+            GVT.trancheBalance(),
             delta(initialJuniorTrancheAssets, withdrawnJunior),
             1E6
         );
         assertApproxEqAbs(
-            gTranche.trancheBalances(true),
+            PWRD.trancheBalance(),
             delta(initialSeniorTrancheAssets, withdrawnSenior),
             1E6
         );

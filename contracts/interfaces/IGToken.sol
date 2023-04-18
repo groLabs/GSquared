@@ -20,5 +20,9 @@ interface IGToken {
 
     function factor(uint256 amount) external view returns (uint256);
 
+    function setTrancheBalance(uint256 amount) external;
+
+    function trancheBalance() external view returns (uint256);
+
     function balanceOf(address user) external view returns (uint256);
 }
