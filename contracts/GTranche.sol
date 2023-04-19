@@ -231,7 +231,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
 
         yieldTokenAmounts = _calcTokenAmount(_index, calcAmount, false);
         tokenBalances[_index] -= yieldTokenAmounts;
-        trancheToken.burn(msg.sender, factor, calcAmount);
+        trancheToken.burn(msg.sender, calcAmount);
         token.transfer(_recipient, yieldTokenAmounts);
 
         emit LogNewWithdrawal(
@@ -296,8 +296,6 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
             if (_tranche) _totalValue[1] += calcAmount;
             else _totalValue[0] += calcAmount;
         }
-        IGToken(getTrancheToken(false)).setTrancheBalance(_totalValue[0]);
-        IGToken(getTrancheToken(true)).setTrancheBalance(_totalValue[1]);
 
         if (_totalValue[1] == 0) trancheUtilisation = 0;
         else

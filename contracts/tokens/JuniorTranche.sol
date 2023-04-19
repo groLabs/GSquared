@@ -118,9 +118,12 @@ contract JuniorTranche is GToken {
     {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
+        uint256 balance = trancheBalance();
         // Divide USD amount by factor to get number of tokens to mint
-        amount = applyFactor(amount, factor(), true);
-        _mint(account, amount, amount);
+        uint256 mintAmount = applyFactor(amount, factor(), true);
+        // Increase $ tranche balance before minting
+        _setTrancheBalance(balance + amount);
+        _mint(account, mintAmount, amount);
     }
 
     /// @notice Burn NonRebasingGTokens
@@ -133,9 +136,12 @@ contract JuniorTranche is GToken {
     {
         require(account != address(0), "burn: 0x");
         require(amount > 0, "Amount is zero.");
+        uint256 balance = trancheBalance();
         // Divide USD amount by factor to get number of tokens to burn
-        amount = applyFactor(amount, factor(), true);
-        _burn(account, amount, amount);
+        uint256 burnAmount = applyFactor(amount, factor(), true);
+        // Set new tranche balance before burning
+        _setTrancheBalance(balance - amount);
+        _burn(account, burnAmount, amount);
     }
 
     /// @notice Burn all tokens for user (used by withdraw all methods to avoid dust)

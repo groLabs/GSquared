@@ -115,9 +115,11 @@ contract SeniorTranche is GToken {
     {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
+        uint256 balance = trancheBalance();
         // Apply factor to amount to get rebase amount
         uint256 mintAmount = applyFactor(amount, factor(), true);
-        // uint256 mintAmount = amount.mul(_factor).div(BASE);
+        // Increase $ tranche balance before minting
+        _setTrancheBalance(balance + amount);
         _mint(account, mintAmount, amount);
     }
 
@@ -131,12 +133,10 @@ contract SeniorTranche is GToken {
     {
         require(account != address(0), "burn: 0x");
         require(amount > 0, "Amount is zero.");
+        uint256 balance = trancheBalance();
         // Apply factor to amount to get rebase amount
         uint256 burnAmount = applyFactor(amount, factor(), true);
-        console2.log("burnAmount", burnAmount);
-        console2.log("factor", factor());
-        console2.log("Tranche Balance:", trancheBalance());
-        // uint256 burnAmount = amount.mul(_factor).div(BASE);
+        _setTrancheBalance(balance - amount);
         _burn(account, burnAmount, amount);
     }
 

@@ -354,7 +354,6 @@ abstract contract GERC20 is Context, IERC20 {
         _decimals = decimals_;
     }
 
-    // TODO: Some accounting events?
     function _setTrancheBalance(uint256 amount) internal {
         _trancheBalance = amount;
     }
@@ -381,7 +380,6 @@ abstract contract GERC20 is Context, IERC20 {
 }
 
 interface IToken {
-    function setTrancheBalance(uint256 amount) external;
 
     function mint(address account, uint256 amount) external;
 
@@ -449,11 +447,6 @@ abstract contract GToken is GERC20, Constants, Whitelist, IToken {
         }
     }
 
-    function setTrancheBalance(uint256 amount) external {
-        _requireCallerIsGTranche();
-        _setTrancheBalance(amount);
-    }
-
     function getInitialBase() internal pure virtual returns (uint256) {
         return BASE;
     }
@@ -470,11 +463,5 @@ abstract contract GToken is GERC20, Constants, Whitelist, IToken {
 
         // This case is totalSupply > 0 && trancheBalance == 0, and only occurs on system loss
         return 0;
-    }
-
-    function _requireCallerIsGTranche() internal view {
-        if (msg.sender != gtrancheAddr) {
-            revert Errors.CallerNotGTranche();
-        }
     }
 }

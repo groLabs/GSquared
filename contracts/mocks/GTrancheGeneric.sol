@@ -244,8 +244,6 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
             if (_tranche) _totalValue[1] += calc_amount;
             else _totalValue[0] += calc_amount;
         }
-        IGToken(getTrancheToken(false)).setTrancheBalance(_totalValue[0]);
-        IGToken(getTrancheToken(true)).setTrancheBalance(_totalValue[1]);
 
         uint256 _utilisation = (_totalValue[1] * DEFAULT_DECIMALS) /
             (_totalValue[0] + 1);
