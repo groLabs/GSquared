@@ -451,6 +451,7 @@ abstract contract GToken is GERC20, Constants, Whitelist, IToken {
             resultant = resultant.add(1);
         }
     }
+
     // TODO: Make internal
     function factor() public view override returns (uint256) {
         if (totalSupplyBase() == 0) {
