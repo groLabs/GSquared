@@ -11,7 +11,6 @@ import "../common/Constants.sol";
 import {Errors} from "../common/Errors.sol";
 import "../common/Whitelist.sol";
 import "../interfaces/IERC20Detailed.sol";
-import "../interfaces/IController.sol";
 
 abstract contract GERC20 is Context, IERC20 {
     using Address for address;
@@ -384,8 +383,6 @@ abstract contract GERC20 is Context, IERC20 {
 interface IToken {
     function factor() external view returns (uint256);
 
-    function factor(uint256 totalAssets) external view returns (uint256);
-
     function setTrancheBalance(uint256 amount) external;
 
     function mint(
@@ -401,8 +398,6 @@ interface IToken {
     ) external;
 
     function burnAll(address account) external;
-
-    function totalAssets() external view returns (uint256);
 
     function getPricePerShare() external view returns (uint256);
 
@@ -428,18 +423,14 @@ abstract contract GToken is GERC20, Constants, Whitelist, IToken {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    IController public ctrl;
+    address public gtrancheAddr;
 
     constructor(string memory name, string memory symbol)
         GERC20(name, symbol, DEFAULT_DECIMALS)
     {}
 
-    function setController(address controller) external onlyOwner {
-        ctrl = IController(controller);
-    }
-
-    function factor() public view override returns (uint256) {
-        return factor(totalAssets());
+    function setGTranche(address trancheAddr) external onlyOwner {
+        gtrancheAddr = trancheAddr;
     }
 
     function applyFactor(
@@ -460,22 +451,17 @@ abstract contract GToken is GERC20, Constants, Whitelist, IToken {
             resultant = resultant.add(1);
         }
     }
-
-    function factor(uint256 _totalAssets)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    // TODO: Make internal
+    function factor() public view override returns (uint256) {
         if (totalSupplyBase() == 0) {
             return getInitialBase();
         }
 
-        if (_totalAssets > 0) {
-            return totalSupplyBase().mul(BASE).div(_totalAssets);
+        if (trancheBalance() > 0) {
+            return totalSupplyBase().mul(BASE).div(trancheBalance());
         }
 
-        // This case is totalSupply > 0 && totalAssets == 0, and only occurs on system loss
+        // This case is totalSupply > 0 && trancheBalance == 0, and only occurs on system loss
         return 0;
     }
 
@@ -484,16 +470,12 @@ abstract contract GToken is GERC20, Constants, Whitelist, IToken {
         _setTrancheBalance(amount);
     }
 
-    function totalAssets() public view override returns (uint256) {
-        return ctrl.gTokenTotalAssets();
-    }
-
     function getInitialBase() internal pure virtual returns (uint256) {
         return BASE;
     }
 
     function _requireCallerIsGTranche() internal view {
-        if (msg.sender != address(ctrl)) {
+        if (msg.sender != gtrancheAddr) {
             revert Errors.CallerNotGTranche();
         }
     }

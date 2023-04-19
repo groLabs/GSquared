@@ -118,7 +118,6 @@ contract SeniorTranche is GToken {
         require(account != address(0), "burnAll: 0x");
         uint256 burnAmount = balanceOfBase(account);
         uint256 amount = applyFactor(burnAmount, factor(), false);
-        // uint256 amount = burnAmount.mul(BASE).div(factor());
         // Apply factor to amount to get rebase amount
         _burn(account, burnAmount, amount);
     }

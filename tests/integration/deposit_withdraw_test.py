@@ -58,11 +58,10 @@ def gtranche(admin, gro_vault, junior_tranche_token, senior_tranche_token, oracl
         [gro_vault.address],
         [junior_tranche_token, senior_tranche_token],
         oracle.address,
-        ZERO_ADDRESS,
     )
-    junior_tranche_token.setController(gtranche.address, {"from": admin})
+    junior_tranche_token.setGTranche(gtranche.address, {"from": admin})
     junior_tranche_token.addToWhitelist(gtranche.address, {"from": admin})
-    senior_tranche_token.setController(gtranche.address, {"from": admin})
+    senior_tranche_token.setGTranche(gtranche.address, {"from": admin})
     senior_tranche_token.addToWhitelist(gtranche.address, {"from": admin})
     pnl = deploy_pnl(admin, gtranche)
     gtranche.setPnL(pnl)

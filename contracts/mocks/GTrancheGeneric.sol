@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IGTranche.sol";
 import "../interfaces/IOracle.sol";
 import "../utils/FixedTokens.sol";
-import "../GMigration.sol";
 
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \
@@ -60,7 +59,6 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
 
     // Module defining relations between underlying assets
     IOracle public immutable oracle;
-    GMigration private immutable gMigration;
 
     /*//////////////////////////////////////////////////////////////
                     STORAGE VARIABLES & TYPES
@@ -93,28 +91,12 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
 
     event LogNewRatio(uint256 newRatio);
 
-    event LogMigration(
-        uint256 JuniorTrancheBalance,
-        uint256 SeniorTrancheBalance,
-        uint256[] YieldTokenBalances
-    );
-
-    event LogMigration(
-        uint256 oldJuniorTrancheBalance,
-        uint256 oldSeniorTrancheBalance
-    );
-
-    event LogMigrationPrepared(address newGTranche);
-    event LogMigrationFinished(address newGTranche);
-
     constructor(
         address[] memory _yieldTokens,
         address[2] memory _trancheTokens,
-        address _oracle,
-        GMigration _gMigration
+        address _oracle
     ) FixedTokens(_yieldTokens, _trancheTokens) {
         oracle = IOracle(_oracle);
-        gMigration = _gMigration;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -394,101 +376,6 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
             tokenValues[i] = yieldTokenValues[i];
         }
         totalValue = oracle.getTotalValue(tokenValues);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                        Migration LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Migrates funds from the old gro protocol
-    /// @dev Can only be run once and from the gMigration contract
-    function migrateFromOldTranche() external onlyOwner {
-        require(!hasMigratedFromOldTranche, "Already Migrated");
-
-        // only one token in the initial version of the GTranche
-        uint256 token_index = NO_OF_TOKENS - 1;
-        ERC4626 token = ERC4626(getYieldToken(token_index));
-
-        uint256[] memory yieldTokenShares = new uint256[](NO_OF_TOKENS);
-        uint256 _shares = token.balanceOf(address(gMigration));
-        yieldTokenShares[token_index] = _shares;
-        uint256 seniorDollarAmount = gMigration.seniorTrancheDollarAmount();
-
-        // calculate yield token shares for seniorDollarAmount
-        uint256 seniorShares = _calcTokenAmount(0, seniorDollarAmount, true);
-        // get the amount of shares per tranche
-        uint256 juniorShares = _shares - seniorShares;
-
-        // calculate $ value of each tranche
-        uint256 juniorValue = _calcTokenValue(0, juniorShares, true);
-        uint256 seniorValue = _calcTokenValue(0, seniorShares, true);
-
-        // update yield token balances
-        tokenBalances[0] += _shares;
-        hasMigratedFromOldTranche = true;
-
-        token.transferFrom(address(gMigration), address(this), _shares);
-
-        updateDistribution(0, 0, true, false);
-
-        emit LogMigration(juniorValue, seniorValue, yieldTokenShares);
-    }
-
-    /// @notice Set the target for the migration
-    /// @dev This should be kept behind a timelock as the address could be any EOA
-    ///    which could drain funds. This function should ultimately be removed
-    /// @param _newGTranche address of new GTranche
-    function prepareMigration(address _newGTranche) external onlyOwner {
-        newGTranche = _newGTranche;
-        emit LogMigrationPrepared(_newGTranche);
-    }
-
-    /// @notice Transfer funds and update Tranches values
-    /// @dev Updates the state of the tranche post migration.
-    ///     This function should ultimately be removed
-    function finalizeMigration() external override {
-        require(msg.sender == newGTranche, "insert custom error here");
-        ERC4626 token;
-        for (uint256 index; index < NO_OF_TOKENS; index++) {
-            token = getYieldToken(index);
-            token.transfer(msg.sender, token.balanceOf(address(this)));
-            tokenBalances[index] = token.balanceOf(address(this));
-        }
-        updateDistribution(0, 0, true, false);
-        emit LogMigrationFinished(msg.sender);
-    }
-
-    /// @notice Migrate assets from old GTranche to new GTranche
-    /// @dev Assumes same mapping of yield tokens but you can have more at increased indexes
-    ///     in the new tranche. This function should be behind a timelock.
-    /// @param _oldGTranche address of the old GTranche
-    function migrate(address _oldGTranche) external onlyOwner {
-        GTranche oldTranche = GTranche(_oldGTranche);
-        IGToken juniorTranche = getTrancheToken(false);
-        IGToken seniorTranche = getTrancheToken(true);
-        uint256[] memory yieldTokenBalances = new uint256[](
-            oldTranche.NO_OF_TOKENS()
-        );
-
-        oldTranche.finalizeMigration();
-
-        uint256 oldBalance;
-        uint256 currentBalance;
-        for (uint256 index; index < NO_OF_TOKENS; index++) {
-            ERC4626 token = ERC4626(getYieldToken(index));
-            oldBalance = tokenBalances[index];
-            currentBalance = token.balanceOf(address(this));
-            tokenBalances[index] = currentBalance;
-            yieldTokenBalances[index] = currentBalance - oldBalance;
-        }
-
-        updateDistribution(0, 0, true, false);
-
-        emit LogMigration(
-            juniorTranche.trancheBalance(),
-            seniorTranche.trancheBalance(),
-            yieldTokenBalances
-        );
     }
 
     /*//////////////////////////////////////////////////////////////

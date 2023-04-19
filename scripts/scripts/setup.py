@@ -4,7 +4,6 @@ from distutils.util import strtobool
 
 from brownie import (
     CurveOracle,
-    GMigration,
     GRouter,
     GTranche,
     GVault,
@@ -77,13 +76,13 @@ def migration_data():
     data_payload[4] = gvt.addToWhitelist.encode_input(
         contract_data.get("GTranche", ZERO)
     )
-    data_payload[5] = gvt.setController.encode_input(
+    data_payload[5] = gvt.setGTranche.encode_input(
         contract_data.get("GTranche", ZERO)
     )
     data_payload[6] = pwrd.addToWhitelist.encode_input(
         contract_data.get("GTranche", ZERO)
     )
-    data_payload[7] = pwrd.setController.encode_input(
+    data_payload[7] = pwrd.setGTranche.encode_input(
         contract_data.get("GTranche", ZERO)
     )
 

@@ -162,9 +162,6 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
         }
     }
 
-    // Not used in mock
-    function finalizeMigration() external override {}
-
     // TODO update default profit distribution curve
     function _distributeProfit(uint256 _amount, uint256 _utilisation)
         internal
