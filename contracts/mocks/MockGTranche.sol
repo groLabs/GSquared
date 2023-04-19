@@ -62,7 +62,9 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
         if (_tranche)
             require(utilisation() <= utilisationThreshold, "!utilisation");
         trancheToken.mint(_recipient, calc_amount);
-        uint256 trancheAmount = trancheToken.getTokenAmountFromAssets(calc_amount);
+        uint256 trancheAmount = trancheToken.getTokenAmountFromAssets(
+            calc_amount
+        );
         emit LogNewDeposit(msg.sender, _recipient, _amount, _index, _tranche);
         return (trancheAmount, calc_amount);
     }

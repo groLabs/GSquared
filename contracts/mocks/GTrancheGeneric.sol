@@ -150,7 +150,10 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
         IGToken trancheToken = getTrancheToken(_tranche);
         trancheToken.mint(_recipient, calc_amount);
         emit LogNewDeposit(msg.sender, _recipient, _amount, _index, _tranche);
-        return (trancheToken.getTokenAmountFromAssets(calc_amount), calc_amount);
+        return (
+            trancheToken.getTokenAmountFromAssets(calc_amount),
+            calc_amount
+        );
     }
 
     /// @notice Handles withdrawal logic:
