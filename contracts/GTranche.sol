@@ -9,7 +9,7 @@ import {ERC4626} from "./tokens/ERC4626.sol";
 import {Errors} from "./common/Errors.sol";
 import {FixedTokensCurve} from "./utils/FixedTokensCurve.sol";
 import {IGToken} from "./interfaces/IGToken.sol";
-
+import {console2} from "../lib/forge-std/src/console2.sol";
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \
 //  \ \  \___|\ \  \|\  \ \  \|\  \
@@ -155,12 +155,11 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     ) external override returns (uint256 trancheAmount, uint256 calcAmount) {
         ERC4626 token = getYieldToken(_index);
         token.transferFrom(msg.sender, address(this), _amount);
-
-        uint256 factor;
+        IGToken trancheToken = getTrancheToken(_tranche);
         uint256 trancheUtilisation;
 
         // update value of current tranches - this prevents front-running of profits
-        (trancheUtilisation, calcAmount, factor) = updateDistribution(
+        (trancheUtilisation, calcAmount) = updateDistribution(
             _amount,
             _index,
             _tranche,
@@ -176,7 +175,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
 
         tokenBalances[_index] += _amount;
         // Mint tranche tokens base on _tranche choice
-        IGToken(getTrancheToken(_tranche)).mint(_recipient, factor, calcAmount);
+        trancheToken.mint(_recipient, calcAmount);
         emit LogNewDeposit(
             msg.sender,
             _recipient,
@@ -185,8 +184,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
             _tranche,
             calcAmount
         );
-        if (_tranche) trancheAmount = calcAmount;
-        else trancheAmount = (calcAmount * factor) / DEFAULT_FACTOR;
+        trancheAmount = trancheToken.getTokenAmountFromAssets(calcAmount);
     }
 
     /// @notice Handles withdrawal logic:
@@ -217,11 +215,10 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         }
         ERC4626 token = getYieldToken(_index);
 
-        uint256 factor;
         uint256 trancheUtilisation;
 
         // update value of current tranches - this prevents front-running of losses
-        (trancheUtilisation, calcAmount, factor) = updateDistribution(
+        (trancheUtilisation, calcAmount) = updateDistribution(
             _amount,
             _index,
             _tranche,
@@ -234,7 +231,6 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
 
         yieldTokenAmounts = _calcTokenAmount(_index, calcAmount, false);
         tokenBalances[_index] -= yieldTokenAmounts;
-
         trancheToken.burn(msg.sender, factor, calcAmount);
         token.transfer(_recipient, yieldTokenAmounts);
 
@@ -274,31 +270,25 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     /// @param _withdraw withdrawal or deposit
     /// @return trancheUtilisation current utilisation of the two tranches (senior / junior)
     /// @return calcAmount value of tranche token in common denominator (USD)
-    /// @return factor factor applied to the tranche token
     function updateDistribution(
         uint256 _amount,
         uint256 _index,
         bool _tranche,
         bool _withdraw
-    )
-        internal
-        returns (
-            uint256 trancheUtilisation,
-            uint256 calcAmount,
-            uint256 factor
-        )
-    {
+    ) internal returns (uint256 trancheUtilisation, uint256 calcAmount) {
         (
             uint256[NO_OF_TRANCHES] memory _totalValue,
             int256 profit,
             int256 loss
         ) = _pnlDistribution();
         IGToken gtoken = getTrancheToken(_tranche);
-        factor = gtoken.factor();
         if (_withdraw) {
-            calcAmount = _tranche
-                ? _amount
-                : _calcTrancheValue(_tranche, _amount, factor, _totalValue[0]);
+            calcAmount = gtoken.getTokenAssets(_amount);
+            // To not over withdraw, we need to check if the amount to withdraw is greater than the
+            // total value of the tranche
+            if (_tranche == false && calcAmount > _totalValue[0]) {
+                calcAmount = _totalValue[0];
+            }
             if (_tranche) _totalValue[1] -= calcAmount;
             else _totalValue[0] -= calcAmount;
         } else {
@@ -316,7 +306,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
                 : type(uint256).max;
         emit LogNewTrancheBalance(_totalValue, trancheUtilisation);
         emit LogNewPnL(profit, loss);
-        return (trancheUtilisation, calcAmount, factor);
+        return (trancheUtilisation, calcAmount);
     }
 
     /// @notice View of current asset distribution
@@ -453,29 +443,5 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
             tokenValues[i] = yieldTokenValues[i];
         }
         totalValue = oracle.getTotalValue(tokenValues);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                        Legacy logic (GTokens)
-    //////////////////////////////////////////////////////////////*/
-
-    // Current BASE of legacy GVT (Junior tranche token)
-    uint256 internal constant JUNIOR_INIT_BASE = 5000000000000000;
-
-    /// @notice calculate the number of tokens for the given amount
-    /// @param _tranche junior or senior tranche
-    /// @param _amount amount to transform to tranche tokens
-    /// @param _factor factor applied to tranche token
-    /// @param _total total value in tranche
-    function _calcTrancheValue(
-        bool _tranche,
-        uint256 _amount,
-        uint256 _factor,
-        uint256 _total
-    ) internal view returns (uint256 amount) {
-        if (_factor == 0) revert Errors.NoAssets();
-        amount = (_amount * DEFAULT_FACTOR) / _factor;
-        if (amount > _total) return _total;
-        return amount;
     }
 }

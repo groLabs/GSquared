@@ -79,39 +79,62 @@ contract JuniorTranche is GToken {
         return getShareAssets(balanceOf(account));
     }
 
+    /// @notice calculate USD value of a set amount of Tranche tokens
+    /// @param amount Amount of Tranche token
+    /// @return USD value of amount
+    function getTokenAssets(uint256 amount)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        uint256 f = factor();
+        return f > 0 ? applyFactor(amount, f, false) : 0;
+    }
+
+    /// @notice calculate amount of Tranche tokens for a set USD(or any other commonly denominated) value
+    /// @param assets USD(or any other commonly denominated) value
+    /// @return Amount of Tranche tokens
+    function getTokenAmountFromAssets(uint256 assets)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        return applyFactor(assets, factor(), true);
+    }
+
     function getInitialBase() internal pure override returns (uint256) {
         return INIT_BASE;
     }
 
     /// @notice Mint NonRebasingGTokens
     /// @param account Target account
-    /// @param _factor factor to use for mint
     /// @param amount Mint amount in USD
-    function mint(
-        address account,
-        uint256 _factor,
-        uint256 amount
-    ) external override onlyWhitelist {
+    function mint(address account, uint256 amount)
+        external
+        override
+        onlyWhitelist
+    {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
         // Divide USD amount by factor to get number of tokens to mint
-        amount = applyFactor(amount, _factor, true);
+        amount = applyFactor(amount, factor(), true);
         _mint(account, amount, amount);
     }
 
     /// @notice Burn NonRebasingGTokens
     /// @param account Target account
-    /// @param _factor Factor to use for mint
     /// @param amount Burn amount in USD
-    function burn(
-        address account,
-        uint256 _factor,
-        uint256 amount
-    ) external override onlyWhitelist {
+    function burn(address account, uint256 amount)
+        external
+        override
+        onlyWhitelist
+    {
         require(account != address(0), "burn: 0x");
         require(amount > 0, "Amount is zero.");
         // Divide USD amount by factor to get number of tokens to burn
-        amount = applyFactor(amount, _factor, true);
+        amount = applyFactor(amount, factor(), true);
         _burn(account, amount, amount);
     }
 

@@ -148,13 +148,9 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
             require(_utilisation <= utilisationThreshold, "!utilisation");
         tokenBalances[_index] += _amount;
         IGToken trancheToken = getTrancheToken(_tranche);
-        uint256 factor = trancheToken.factor();
-        trancheToken.mint(_recipient, factor, calc_amount);
+        trancheToken.mint(_recipient, calc_amount);
         emit LogNewDeposit(msg.sender, _recipient, _amount, _index, _tranche);
-        uint256 trancheAmount;
-        if (_tranche) trancheAmount = calc_amount;
-        else trancheAmount = (calc_amount * factor) / DEFAULT_FACTOR;
-        return (trancheAmount, calc_amount);
+        return (trancheToken.getTokenAmountFromAssets(calc_amount), calc_amount);
     }
 
     /// @notice Handles withdrawal logic:
@@ -175,8 +171,6 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
         IGToken trancheToken = getTrancheToken(_tranche);
 
         require(_amount <= trancheToken.balanceOf(msg.sender), "balance");
-        // get factor before changing total assets
-        uint256 factor = trancheToken.factor();
 
         // update value of current tranches - this prevents front-running of losses
         (uint256 _utilisation, uint256 calc_amount) = updateDistribution(
@@ -195,7 +189,7 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
         );
         tokenBalances[_index] -= yieldTokenAmounts;
 
-        trancheToken.burn(msg.sender, factor, calc_amount);
+        trancheToken.burn(msg.sender, calc_amount);
 
         ERC4626(getYieldToken(_index)).transfer(msg.sender, yieldTokenAmounts);
 
@@ -235,12 +229,14 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
     ) internal returns (uint256, uint256) {
         uint256 calc_amount;
         uint256[NO_OF_TRANCHES] memory _totalValue = pnlDistribution();
-        IGToken juniorTranche = getTrancheToken(false);
-        IGToken seniorTranche = getTrancheToken(true);
+        IGToken gtoken = getTrancheToken(_tranche);
         if (_withdraw) {
-            calc_amount = _tranche
-                ? _amount
-                : _calcTrancheValue(_tranche, _amount, _totalValue[0]);
+            calc_amount = gtoken.getTokenAssets(_amount);
+            // To not over withdraw, we need to check if the amount to withdraw is greater than the
+            // total value of the tranche
+            if (_tranche == false && calc_amount > _totalValue[0]) {
+                calc_amount = _totalValue[0];
+            }
             if (_tranche) _totalValue[1] -= calc_amount;
             else _totalValue[0] -= calc_amount;
         } else {
@@ -248,8 +244,8 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
             if (_tranche) _totalValue[1] += calc_amount;
             else _totalValue[0] += calc_amount;
         }
-        seniorTranche.setTrancheBalance(_totalValue[1]);
-        juniorTranche.setTrancheBalance(_totalValue[0]);
+        IGToken(getTrancheToken(false)).setTrancheBalance(_totalValue[0]);
+        IGToken(getTrancheToken(true)).setTrancheBalance(_totalValue[1]);
 
         uint256 _utilisation = (_totalValue[1] * DEFAULT_DECIMALS) /
             (_totalValue[0] + 1);
@@ -376,37 +372,5 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
             tokenValues[i] = yieldTokenValues[i];
         }
         totalValue = oracle.getTotalValue(tokenValues);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                        Legacy logic (GTokens)
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice This function exists to support the older versions of the GToken
-    ///     return value of underlying token based on caller
-    function gTokenTotalAssets() external view returns (uint256) {
-        uint256[NO_OF_TRANCHES] memory _totalValue = pnlDistribution();
-        if (msg.sender == JUNIOR_TRANCHE) return _totalValue[0];
-        else if (msg.sender == SENIOR_TRANCHE) return _totalValue[1];
-        else return _totalValue[0] + _totalValue[1];
-    }
-
-    /// @notice Calculate the number of tokens for the given amount
-    /// @param _tranche junior or senior tranche
-    /// @param _amount amount to transform to tranche tokens
-    /// @param _total total value in tranche
-    function _calcTrancheValue(
-        bool _tranche,
-        uint256 _amount,
-        uint256 _total
-    ) internal view returns (uint256) {
-        uint256 factor = getTrancheToken(_tranche).factor(_total);
-        return (_amount * DEFAULT_FACTOR) / factor;
-    }
-
-    /// @notice Legacy calculation of tranche tokens base factor
-    /// @param _tranche junior or senior tranche
-    function _tranche_base(bool _tranche) internal pure returns (uint256) {
-        return _tranche ? DEFAULT_FACTOR : DEFAULT_FACTOR;
     }
 }

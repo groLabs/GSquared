@@ -381,27 +381,24 @@ abstract contract GERC20 is Context, IERC20 {
 }
 
 interface IToken {
-    function factor() external view returns (uint256);
-
     function setTrancheBalance(uint256 amount) external;
 
-    function mint(
-        address account,
-        uint256 _factor,
-        uint256 amount
-    ) external;
+    function mint(address account, uint256 amount) external;
 
-    function burn(
-        address account,
-        uint256 _factor,
-        uint256 amount
-    ) external;
+    function burn(address account, uint256 amount) external;
 
     function burnAll(address account) external;
 
     function getPricePerShare() external view returns (uint256);
 
     function getShareAssets(uint256 shares) external view returns (uint256);
+
+    function getTokenAssets(uint256 amount) external view returns (uint256);
+
+    function getTokenAmountFromAssets(uint256 assets)
+        external
+        view
+        returns (uint256);
 
     function getAssets(address account) external view returns (uint256);
 }
@@ -452,8 +449,17 @@ abstract contract GToken is GERC20, Constants, Whitelist, IToken {
         }
     }
 
-    // TODO: Make internal
-    function factor() public view override returns (uint256) {
+    function setTrancheBalance(uint256 amount) external {
+        _requireCallerIsGTranche();
+        _setTrancheBalance(amount);
+    }
+
+    function getInitialBase() internal pure virtual returns (uint256) {
+        return BASE;
+    }
+
+    // Factor of the GTranche. Depends on how much assets are locked in the GTranche
+    function factor() internal view returns (uint256) {
         if (totalSupplyBase() == 0) {
             return getInitialBase();
         }
@@ -464,15 +470,6 @@ abstract contract GToken is GERC20, Constants, Whitelist, IToken {
 
         // This case is totalSupply > 0 && trancheBalance == 0, and only occurs on system loss
         return 0;
-    }
-
-    function setTrancheBalance(uint256 amount) external {
-        _requireCallerIsGTranche();
-        _setTrancheBalance(amount);
-    }
-
-    function getInitialBase() internal pure virtual returns (uint256) {
-        return BASE;
     }
 
     function _requireCallerIsGTranche() internal view {

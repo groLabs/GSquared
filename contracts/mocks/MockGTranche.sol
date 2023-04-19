@@ -54,7 +54,6 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
         ERC4626 token = ERC4626(getYieldToken(_index));
         token.transferFrom(msg.sender, address(this), _amount);
         GToken trancheToken = getTrancheToken(_tranche);
-        uint256 factor = trancheToken.factor();
 
         token_balances[_index] += _amount;
 
@@ -62,10 +61,8 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
         tranche_balances[_tranche] += calc_amount;
         if (_tranche)
             require(utilisation() <= utilisationThreshold, "!utilisation");
-        trancheToken.mint(_recipient, trancheToken.factor(), calc_amount);
-        uint256 trancheAmount;
-        if (_tranche) trancheAmount = calc_amount;
-        else trancheAmount = (calc_amount * factor) / DEFAULT_FACTOR;
+        trancheToken.mint(_recipient, calc_amount);
+        uint256 trancheAmount = trancheToken.getTokenAmountFromAssets(calc_amount);
         emit LogNewDeposit(msg.sender, _recipient, _amount, _index, _tranche);
         return (trancheAmount, calc_amount);
     }
@@ -82,7 +79,7 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
         ERC4626 token = ERC4626(getYieldToken(_index));
         uint256 calc_amount = _calcTokenValue(_index, _amount, false);
 
-        trancheToken.burn(msg.sender, trancheToken.factor(), calc_amount);
+        trancheToken.burn(msg.sender, calc_amount);
         tranche_balances[_tranche] -= calc_amount;
         if (!_tranche) require(utilisation() <= utilisationThreshold);
         token_balances[_index] -= _amount;
@@ -190,17 +187,5 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
             tokenValues[i] = yieldTokenValues[i];
         }
         totalValue = oracle.getTotalValue(tokenValues);
-    }
-
-    /////////////////////////////// LEGACY ////////////////////////////////////////////////
-    function gTokenTotalAssets() external view returns (uint256) {
-        if (msg.sender == JUNIOR_TRANCHE)
-            return tranche_balances[JUNIOR_TRANCHE_ID];
-        else if (msg.sender == SENIOR_TRANCHE)
-            return tranche_balances[SENIOR_TRANCHE_ID];
-        else
-            return
-                tranche_balances[JUNIOR_TRANCHE_ID] +
-                tranche_balances[SENIOR_TRANCHE_ID];
     }
 }

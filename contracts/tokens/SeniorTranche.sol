@@ -2,6 +2,7 @@
 pragma solidity 0.8.10;
 
 import "./GToken.sol";
+import {console2} from "../../lib/forge-std/src/console2.sol";
 
 /// @notice Rebasing token implementation of the GToken.
 ///     This contract defines the PWRD Stablecoin (pwrd) - A yield bearing stable coin used in
@@ -78,36 +79,63 @@ contract SeniorTranche is GToken {
         return balanceOf(account);
     }
 
+    /// @notice calculate USD value of a set amount of Tranche tokens
+    /// @param amount Amount of Tranche token
+    /// Note: for Senior tranch amount is already denominated in common denominator
+    /// @return USD value of amount
+    function getTokenAssets(uint256 amount)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        return amount;
+    }
+
+    /// @notice calculate amount of Tranche tokens for a set USD(or any other commonly denominated) value
+    /// @param assets USD(or any other commonly denominated) value
+    /// Note: for Senior tranch amount is already denominated in common denominator
+    /// @return Amount of Tranche tokens
+    function getTokenAmountFromAssets(uint256 assets)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        return assets;
+    }
+
     /// @notice Mint RebasingGTokens
     /// @param account Target account
-    /// @param _factor Factor to use for mint
     /// @param amount Mint amount in USD
-    function mint(
-        address account,
-        uint256 _factor,
-        uint256 amount
-    ) external override onlyWhitelist {
+    function mint(address account, uint256 amount)
+        external
+        override
+        onlyWhitelist
+    {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
         // Apply factor to amount to get rebase amount
-        uint256 mintAmount = applyFactor(amount, _factor, true);
+        uint256 mintAmount = applyFactor(amount, factor(), true);
         // uint256 mintAmount = amount.mul(_factor).div(BASE);
         _mint(account, mintAmount, amount);
     }
 
     /// @notice Burn RebasingGTokens
     /// @param account Target account
-    /// @param _factor Factor to use for mint
     /// @param amount Burn amount in USD
-    function burn(
-        address account,
-        uint256 _factor,
-        uint256 amount
-    ) external override onlyWhitelist {
+    function burn(address account, uint256 amount)
+        external
+        override
+        onlyWhitelist
+    {
         require(account != address(0), "burn: 0x");
         require(amount > 0, "Amount is zero.");
         // Apply factor to amount to get rebase amount
-        uint256 burnAmount = applyFactor(amount, _factor, true);
+        uint256 burnAmount = applyFactor(amount, factor(), true);
+        console2.log("burnAmount", burnAmount);
+        console2.log("factor", factor());
+        console2.log("Tranche Balance:", trancheBalance());
         // uint256 burnAmount = amount.mul(_factor).div(BASE);
         _burn(account, burnAmount, amount);
     }
@@ -135,7 +163,6 @@ contract SeniorTranche is GToken {
     ) public virtual override returns (bool) {
         super._decreaseApproved(sender, msg.sender, amount);
         uint256 transferAmount = applyFactor(amount, factor(), true);
-        // amount.mul(factor()).div(BASE)
         super._transfer(sender, recipient, transferAmount, amount);
         return true;
     }
