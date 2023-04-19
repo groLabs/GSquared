@@ -27,7 +27,7 @@ token_data = {
 
 @pytest.fixture(scope="function")
 def tranche(accounts, tokens, gTokens, mockOracle):
-    tranche = accounts[0].deploy(GTranche, tokens, gTokens, mockOracle, ZERO_ADDRESS)
+    tranche = accounts[0].deploy(GTranche, tokens, gTokens, mockOracle)
     gTokens[0].setGTranche(tranche.address, {"from": accounts[0]})
     gTokens[0].addToWhitelist(tranche.address, {"from": accounts[0]})
     gTokens[1].setGTranche(tranche.address, {"from": accounts[0]})
@@ -39,7 +39,7 @@ def tranche(accounts, tokens, gTokens, mockOracle):
 
 @pytest.fixture(scope="function")
 def tranche_fixed_rate(accounts, tokens, gTokens, mockOracle):
-    tranche = accounts[0].deploy(GTranche, tokens, gTokens, mockOracle, ZERO_ADDRESS)
+    tranche = accounts[0].deploy(GTranche, tokens, gTokens, mockOracle)
     gTokens[0].setGTranche(tranche.address, {"from": accounts[0]})
     gTokens[0].addToWhitelist(tranche.address, {"from": accounts[0]})
     gTokens[1].setGTranche(tranche.address, {"from": accounts[0]})
@@ -51,7 +51,7 @@ def tranche_fixed_rate(accounts, tokens, gTokens, mockOracle):
 
 @pytest.fixture(scope="function")
 def tranche_integration(accounts, gro_vault, gTokens, oracle):
-    tranche = accounts[0].deploy(GTranche, [gro_vault], gTokens, oracle, ZERO_ADDRESS)
+    tranche = accounts[0].deploy(GTranche, [gro_vault], gTokens, oracle)
     gTokens[0].setGTranche(tranche.address, {"from": accounts[0]})
     gTokens[0].addToWhitelist(tranche.address, {"from": accounts[0]})
     gTokens[1].setGTranche(tranche.address, {"from": accounts[0]})
