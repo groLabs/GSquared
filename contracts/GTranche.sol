@@ -294,6 +294,12 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
             int256 profit,
             int256 loss
         ) = _pnlDistribution();
+        // _totalValueWithDistribution - copied array to be mutated with tranche balance applied
+        uint256[NO_OF_TRANCHES] memory _totalValueWithDistribution;
+        // Copy array:
+        for (uint256 i = 0; i < _totalValue.length; ++i) {
+            _totalValueWithDistribution[i] = _totalValue[i];
+        }
         IGToken gtoken = getTrancheToken(_tranche);
         if (_withdraw) {
             calcAmount = gtoken.getTokenAssets(_amount);
@@ -302,21 +308,26 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
             if (_tranche == false && calcAmount > _totalValue[0]) {
                 calcAmount = _totalValue[0];
             }
-            if (_tranche) _totalValue[1] -= calcAmount;
-            else _totalValue[0] -= calcAmount;
+            if (_tranche) _totalValueWithDistribution[1] -= calcAmount;
+            else _totalValueWithDistribution[0] -= calcAmount;
         } else {
             calcAmount = _calcTokenValue(_index, _amount, true);
-            if (_tranche) _totalValue[1] += calcAmount;
-            else _totalValue[0] += calcAmount;
+            if (_tranche) _totalValueWithDistribution[1] += calcAmount;
+            else _totalValueWithDistribution[0] += calcAmount;
         }
 
-        if (_totalValue[1] == 0) trancheUtilisation = 0;
+        if (_totalValueWithDistribution[1] == 0) trancheUtilisation = 0;
         else
-            trancheUtilisation = _totalValue[0] > 0
-                ? (_totalValue[1] * DEFAULT_DECIMALS) / (_totalValue[0])
+            trancheUtilisation = _totalValueWithDistribution[0] > 0
+                ? (_totalValueWithDistribution[1] * DEFAULT_DECIMALS) /
+                    (_totalValueWithDistribution[0])
                 : type(uint256).max;
-        emit LogNewTrancheBalance(_totalValue, trancheUtilisation);
+        emit LogNewTrancheBalance(
+            _totalValueWithDistribution,
+            trancheUtilisation
+        );
         emit LogNewPnL(profit, loss);
+        // _totalValue doesn't have values modified by calcAmount
         return (trancheUtilisation, calcAmount, _totalValue);
     }
 

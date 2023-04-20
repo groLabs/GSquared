@@ -108,7 +108,7 @@ contract SeniorTranche is GToken {
     /// @notice Mint RebasingGTokens
     /// @param account Target account
     /// @param amount Mint amount in USD
-    /// @param totalTrancheValue Total value of tranche in USD
+    /// @param totalTrancheValue Total value of tranche in USD - amount
     function mint(
         address account,
         uint256 amount,
@@ -118,14 +118,15 @@ contract SeniorTranche is GToken {
         require(amount > 0, "Amount is zero.");
         // Apply factor to amount to get rebase amount
         uint256 mintAmount = applyFactor(amount, factor(), true);
-        _setTrancheBalance(totalTrancheValue);
+        // Update tranche balance with new amount + pnl balance
+        _setTrancheBalance(totalTrancheValue + amount);
         _mint(account, mintAmount, amount);
     }
 
     /// @notice Burn NonRebasingGTokens
     /// @param account Target account
     /// @param amount Burn amount in USD
-    /// @param totalTrancheValue Total value of tranche in USD
+    /// @param totalTrancheValue Total value of tranche in USD - amount
     function burn(
         address account,
         uint256 amount,
@@ -135,7 +136,8 @@ contract SeniorTranche is GToken {
         require(amount > 0, "Amount is zero.");
         // Apply factor to amount to get rebase amount
         uint256 burnAmount = applyFactor(amount, factor(), true);
-        _setTrancheBalance(totalTrancheValue);
+        // Update tranche balance with pnl balance - new amount
+        _setTrancheBalance(totalTrancheValue - amount);
         _burn(account, burnAmount, amount);
     }
 
