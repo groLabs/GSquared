@@ -21,6 +21,7 @@ library Errors {
     error UtilisationTooHigh(); // 0x01dbe4de
     error MsgSenderNotTranche(); // 0x7cda3092
     error NoAssets(); // 0x5373815f
+    error LTMinDepositLimit(); // 0x17fb9506
 
     // GVault
     error InsufficientShares(); // 0x39996567
