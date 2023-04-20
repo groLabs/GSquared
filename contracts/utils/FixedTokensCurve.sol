@@ -80,7 +80,8 @@ contract FixedTokensCurve {
     //////////////////////////////////////////////////////////////*/
 
     event LogNewTrancheBalance(
-        uint256[NO_OF_TRANCHES] balances,
+        uint256 _juniorTrancheBalance,
+        uint256 _seniorTrancheBalance,
         uint256 _utilisation
     );
 

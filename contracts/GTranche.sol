@@ -294,36 +294,41 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
             int256 profit,
             int256 loss
         ) = _pnlDistribution();
-        // _totalValueWithDistribution - copied array to be mutated with tranche balance applied
-        uint256[NO_OF_TRANCHES] memory _totalValueWithDistribution;
-        // Copy array:
-        for (uint256 i = 0; i < _totalValue.length; ++i) {
-            _totalValueWithDistribution[i] = _totalValue[i];
-        }
         IGToken gtoken = getTrancheToken(_tranche);
+        calcAmount = _withdraw
+            ? gtoken.getTokenAssets(_amount)
+            : _calcTokenValue(_index, _amount, true);
         if (_withdraw) {
-            calcAmount = gtoken.getTokenAssets(_amount);
+            uint256 trancheAmount = _tranche ? _totalValue[1] : _totalValue[0];
             // To not over withdraw, we need to check if the amount to withdraw is greater than the
             // total value of the tranche
-            if (_tranche == false && calcAmount > _totalValue[0]) {
-                calcAmount = _totalValue[0];
+            if (calcAmount > trancheAmount) {
+                calcAmount = trancheAmount;
             }
-            if (_tranche) _totalValueWithDistribution[1] -= calcAmount;
-            else _totalValueWithDistribution[0] -= calcAmount;
-        } else {
-            calcAmount = _calcTokenValue(_index, _amount, true);
-            if (_tranche) _totalValueWithDistribution[1] += calcAmount;
-            else _totalValueWithDistribution[0] += calcAmount;
         }
-
-        if (_totalValueWithDistribution[1] == 0) trancheUtilisation = 0;
+        uint256 juniorValueWithDistribution;
+        uint256 seniorValueWithDistribution;
+        // Apply _amount to total USD tranche value to calculate distribution
+        if (_tranche) {
+            juniorValueWithDistribution = _totalValue[0];
+            seniorValueWithDistribution = _withdraw
+                ? _totalValue[1] - calcAmount
+                : _totalValue[1] + calcAmount;
+        } else {
+            juniorValueWithDistribution = _withdraw
+                ? _totalValue[0] - calcAmount
+                : _totalValue[0] + calcAmount;
+            seniorValueWithDistribution = _totalValue[1];
+        }
+        if (seniorValueWithDistribution == 0) trancheUtilisation = 0;
         else
-            trancheUtilisation = _totalValueWithDistribution[0] > 0
-                ? (_totalValueWithDistribution[1] * DEFAULT_DECIMALS) /
-                    (_totalValueWithDistribution[0])
+            trancheUtilisation = juniorValueWithDistribution > 0
+                ? (seniorValueWithDistribution * DEFAULT_DECIMALS) /
+                    (juniorValueWithDistribution)
                 : type(uint256).max;
         emit LogNewTrancheBalance(
-            _totalValueWithDistribution,
+            juniorValueWithDistribution,
+            seniorValueWithDistribution,
             trancheUtilisation
         );
         emit LogNewPnL(profit, loss);
