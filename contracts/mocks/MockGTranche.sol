@@ -61,7 +61,7 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
         tranche_balances[_tranche] += calc_amount;
         if (_tranche)
             require(utilisation() <= utilisationThreshold, "!utilisation");
-        trancheToken.mint(_recipient, calc_amount);
+        trancheToken.mint(_recipient, calc_amount, calc_amount);
         uint256 trancheAmount = trancheToken.getTokenAmountFromAssets(
             calc_amount
         );
@@ -81,7 +81,7 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
         ERC4626 token = ERC4626(getYieldToken(_index));
         uint256 calc_amount = _calcTokenValue(_index, _amount, false);
 
-        trancheToken.burn(msg.sender, calc_amount);
+        trancheToken.burn(msg.sender, calc_amount, calc_amount);
         tranche_balances[_tranche] -= calc_amount;
         if (!_tranche) require(utilisation() <= utilisationThreshold);
         token_balances[_index] -= _amount;

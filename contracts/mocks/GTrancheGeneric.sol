@@ -136,19 +136,20 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
     ) external override returns (uint256, uint256) {
         ERC4626 token = ERC4626(getYieldToken(_index));
         token.transferFrom(msg.sender, address(this), _amount);
-
         // update value of current tranches - this prevents front-running of profits
-        (uint256 _utilisation, uint256 calc_amount) = updateDistribution(
-            _amount,
-            _index,
-            _tranche,
-            false
-        );
+        (
+            uint256 _utilisation,
+            uint256 calc_amount,
+            uint256[NO_OF_TRANCHES] memory _totalValue
+        ) = updateDistribution(_amount, _index, _tranche, false);
         if (_tranche)
             require(_utilisation <= utilisationThreshold, "!utilisation");
         tokenBalances[_index] += _amount;
         IGToken trancheToken = getTrancheToken(_tranche);
-        trancheToken.mint(_recipient, calc_amount);
+        // Mint and pass full tranche denominated value so it's balance can be updated inside token
+        _tranche
+            ? trancheToken.mint(_recipient, calc_amount, _totalValue[1])
+            : trancheToken.mint(_recipient, calc_amount, _totalValue[0]);
         emit LogNewDeposit(msg.sender, _recipient, _amount, _index, _tranche);
         return (
             trancheToken.getTokenAmountFromAssets(calc_amount),
@@ -176,12 +177,11 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
         require(_amount <= trancheToken.balanceOf(msg.sender), "balance");
 
         // update value of current tranches - this prevents front-running of losses
-        (uint256 _utilisation, uint256 calc_amount) = updateDistribution(
-            _amount,
-            _index,
-            _tranche,
-            true
-        );
+        (
+            uint256 _utilisation,
+            uint256 calc_amount,
+            uint256[NO_OF_TRANCHES] memory _totalValue
+        ) = updateDistribution(_amount, _index, _tranche, false);
         if (!_tranche)
             require(_utilisation <= utilisationThreshold, "!utilisation");
 
@@ -192,7 +192,10 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
         );
         tokenBalances[_index] -= yieldTokenAmounts;
 
-        trancheToken.burn(msg.sender, calc_amount);
+        // Burn and pass full tranche denominated value so it's balance can be updated inside token
+        _tranche
+            ? trancheToken.burn(_recipient, calc_amount, _totalValue[1])
+            : trancheToken.burn(_recipient, calc_amount, _totalValue[0]);
 
         ERC4626(getYieldToken(_index)).transfer(msg.sender, yieldTokenAmounts);
 
@@ -229,7 +232,14 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
         uint256 _index,
         bool _tranche,
         bool _withdraw
-    ) internal returns (uint256, uint256) {
+    )
+        internal
+        returns (
+            uint256,
+            uint256,
+            uint256[NO_OF_TRANCHES] memory
+        )
+    {
         uint256 calc_amount;
         uint256[NO_OF_TRANCHES] memory _totalValue = pnlDistribution();
         IGToken gtoken = getTrancheToken(_tranche);
@@ -251,7 +261,7 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
         uint256 _utilisation = (_totalValue[1] * DEFAULT_DECIMALS) /
             (_totalValue[0] + 1);
         emit LogNewTrancheBalance(_totalValue, _utilisation);
-        return (_utilisation, calc_amount);
+        return (_utilisation, calc_amount, _totalValue);
     }
 
     /// @notice Calculate the changes in underlying token value and distribute profit

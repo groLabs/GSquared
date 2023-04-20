@@ -380,9 +380,17 @@ abstract contract GERC20 is Context, IERC20 {
 }
 
 interface IToken {
-    function mint(address account, uint256 amount) external;
+    function mint(
+        address account,
+        uint256 amount,
+        uint256 totalTrancheValue
+    ) external;
 
-    function burn(address account, uint256 amount) external;
+    function burn(
+        address account,
+        uint256 amount,
+        uint256 totalTrancheValue
+    ) external;
 
     function burnAll(address account) external;
 

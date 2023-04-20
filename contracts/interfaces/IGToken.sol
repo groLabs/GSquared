@@ -2,9 +2,17 @@
 pragma solidity 0.8.10;
 
 interface IGToken {
-    function mint(address recipient, uint256 amount) external;
+    function mint(
+        address recipient,
+        uint256 amount,
+        uint256 totalTrancheValue
+    ) external;
 
-    function burn(address recipient, uint256 amount) external;
+    function burn(
+        address recipient,
+        uint256 amount,
+        uint256 totalTrancheValue
+    ) external;
 
     function totalSupplyBase() external view returns (uint256);
 

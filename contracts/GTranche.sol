@@ -158,9 +158,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         token.transferFrom(msg.sender, address(this), _amount);
         IGToken trancheToken = getTrancheToken(_tranche);
         uint256 trancheUtilisation;
-
+        uint256[NO_OF_TRANCHES] memory totalValue;
         // update value of current tranches - this prevents front-running of profits
-        (trancheUtilisation, calcAmount) = updateDistribution(
+        (trancheUtilisation, calcAmount, totalValue) = updateDistribution(
             _amount,
             _index,
             _tranche,
@@ -176,7 +176,10 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
 
         tokenBalances[_index] += _amount;
         // Mint tranche tokens base on _tranche choice
-        trancheToken.mint(_recipient, calcAmount);
+        // TODO: Wouldn't work if num of tranche tokens > 2
+        _tranche
+            ? trancheToken.mint(_recipient, calcAmount, totalValue[1])
+            : trancheToken.mint(_recipient, calcAmount, totalValue[0]);
         emit LogNewDeposit(
             msg.sender,
             _recipient,
@@ -217,9 +220,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         ERC4626 token = getYieldToken(_index);
 
         uint256 trancheUtilisation;
-
+        uint256[NO_OF_TRANCHES] memory totalValue;
         // update value of current tranches - this prevents front-running of losses
-        (trancheUtilisation, calcAmount) = updateDistribution(
+        (trancheUtilisation, calcAmount, totalValue) = updateDistribution(
             _amount,
             _index,
             _tranche,
@@ -232,7 +235,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
 
         yieldTokenAmounts = _calcTokenAmount(_index, calcAmount, false);
         tokenBalances[_index] -= yieldTokenAmounts;
-        trancheToken.burn(msg.sender, calcAmount);
+        _tranche
+            ? trancheToken.burn(_recipient, calcAmount, totalValue[1])
+            : trancheToken.burn(_recipient, calcAmount, totalValue[0]);
         token.transfer(_recipient, yieldTokenAmounts);
 
         emit LogNewWithdrawal(
@@ -276,7 +281,14 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         uint256 _index,
         bool _tranche,
         bool _withdraw
-    ) internal returns (uint256 trancheUtilisation, uint256 calcAmount) {
+    )
+        internal
+        returns (
+            uint256 trancheUtilisation,
+            uint256 calcAmount,
+            uint256[NO_OF_TRANCHES] memory _totalValue
+        )
+    {
         (
             uint256[NO_OF_TRANCHES] memory _totalValue,
             int256 profit,
@@ -305,7 +317,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
                 : type(uint256).max;
         emit LogNewTrancheBalance(_totalValue, trancheUtilisation);
         emit LogNewPnL(profit, loss);
-        return (trancheUtilisation, calcAmount);
+        return (trancheUtilisation, calcAmount, _totalValue);
     }
 
     /// @notice View of current asset distribution

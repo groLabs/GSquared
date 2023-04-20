@@ -111,36 +111,35 @@ contract JuniorTranche is GToken {
     /// @notice Mint NonRebasingGTokens
     /// @param account Target account
     /// @param amount Mint amount in USD
-    function mint(address account, uint256 amount)
-        external
-        override
-        onlyWhitelist
-    {
+    /// @param totalTrancheValue Total value of tranche in USD
+    function mint(
+        address account,
+        uint256 amount,
+        uint256 totalTrancheValue
+    ) external override onlyWhitelist {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
-        uint256 balance = trancheBalance();
         // Divide USD amount by factor to get number of tokens to mint
         uint256 mintAmount = applyFactor(amount, factor(), true);
-        // Increase $ tranche balance before minting
-        _setTrancheBalance(balance + amount);
+        _setTrancheBalance(totalTrancheValue);
         _mint(account, mintAmount, amount);
     }
 
     /// @notice Burn NonRebasingGTokens
     /// @param account Target account
     /// @param amount Burn amount in USD
-    function burn(address account, uint256 amount)
-        external
-        override
-        onlyWhitelist
-    {
+    /// @param totalTrancheValue Total value of tranche in USD
+    function burn(
+        address account,
+        uint256 amount,
+        uint256 totalTrancheValue
+    ) external override onlyWhitelist {
         require(account != address(0), "burn: 0x");
         require(amount > 0, "Amount is zero.");
-        uint256 balance = trancheBalance();
-        // Divide USD amount by factor to get number of tokens to burn
+        // Apply factor to amount to get rebase amount
         uint256 burnAmount = applyFactor(amount, factor(), true);
         // Set new tranche balance before burning
-        _setTrancheBalance(balance - amount);
+        _setTrancheBalance(totalTrancheValue);
         _burn(account, burnAmount, amount);
     }
 
