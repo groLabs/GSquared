@@ -98,7 +98,11 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     );
 
     event LogNewUtilisationThreshold(uint256 newThreshold);
-    event LogNewPnL(int256 profit, int256 loss);
+    event LogNewPnL(
+        uint256[NO_OF_TRANCHES] balances,
+        int256 profit,
+        int256 loss
+    );
 
     event LogSetNewPnLLogic(address pnl);
 
@@ -157,10 +161,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         ERC4626 token = getYieldToken(_index);
         token.transferFrom(msg.sender, address(this), _amount);
         IGToken trancheToken = getTrancheToken(_tranche);
-        uint256 trancheUtilisation;
         uint256[NO_OF_TRANCHES] memory totalValue;
         // update value of current tranches - this prevents front-running of profits
-        (trancheUtilisation, calcAmount, totalValue) = updateDistribution(
+        (calcAmount, totalValue) = updateDistribution(
             _amount,
             _index,
             _tranche,
@@ -168,10 +171,17 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         );
 
         if (calcAmount < minDeposit) {
-            revert("GTranche: deposit amount too low");
+            revert Errors.LTMinDepositLimit();
         }
-        if (_tranche && trancheUtilisation > utilisationThreshold) {
-            revert Errors.UtilisationTooHigh();
+        // Check if senior tranche deposits are breaking the utilisation threshold
+        if (_tranche) {
+            uint256 trancheUtilisation = totalValue[0] > 0
+                ? ((totalValue[1] + calcAmount) * DEFAULT_DECIMALS) /
+                    totalValue[0]
+                : type(uint256).max;
+            if (trancheUtilisation > utilisationThreshold) {
+                revert Errors.UtilisationTooHigh();
+            }
         }
 
         tokenBalances[_index] += _amount;
@@ -219,18 +229,24 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         }
         ERC4626 token = getYieldToken(_index);
 
-        uint256 trancheUtilisation;
         uint256[NO_OF_TRANCHES] memory totalValue;
         // update value of current tranches - this prevents front-running of losses
-        (trancheUtilisation, calcAmount, totalValue) = updateDistribution(
+        (calcAmount, totalValue) = updateDistribution(
             _amount,
             _index,
             _tranche,
             true
         );
 
-        if (!_tranche && trancheUtilisation > utilisationThreshold) {
-            revert Errors.UtilisationTooHigh();
+        // Check if junior tranche withdrawals are breaking the utilisation threshold
+        if (!_tranche && totalValue[1] > 0) {
+            uint256 trancheUtilisation = (totalValue[0] - calcAmount) > 0
+                ? ((totalValue[1]) * DEFAULT_DECIMALS) /
+                    (totalValue[0] - calcAmount)
+                : type(uint256).max;
+            if (trancheUtilisation > utilisationThreshold) {
+                revert Errors.UtilisationTooHigh();
+            }
         }
 
         yieldTokenAmounts = _calcTokenAmount(_index, calcAmount, false);
@@ -274,8 +290,8 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     /// @param _index index of yield token
     /// @param _tranche senior or junior tranche being deposited/withdrawn
     /// @param _withdraw withdrawal or deposit
-    /// @return trancheUtilisation current utilisation of the two tranches (senior / junior)
     /// @return calcAmount value of tranche token in common denominator (USD)
+    /// @return totalValue update totalValue in both tranches post pnl
     function updateDistribution(
         uint256 _amount,
         uint256 _index,
@@ -283,57 +299,23 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         bool _withdraw
     )
         internal
-        returns (
-            uint256 trancheUtilisation,
-            uint256 calcAmount,
-            uint256[NO_OF_TRANCHES] memory _totalValue
-        )
+        returns (uint256 calcAmount, uint256[NO_OF_TRANCHES] memory totalValue)
     {
-        (
-            uint256[NO_OF_TRANCHES] memory _totalValue,
-            int256 profit,
-            int256 loss
-        ) = _pnlDistribution();
+        (totalValue, , ) = _pnlDistribution();
         IGToken gtoken = getTrancheToken(_tranche);
         calcAmount = _withdraw
             ? gtoken.getTokenAssets(_amount)
             : _calcTokenValue(_index, _amount, true);
         if (_withdraw) {
-            uint256 trancheAmount = _tranche ? _totalValue[1] : _totalValue[0];
+            uint256 trancheAmount = _tranche ? totalValue[1] : totalValue[0];
             // To not over withdraw, we need to check if the amount to withdraw is greater than the
             // total value of the tranche
             if (calcAmount > trancheAmount) {
                 calcAmount = trancheAmount;
             }
         }
-        uint256 juniorValueWithDistribution;
-        uint256 seniorValueWithDistribution;
-        // Apply _amount to total USD tranche value to calculate distribution
-        if (_tranche) {
-            juniorValueWithDistribution = _totalValue[0];
-            seniorValueWithDistribution = _withdraw
-                ? _totalValue[1] - calcAmount
-                : _totalValue[1] + calcAmount;
-        } else {
-            juniorValueWithDistribution = _withdraw
-                ? _totalValue[0] - calcAmount
-                : _totalValue[0] + calcAmount;
-            seniorValueWithDistribution = _totalValue[1];
-        }
-        if (seniorValueWithDistribution == 0) trancheUtilisation = 0;
-        else
-            trancheUtilisation = juniorValueWithDistribution > 0
-                ? (seniorValueWithDistribution * DEFAULT_DECIMALS) /
-                    (juniorValueWithDistribution)
-                : type(uint256).max;
-        emit LogNewTrancheBalance(
-            juniorValueWithDistribution,
-            seniorValueWithDistribution,
-            trancheUtilisation
-        );
-        emit LogNewPnL(profit, loss);
         // _totalValue doesn't have values modified by calcAmount
-        return (trancheUtilisation, calcAmount, _totalValue);
+        return (calcAmount, totalValue);
     }
 
     /// @notice View of current asset distribution
@@ -423,6 +405,8 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
         }
         newTrancheBalances[0] = uint256(_trancheBalances[0]);
         newTrancheBalances[1] = uint256(_trancheBalances[1]);
+
+        emit LogNewPnL(newTrancheBalances, profit, loss);
     }
 
     /*//////////////////////////////////////////////////////////////
