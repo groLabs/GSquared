@@ -2,7 +2,6 @@
 pragma solidity 0.8.10;
 
 import "./GToken.sol";
-import {console2} from "../../lib/forge-std/src/console2.sol";
 
 /// @notice Rebasing token implementation of the GToken.
 ///     This contract defines the PWRD Stablecoin (pwrd) - A yield bearing stable coin used in
@@ -83,7 +82,7 @@ contract SeniorTranche is GToken {
     /// @param amount Amount of Tranche token
     /// Note: for Senior tranch amount is already denominated in common denominator
     /// @return USD value of amount
-    function getTokenAssets(uint256 amount)
+    function getTokenAssets(uint256 amount, uint256 trancheValue)
         public
         view
         override
@@ -117,7 +116,11 @@ contract SeniorTranche is GToken {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
         // Apply factor to amount to get rebase amount
-        uint256 mintAmount = applyFactor(amount, factor(), true);
+        uint256 mintAmount = applyFactor(
+            amount,
+            factor(totalTrancheValue),
+            true
+        );
         // Update tranche balance with new amount + pnl balance
         _setTrancheBalance(totalTrancheValue + amount);
         _mint(account, mintAmount, amount);
@@ -135,7 +138,11 @@ contract SeniorTranche is GToken {
         require(account != address(0), "burn: 0x");
         require(amount > 0, "Amount is zero.");
         // Apply factor to amount to get rebase amount
-        uint256 burnAmount = applyFactor(amount, factor(), true);
+        uint256 burnAmount = applyFactor(
+            amount,
+            factor(totalTrancheValue),
+            true
+        );
         // Update tranche balance with pnl balance - new amount
         _setTrancheBalance(totalTrancheValue - amount);
         _burn(account, burnAmount, amount);

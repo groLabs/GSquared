@@ -243,8 +243,9 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
         uint256 calc_amount;
         uint256[NO_OF_TRANCHES] memory _totalValue = pnlDistribution();
         IGToken gtoken = getTrancheToken(_tranche);
+        uint256 trancheAmount = _tranche ? _totalValue[1] : _totalValue[0];
         if (_withdraw) {
-            calc_amount = gtoken.getTokenAssets(_amount);
+            calc_amount = gtoken.getTokenAssets(_amount, trancheAmount);
             // To not over withdraw, we need to check if the amount to withdraw is greater than the
             // total value of the tranche
             if (_tranche == false && calc_amount > _totalValue[0]) {

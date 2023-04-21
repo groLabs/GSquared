@@ -9,7 +9,6 @@ import {ERC4626} from "./tokens/ERC4626.sol";
 import {Errors} from "./common/Errors.sol";
 import {FixedTokensCurve} from "./utils/FixedTokensCurve.sol";
 import {IGToken} from "./interfaces/IGToken.sol";
-import {console2} from "../lib/forge-std/src/console2.sol";
 
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \
@@ -303,11 +302,11 @@ contract GTranche is IGTranche, FixedTokensCurve, Ownable {
     {
         (totalValue, , ) = _pnlDistribution();
         IGToken gtoken = getTrancheToken(_tranche);
+        uint256 trancheAmount = _tranche ? totalValue[1] : totalValue[0];
         calcAmount = _withdraw
-            ? gtoken.getTokenAssets(_amount)
+            ? gtoken.getTokenAssets(_amount, trancheAmount)
             : _calcTokenValue(_index, _amount, true);
         if (_withdraw) {
-            uint256 trancheAmount = _tranche ? totalValue[1] : totalValue[0];
             // To not over withdraw, we need to check if the amount to withdraw is greater than the
             // total value of the tranche
             if (calcAmount > trancheAmount) {

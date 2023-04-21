@@ -22,7 +22,10 @@ interface IGToken {
 
     function trancheBalance() external view returns (uint256);
 
-    function getTokenAssets(uint256 amount) external view returns (uint256);
+    function getTokenAssets(uint256 amount, uint256 trancheValue)
+        external
+        view
+        returns (uint256);
 
     function getTokenAmountFromAssets(uint256 assets)
         external

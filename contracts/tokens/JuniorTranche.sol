@@ -82,13 +82,13 @@ contract JuniorTranche is GToken {
     /// @notice calculate USD value of a set amount of Tranche tokens
     /// @param amount Amount of Tranche token
     /// @return USD value of amount
-    function getTokenAssets(uint256 amount)
+    function getTokenAssets(uint256 amount, uint256 trancheValue)
         public
         view
         override
         returns (uint256)
     {
-        uint256 f = factor();
+        uint256 f = factor(trancheValue);
         return f > 0 ? applyFactor(amount, f, false) : 0;
     }
 
@@ -120,7 +120,11 @@ contract JuniorTranche is GToken {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
         // Divide USD amount by factor to get number of tokens to mint
-        uint256 mintAmount = applyFactor(amount, factor(), true);
+        uint256 mintAmount = applyFactor(
+            amount,
+            factor(totalTrancheValue),
+            true
+        );
         _setTrancheBalance(totalTrancheValue + amount);
         _mint(account, mintAmount, amount);
     }
@@ -137,7 +141,11 @@ contract JuniorTranche is GToken {
         require(account != address(0), "burn: 0x");
         require(amount > 0, "Amount is zero.");
         // Apply factor to amount to get rebase amount
-        uint256 burnAmount = applyFactor(amount, factor(), true);
+        uint256 burnAmount = applyFactor(
+            amount,
+            factor(totalTrancheValue),
+            true
+        );
         // Set new tranche balance before burning
         _setTrancheBalance(totalTrancheValue - amount);
         _burn(account, burnAmount, amount);

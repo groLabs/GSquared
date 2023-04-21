@@ -398,7 +398,10 @@ interface IToken {
 
     function getShareAssets(uint256 shares) external view returns (uint256);
 
-    function getTokenAssets(uint256 amount) external view returns (uint256);
+    function getTokenAssets(uint256 amount, uint256 trancheValue)
+        external
+        view
+        returns (uint256);
 
     function getTokenAmountFromAssets(uint256 assets)
         external
@@ -460,12 +463,20 @@ abstract contract GToken is GERC20, Constants, Whitelist, IToken {
 
     // Factor of the GTranche. Depends on how much assets are locked in the GTranche
     function factor() internal view returns (uint256) {
+        return _factor(trancheBalance());
+    }
+
+    function factor(uint256 amount) internal view returns (uint256) {
+        return _factor(amount);
+    }
+
+    function _factor(uint256 amount) private view returns (uint256) {
         if (totalSupplyBase() == 0) {
             return getInitialBase();
         }
 
         if (trancheBalance() > 0) {
-            return totalSupplyBase().mul(BASE).div(trancheBalance());
+            return totalSupplyBase().mul(BASE).div(amount);
         }
 
         // This case is totalSupply > 0 && trancheBalance == 0, and only occurs on system loss
