@@ -349,7 +349,7 @@ def test_set_debt_ratio(mock_gro_vault_usdc, admin, alice, primary_mock_strategy
     with brownie.reverts(error_string("StrategyNotActive()")):
         mock_gro_vault_usdc.setDebtRatio(ZERO_ADDRESS, 0)
     # check non whitelisted address reverts
-    with brownie.reverts("Ownable: caller is not the owner"):
+    with brownie.reverts("UNAUTHORIZED"):
         mock_gro_vault_usdc.setDebtRatio(
             primary_mock_strategy.address, 0, {"from": alice}
         )

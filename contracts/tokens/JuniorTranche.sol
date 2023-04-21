@@ -2,6 +2,7 @@
 pragma solidity 0.8.10;
 
 import "./GToken.sol";
+import "../solmate/src/utils/SafeTransferLib.sol";
 
 /// @notice NonRebasing token implementation of the GToken.
 ///     This contract defines the Gro Vault Token (GVT) - A yield bearing token used in
@@ -13,7 +14,7 @@ contract JuniorTranche is GToken {
     // uint256 public constant INIT_BASE = 3333333333333333;
     uint256 public constant INIT_BASE = 5000000000000000;
 
-    using SafeERC20 for IERC20;
+    using SafeTransferLib for IERC20;
 
     event LogTransfer(
         address indexed sender,

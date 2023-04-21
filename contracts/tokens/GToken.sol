@@ -3,8 +3,8 @@ pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "../solmate/src/utils/SafeTransferLib.sol";
 import "../common/Constants.sol";
 import "../common/Whitelist.sol";
 import "../interfaces/IERC20Detailed.sol";
@@ -144,11 +144,7 @@ abstract contract GERC20 is IERC20 {
         uint256 amount
     ) public virtual override returns (bool) {
         _transfer(sender, recipient, amount, amount);
-        _approve(
-            sender,
-            msg.sender,
-            _allowances[sender][msg.sender] - amount
-        );
+        _approve(sender, msg.sender, _allowances[sender][msg.sender] - amount);
         return true;
     }
 
@@ -484,7 +480,7 @@ interface IToken {
 abstract contract GToken is GERC20, Constants, Whitelist, IToken {
     uint256 public constant BASE = DEFAULT_DECIMALS_FACTOR;
 
-    using SafeERC20 for IERC20;
+    using SafeTransferLib for IERC20;
     using SafeMath for uint256;
 
     IController public ctrl;

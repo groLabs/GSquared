@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./Base.GSquared.t.sol";
+import "../contracts/solmate/src/utils/SafeTransferLib.sol";
 
 contract SnLTest is BaseSetup {
     uint256 constant MIN_REPORT_DELAY = 172801;
@@ -33,8 +34,6 @@ contract SnLTest is BaseSetup {
     address mimConvexRewards =
         address(0xFd5AbF66b003881b88567EB9Ed9c651F14Dc4771);
     uint256 mim_lp_pid = 40;
-
-    using SafeERC20 for IERC20;
 
     using stdStorage for StdStorage;
 

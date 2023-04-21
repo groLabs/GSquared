@@ -15,6 +15,7 @@ import "../contracts/strategy/keeper/GStrategyGuard.sol";
 import "../contracts/strategy/keeper/GStrategyResolver.sol";
 import "../contracts/mocks/MockStrategy.sol";
 import "../contracts/strategy/ConvexStrategy.sol";
+import "../contracts/solmate/src/utils/SafeTransferLib.sol";
 
 interface IConvexRewards {
     function rewardRate() external view returns (uint256);
@@ -24,7 +25,7 @@ interface IConvexRewards {
 
 contract BaseSetup is Test {
     using stdStorage for StdStorage;
-    using SafeERC20 for IERC20;
+    using SafeTransferLib for ERC20;
 
     address public constant THREE_POOL =
         address(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
@@ -196,10 +197,10 @@ contract BaseSetup is Test {
         vm.startPrank(_user);
         DAI.approve(THREE_POOL, amount);
         USDC.approve(THREE_POOL, amount);
-        if (IERC20(address(USDT)).allowance(_user, THREE_POOL) > 0) {
-            IERC20(address(USDT)).safeApprove(THREE_POOL, 0);
+        if (ERC20(address(USDT)).allowance(_user, THREE_POOL) > 0) {
+            ERC20(address(USDT)).safeApprove(THREE_POOL, 0);
         }
-        IERC20(address(USDT)).safeApprove(THREE_POOL, amount);
+        ERC20(address(USDT)).safeApprove(THREE_POOL, amount);
         uint256 dai = amount;
         uint256 usdt = amount / 10**12;
         uint256 usdc = amount / 10**12;

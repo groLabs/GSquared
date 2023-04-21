@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Base.GSquared.t.sol";
 import {StrategyErrors} from "../contracts/strategy/ConvexStrategy.sol";
+import "../contracts/solmate/src/utils/SafeTransferLib.sol";
 
 contract ConvexStrategyTest is BaseSetup {
     uint256 constant MIN_REPORT_DELAY = 172801;
@@ -26,7 +27,7 @@ contract ConvexStrategyTest is BaseSetup {
         address(0xDBFa6187C79f4fE4Cda20609E75760C5AaE88e52);
     uint256 musd_lp_pid = 14;
 
-    using SafeERC20 for IERC20;
+    using SafeTransferLib for IERC20;
 
     using stdStorage for StdStorage;
 

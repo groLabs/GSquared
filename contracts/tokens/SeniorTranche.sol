@@ -2,6 +2,7 @@
 pragma solidity 0.8.10;
 
 import "./GToken.sol";
+import "../solmate/src/utils/SafeTransferLib.sol";
 
 /// @notice Rebasing token implementation of the GToken.
 ///     This contract defines the PWRD Stablecoin (pwrd) - A yield bearing stable coin used in
@@ -14,7 +15,7 @@ import "./GToken.sol";
 ///     For simplicity the underlying amount of tokens will be referred to as base, while
 ///     the rebased amount (base/factor) will be referred to as rebase.
 contract SeniorTranche is GToken {
-    using SafeERC20 for IERC20;
+    using SafeTransferLib for IERC20;
     using SafeMath for uint256;
 
     event LogTransfer(
