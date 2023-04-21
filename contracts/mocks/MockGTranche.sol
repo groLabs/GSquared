@@ -3,12 +3,12 @@ pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {Owned} from "../solmate/src/auth/Owned.sol";
 import "./MockFixedTokens.sol";
 import "../interfaces/IGTranche.sol";
 import "../interfaces/IOracle.sol";
 
-contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
+contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Owned {
     uint256 public utilisationThreshold = 5000;
     IOracle public immutable oracle;
 
@@ -34,7 +34,7 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Ownable {
         address[] memory _yieldTokens,
         address[2] memory _trancheTokens,
         address _oracle
-    ) MockFixedTokens(_yieldTokens, _trancheTokens) {
+    ) MockFixedTokens(_yieldTokens, _trancheTokens) Owned(msg.sender) {
         oracle = IOracle(_oracle);
     }
 

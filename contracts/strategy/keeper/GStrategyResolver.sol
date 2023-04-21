@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity 0.8.10;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {Owned} from "../../solmate/src/auth/Owned.sol";
 import "../../interfaces/IGStrategyGuard.sol";
 
 //  ________  ________  ________
@@ -18,10 +18,10 @@ import "../../interfaces/IGStrategyGuard.sol";
 /// @notice Targets GStopLossExecutor contract to update/reset primer values
 /// alongside this triggering a strategy stop loss if primer interval threshold
 /// is met.
-contract GStopLossResolver is Ownable {
+contract GStopLossResolver is Owned {
     address immutable stopLossExecutor;
 
-    constructor(address _stopLossExecutor) {
+    constructor(address _stopLossExecutor) Owned(msg.sender) {
         stopLossExecutor = _stopLossExecutor;
     }
 
