@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity 0.8.10;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "../solmate/src/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import {Owned} from "../solmate/src/auth/Owned.sol";
 import "./MockFixedTokens.sol";

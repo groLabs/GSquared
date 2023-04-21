@@ -5,7 +5,7 @@ import {ERC20} from "./solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "./solmate/src/utils/SafeTransferLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Owned} from "./solmate/src/auth/Owned.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "./solmate/src/utils/ReentrancyGuard.sol";
 import {IStrategy} from "./interfaces/IStrategy.sol";
 import {ERC4626} from "./tokens/ERC4626.sol";
 import {Constants} from "./common/Constants.sol";

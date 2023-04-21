@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity 0.8.10;
 
-import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -10,7 +9,7 @@ import "../common/Constants.sol";
 import "../common/Whitelist.sol";
 import "../interfaces/IERC20Detailed.sol";
 
-abstract contract GERC20 is Context, IERC20 {
+abstract contract GERC20 is IERC20 {
     using Address for address;
     using SafeMath for uint256;
 
@@ -94,7 +93,7 @@ abstract contract GERC20 is Context, IERC20 {
         override
         returns (bool)
     {
-        _transfer(_msgSender(), recipient, amount, amount);
+        _transfer(msg.sender, recipient, amount, amount);
         return true;
     }
 
@@ -123,7 +122,7 @@ abstract contract GERC20 is Context, IERC20 {
         override
         returns (bool)
     {
-        _approve(_msgSender(), spender, amount);
+        _approve(msg.sender, spender, amount);
         return true;
     }
 
@@ -147,8 +146,8 @@ abstract contract GERC20 is Context, IERC20 {
         _transfer(sender, recipient, amount, amount);
         _approve(
             sender,
-            _msgSender(),
-            _allowances[sender][_msgSender()] - amount
+            msg.sender,
+            _allowances[sender][msg.sender] - amount
         );
         return true;
     }
@@ -171,9 +170,9 @@ abstract contract GERC20 is Context, IERC20 {
         returns (bool)
     {
         _approve(
-            _msgSender(),
+            msg.sender,
             spender,
-            _allowances[_msgSender()][spender] + addedValue
+            _allowances[msg.sender][spender] + addedValue
         );
         return true;
     }
@@ -198,9 +197,9 @@ abstract contract GERC20 is Context, IERC20 {
         returns (bool)
     {
         _approve(
-            _msgSender(),
+            msg.sender,
             spender,
-            _allowances[_msgSender()][spender] - subtractedValue
+            _allowances[msg.sender][spender] - subtractedValue
         );
         return true;
     }
