@@ -8,8 +8,9 @@ import "../common/Constants.sol";
 import "../common/Whitelist.sol";
 import "../interfaces/IERC20Detailed.sol";
 import "../interfaces/IController.sol";
+import "../interfaces/IGToken.sol";
 
-abstract contract GERC20 is IERC20 {
+abstract contract GERC20 is IGToken {
     using SafeMath for uint256;
 
     mapping(address => uint256) private _balances;
@@ -53,8 +54,7 @@ abstract contract GERC20 is IERC20 {
      * be displayed to a user as `5,05` (`505 / 10 ** 2`).
      *
      * Tokens usually opt for a value of 18, imitating the relationship between
-     * Ether and Wei. This is the value {ERC20} uses, unless {_setupDecimals} is
-     * called.
+     * Ether and Wei. This is the value {ERC20} uses
      *
      * NOTE: This information is only used for _display_ purposes: it in
      * no way affects any of the arithmetic of the contract, including
@@ -67,7 +67,7 @@ abstract contract GERC20 is IERC20 {
     /**
      * @dev See {IERC20-totalSupply}.
      */
-    function totalSupplyBase() public view returns (uint256) {
+    function totalSupplyBase() public view override returns (uint256) {
         return _totalSupply;
     }
 
@@ -222,8 +222,6 @@ abstract contract GERC20 is IERC20 {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
 
-        _beforeTokenTransfer(sender, recipient, transferAmount);
-
         _balances[sender] = _balances[sender].sub(
             transferAmount,
             "ERC20: transfer amount exceeds balance"
@@ -248,8 +246,6 @@ abstract contract GERC20 is IERC20 {
         uint256 amount
     ) internal virtual {
         require(account != address(0), "ERC20: mint to the zero address");
-
-        _beforeTokenTransfer(address(0), account, mintAmount);
 
         _totalSupply = _totalSupply.add(mintAmount);
         _balances[account] = _balances[account].add(mintAmount);
@@ -276,8 +272,6 @@ abstract contract GERC20 is IERC20 {
         uint256 amount
     ) internal virtual {
         require(account != address(0), "ERC20: burn from the zero address");
-
-        _beforeTokenTransfer(account, address(0), burnAmount);
         emit LogTestGToken(burnAmount, _balances[account]);
 
         _balances[account] = _balances[account].sub(
@@ -324,65 +318,6 @@ abstract contract GERC20 is IERC20 {
         _allowances[owner][spender] = _allowances[owner][spender] - (amount);
         emit Approval(owner, spender, _allowances[owner][spender]);
     }
-
-    /**
-     * @dev Sets {decimals} to a value other than the default one of 18.
-     *
-     * WARNING: This function should only be called from the constructor. Most
-     * applications that interact with token contracts will not expect
-     * {decimals} to ever change, and may work incorrectly if it does.
-     */
-    function _setupDecimals(uint8 decimals_) internal {
-        _decimals = decimals_;
-    }
-
-    /**
-     * @dev Hook that is called before any transfer of tokens. This includes
-     * minting and burning.
-     *
-     * Calling conditions:
-     *
-     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
-     * will be to transferred to `to`.
-     * - when `from` is zero, `amount` tokens will be minted for `to`.
-     * - when `to` is zero, `amount` of ``from``'s tokens will be burned.
-     * - `from` and `to` are never both zero.
-     *
-     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
-     */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual {}
-}
-
-interface IToken {
-    function factor() external view returns (uint256);
-
-    function factor(uint256 totalAssets) external view returns (uint256);
-
-    function mint(
-        address account,
-        uint256 _factor,
-        uint256 amount
-    ) external;
-
-    function burn(
-        address account,
-        uint256 _factor,
-        uint256 amount
-    ) external;
-
-    function burnAll(address account) external;
-
-    function totalAssets() external view returns (uint256);
-
-    function getPricePerShare() external view returns (uint256);
-
-    function getShareAssets(uint256 shares) external view returns (uint256);
-
-    function getAssets(address account) external view returns (uint256);
 }
 
 /// @notice Base contract for gro protocol tokens - The Gro token specifies some additional functionality
@@ -396,7 +331,7 @@ interface IToken {
 ///     - Total assets:
 ///         Total assets is the dollarvalue of the underlying assets used to mint Gtokens. The Gtoken
 ///         depends on an external contract (Controller.sol) to get this value (retrieved from PnL calculations)
-abstract contract GToken is GERC20, Constants, Whitelist, IToken {
+abstract contract GToken is GERC20, Constants, Whitelist {
     uint256 public constant BASE = DEFAULT_DECIMALS_FACTOR;
 
     using SafeTransferLib for IERC20;
