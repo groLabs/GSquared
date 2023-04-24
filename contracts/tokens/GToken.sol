@@ -23,6 +23,18 @@ abstract contract GERC20 is IGToken {
     string private _symbol;
     uint8 private _decimals;
 
+    /**
+     * @dev Emitted when `valueWithFactor` tokens with applied factor are moved from one account (`from`) to
+     * another (`to`).
+     *
+     * Note that `valueWithFactor` may be zero.
+     */
+    event TransferWithFactor(
+        address indexed from,
+        address indexed to,
+        uint256 valueWithFactor
+    );
+
     constructor(
         string memory name_,
         string memory symbol_,
@@ -228,6 +240,7 @@ abstract contract GERC20 is IGToken {
         );
         _balances[recipient] = _balances[recipient].add(transferAmount);
         emit Transfer(sender, recipient, amount);
+        emit TransferWithFactor(sender, recipient, transferAmount);
     }
 
     /** @dev Creates `amount` tokens and assigns them to `account`, increasing
@@ -250,6 +263,7 @@ abstract contract GERC20 is IGToken {
         _totalSupply = _totalSupply.add(mintAmount);
         _balances[account] = _balances[account].add(mintAmount);
         emit Transfer(address(0), account, amount);
+        emit TransferWithFactor(address(0), account, mintAmount);
     }
 
     event LogTestGToken(uint256 _burnAmount, uint256 _balance);
@@ -280,6 +294,7 @@ abstract contract GERC20 is IGToken {
         );
         _totalSupply = _totalSupply.sub(burnAmount);
         emit Transfer(account, address(0), amount);
+        emit TransferWithFactor(account, address(0), burnAmount);
     }
 
     /**
