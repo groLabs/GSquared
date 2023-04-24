@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./Base.GSquared.t.sol";
+import {GERC20} from "../contracts/tokens/GToken.sol";
 
 contract TrancheTest is Test, BaseSetup {
     using stdStorage for StdStorage;
@@ -14,6 +15,11 @@ contract TrancheTest is Test, BaseSetup {
     uint256 frax_lp_pid = 32;
 
     ConvexStrategy convexStrategy;
+    event TransferWithFactor(
+        address indexed from,
+        address indexed to,
+        uint256 valueWithFactor
+    );
 
     function setUp() public virtual override {
         BaseSetup.setUp();
@@ -50,10 +56,15 @@ contract TrancheTest is Test, BaseSetup {
         DAI.approve(address(gRouter), MAX_UINT);
         uint256 initialSenior = gTranche.trancheBalances(true);
         uint256 initialJunior = gTranche.trancheBalances(false);
-
         gRouter.deposit(100E18, 0, false, 0);
         gRouter.deposit(50E18, 0, true, 0);
-
+        vm.expectEmit(true, true, false, true);
+        // Make sure TransferWithFactor is emitted with value != 50E18, means factor was applied to the event amount
+        emit TransferWithFactor(
+            address(0),
+            address(alice),
+            50023947274760795882
+        );
         uint256 finalSenior = gTranche.trancheBalances(true);
         uint256 finalJunior = gTranche.trancheBalances(false);
         assertApproxEqRel(initialJunior + 100E18, finalJunior, 1E15);
@@ -86,14 +97,21 @@ contract TrancheTest is Test, BaseSetup {
         uint256 initialJunior = gTranche.trancheBalances(false);
 
         uint256 withdrawJunior = (100E18 * 1E18) / GVT.getPricePerShare();
-
+        uint256 withdrawSenior = 4000E18;
+        vm.expectEmit(true, true, false, true);
+        // Make sure Senior withdraw amount that is not affected by factor
+        emit TransferWithFactor(address(gRouter), address(0), withdrawSenior);
         gRouter.withdraw(4000E18, 0, true, 0);
+        vm.expectEmit(true, true, false, true);
+        emit TransferWithFactor(
+            address(gRouter),
+            address(0),
+            499999999443020500
+        );
         gRouter.withdraw(withdrawJunior, 0, false, 0);
 
         uint256 finalSenior = gTranche.trancheBalances(true);
         uint256 finalJunior = gTranche.trancheBalances(false);
-        // assertApproxEqRel(initialJunior - 40E18, finalJunior, 1E16);
-        // assertApproxEqRel(initialSenior - 20E18, finalSenior, 1E16);
 
         vm.stopPrank();
     }

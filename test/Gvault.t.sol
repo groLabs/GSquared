@@ -382,7 +382,7 @@ contract GVaultTest is Test, BaseSetup {
 
     function testSetDebtRatio() public {
         vm.startPrank(alice);
-        vm.expectRevert(bytes("Ownable: caller is not the owner"));
+        vm.expectRevert(bytes("UNAUTHORIZED"));
         gVault.setDebtRatio(address(strategy), 0);
         vm.stopPrank();
 

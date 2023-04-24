@@ -4,8 +4,8 @@ pragma solidity 0.8.10;
 import {ERC20} from "./solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "./solmate/src/utils/SafeTransferLib.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {Owned} from "./solmate/src/auth/Owned.sol";
+import {ReentrancyGuard} from "./solmate/src/utils/ReentrancyGuard.sol";
 import {IStrategy} from "./interfaces/IStrategy.sol";
 import {ERC4626} from "./tokens/ERC4626.sol";
 import {Constants} from "./common/Constants.sol";
@@ -26,7 +26,7 @@ import {StrategyQueue} from "./utils/StrategyQueue.sol";
 /// @title GVault
 /// @notice  Gro protocol stand alone vault for generating yield on
 /// stablecoins following the EIP-4626 Standard
-contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
+contract GVault is Constants, ERC4626, StrategyQueue, Owned, ReentrancyGuard {
     using SafeTransferLib for ERC20;
 
     /*//////////////////////////////////////////////////////////////
@@ -115,6 +115,7 @@ contract GVault is Constants, ERC4626, StrategyQueue, Ownable, ReentrancyGuard {
             string(abi.encodePacked("gro", _asset.symbol())),
             _asset.decimals()
         )
+        Owned(msg.sender)
     {
         asset = _asset;
         minDeposit = 10**_asset.decimals();

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity 0.8.10;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {Owned} from "../solmate/src/auth/Owned.sol";
 import "../interfaces/IGTranche.sol";
 import "../interfaces/IOracle.sol";
 import "../utils/FixedTokens.sol";
@@ -53,7 +53,7 @@ import "../GMigration.sol";
 ///                4626 compatible tokens, effectively handling front-running of gains/losses.
 ///                Its important that the underlying EIP-4626 cannot be price manipulated, as this
 ///                would break the pnl functionality of this contract.
-contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
+contract GTrancheGeneric is IGTranche, FixedTokens, Owned {
     /*//////////////////////////////////////////////////////////////
                         CONSTANTS & IMMUTABLES
     //////////////////////////////////////////////////////////////*/
@@ -112,7 +112,7 @@ contract GTrancheGeneric is IGTranche, FixedTokens, Ownable {
         address[2] memory _trancheTokens,
         address _oracle,
         GMigration _gMigration
-    ) FixedTokens(_yieldTokens, _trancheTokens) {
+    ) FixedTokens(_yieldTokens, _trancheTokens) Owned(msg.sender) {
         oracle = IOracle(_oracle);
         gMigration = _gMigration;
     }

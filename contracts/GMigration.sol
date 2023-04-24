@@ -2,7 +2,7 @@
 pragma solidity 0.8.10;
 
 import {ERC20} from "./solmate/src/tokens/ERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Owned} from "./solmate/src/auth/Owned.sol";
 import {SafeTransferLib} from "./solmate/src/utils/SafeTransferLib.sol";
 import {ICurve3Pool} from "./interfaces/ICurve3Pool.sol";
 import {Constants} from "./common/Constants.sol";
@@ -25,7 +25,7 @@ import {SeniorTranche} from "./tokens/SeniorTranche.sol";
 /// @notice Responsible for migrating funds from old gro protocol to the new gro protocol
 /// this contract converts stables to 3crv and then deposits into the new GVault which in turn
 /// is deposited into the gTranche.
-contract GMigration is Ownable, Constants {
+contract GMigration is Owned, Constants {
     using SafeTransferLib for ERC20;
 
     address constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
@@ -40,7 +40,7 @@ contract GMigration is Ownable, Constants {
     GTranche public gTranche;
     uint256 public seniorTrancheDollarAmount;
 
-    constructor(GVault _gVault) {
+    constructor(GVault _gVault) Owned(msg.sender) {
         gVault = _gVault;
     }
 

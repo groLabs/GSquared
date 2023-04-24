@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity 0.8.10;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Owned} from "../solmate/src/auth/Owned.sol";
 import {Errors} from "./Errors.sol";
 
-contract Whitelist is Ownable {
+contract Whitelist is Owned {
     mapping(address => bool) public whitelist;
 
     event LogAddToWhitelist(address indexed user);
     event LogRemoveFromWhitelist(address indexed user);
+
+    constructor() Owned(msg.sender) {}
 
     modifier onlyWhitelist() {
         if (!whitelist[msg.sender]) {

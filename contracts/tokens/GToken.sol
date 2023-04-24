@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity 0.8.10;
 
-import "@openzeppelin/contracts/utils/Context.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "../solmate/src/utils/SafeTransferLib.sol";
 import "../common/Constants.sol";
 import "../common/Whitelist.sol";
 import "../interfaces/IERC20Detailed.sol";
+import "../interfaces/IController.sol";
+import "../interfaces/IGToken.sol";
 
-abstract contract GERC20 is Context, IERC20 {
-    using Address for address;
+abstract contract GERC20 is IGToken {
     using SafeMath for uint256;
 
     mapping(address => uint256) private _balances;
@@ -24,6 +22,18 @@ abstract contract GERC20 is Context, IERC20 {
     string private _name;
     string private _symbol;
     uint8 private _decimals;
+
+    /**
+     * @dev Emitted when `valueWithFactor` tokens with applied factor are moved from one account (`from`) to
+     * another (`to`).
+     *
+     * Note that `valueWithFactor` may be zero.
+     */
+    event TransferWithFactor(
+        address indexed from,
+        address indexed to,
+        uint256 valueWithFactor
+    );
 
     constructor(
         string memory name_,
@@ -56,8 +66,7 @@ abstract contract GERC20 is Context, IERC20 {
      * be displayed to a user as `5,05` (`505 / 10 ** 2`).
      *
      * Tokens usually opt for a value of 18, imitating the relationship between
-     * Ether and Wei. This is the value {ERC20} uses, unless {_setupDecimals} is
-     * called.
+     * Ether and Wei. This is the value {ERC20} uses
      *
      * NOTE: This information is only used for _display_ purposes: it in
      * no way affects any of the arithmetic of the contract, including
@@ -70,7 +79,7 @@ abstract contract GERC20 is Context, IERC20 {
     /**
      * @dev See {IERC20-totalSupply}.
      */
-    function totalSupplyBase() public view returns (uint256) {
+    function totalSupplyBase() public view override returns (uint256) {
         return _totalSupply;
     }
 
@@ -95,7 +104,7 @@ abstract contract GERC20 is Context, IERC20 {
         override
         returns (bool)
     {
-        _transfer(_msgSender(), recipient, amount, amount);
+        _transfer(msg.sender, recipient, amount, amount);
         return true;
     }
 
@@ -124,7 +133,7 @@ abstract contract GERC20 is Context, IERC20 {
         override
         returns (bool)
     {
-        _approve(_msgSender(), spender, amount);
+        _approve(msg.sender, spender, amount);
         return true;
     }
 
@@ -146,11 +155,7 @@ abstract contract GERC20 is Context, IERC20 {
         uint256 amount
     ) public virtual override returns (bool) {
         _transfer(sender, recipient, amount, amount);
-        _approve(
-            sender,
-            _msgSender(),
-            _allowances[sender][_msgSender()] - amount
-        );
+        _approve(sender, msg.sender, _allowances[sender][msg.sender] - amount);
         return true;
     }
 
@@ -172,9 +177,9 @@ abstract contract GERC20 is Context, IERC20 {
         returns (bool)
     {
         _approve(
-            _msgSender(),
+            msg.sender,
             spender,
-            _allowances[_msgSender()][spender] + addedValue
+            _allowances[msg.sender][spender] + addedValue
         );
         return true;
     }
@@ -199,9 +204,9 @@ abstract contract GERC20 is Context, IERC20 {
         returns (bool)
     {
         _approve(
-            _msgSender(),
+            msg.sender,
             spender,
-            _allowances[_msgSender()][spender] - subtractedValue
+            _allowances[msg.sender][spender] - subtractedValue
         );
         return true;
     }
@@ -229,14 +234,13 @@ abstract contract GERC20 is Context, IERC20 {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
 
-        _beforeTokenTransfer(sender, recipient, transferAmount);
-
         _balances[sender] = _balances[sender].sub(
             transferAmount,
             "ERC20: transfer amount exceeds balance"
         );
         _balances[recipient] = _balances[recipient].add(transferAmount);
         emit Transfer(sender, recipient, amount);
+        emit TransferWithFactor(sender, recipient, transferAmount);
     }
 
     /** @dev Creates `amount` tokens and assigns them to `account`, increasing
@@ -256,11 +260,10 @@ abstract contract GERC20 is Context, IERC20 {
     ) internal virtual {
         require(account != address(0), "ERC20: mint to the zero address");
 
-        _beforeTokenTransfer(address(0), account, mintAmount);
-
         _totalSupply = _totalSupply.add(mintAmount);
         _balances[account] = _balances[account].add(mintAmount);
         emit Transfer(address(0), account, amount);
+        emit TransferWithFactor(address(0), account, mintAmount);
     }
 
     event LogTestGToken(uint256 _burnAmount, uint256 _balance);
@@ -283,8 +286,6 @@ abstract contract GERC20 is Context, IERC20 {
         uint256 amount
     ) internal virtual {
         require(account != address(0), "ERC20: burn from the zero address");
-
-        _beforeTokenTransfer(account, address(0), burnAmount);
         emit LogTestGToken(burnAmount, _balances[account]);
 
         _balances[account] = _balances[account].sub(
@@ -293,6 +294,7 @@ abstract contract GERC20 is Context, IERC20 {
         );
         _totalSupply = _totalSupply.sub(burnAmount);
         emit Transfer(account, address(0), amount);
+        emit TransferWithFactor(account, address(0), burnAmount);
     }
 
     /**
@@ -331,145 +333,6 @@ abstract contract GERC20 is Context, IERC20 {
         _allowances[owner][spender] = _allowances[owner][spender] - (amount);
         emit Approval(owner, spender, _allowances[owner][spender]);
     }
-
-    /**
-     * @dev Sets {decimals} to a value other than the default one of 18.
-     *
-     * WARNING: This function should only be called from the constructor. Most
-     * applications that interact with token contracts will not expect
-     * {decimals} to ever change, and may work incorrectly if it does.
-     */
-    function _setupDecimals(uint8 decimals_) internal {
-        _decimals = decimals_;
-    }
-
-    /**
-     * @dev Hook that is called before any transfer of tokens. This includes
-     * minting and burning.
-     *
-     * Calling conditions:
-     *
-     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
-     * will be to transferred to `to`.
-     * - when `from` is zero, `amount` tokens will be minted for `to`.
-     * - when `to` is zero, `amount` of ``from``'s tokens will be burned.
-     * - `from` and `to` are never both zero.
-     *
-     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
-     */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual {}
-}
-
-interface IController {
-    function stablecoins() external view returns (address[3] memory);
-
-    function vaults() external view returns (address[3] memory);
-
-    function underlyingVaults(uint256 i) external view returns (address vault);
-
-    function curveVault() external view returns (address);
-
-    function pnl() external view returns (address);
-
-    function insurance() external view returns (address);
-
-    function lifeGuard() external view returns (address);
-
-    function buoy() external view returns (address);
-
-    function reward() external view returns (address);
-
-    function isValidBigFish(
-        bool pwrd,
-        bool deposit,
-        uint256 amount
-    ) external view returns (bool);
-
-    function withdrawHandler() external view returns (address);
-
-    function emergencyHandler() external view returns (address);
-
-    function depositHandler() external view returns (address);
-
-    function totalAssets() external view returns (uint256);
-
-    function gTokenTotalAssets() external view returns (uint256);
-
-    function eoaOnly(address sender) external;
-
-    function getSkimPercent() external view returns (uint256);
-
-    function gToken(bool _pwrd) external view returns (address);
-
-    function emergencyState() external view returns (bool);
-
-    function deadCoin() external view returns (uint256);
-
-    function distributeStrategyGainLoss(uint256 gain, uint256 loss) external;
-
-    function burnGToken(
-        bool pwrd,
-        bool all,
-        address account,
-        uint256 amount,
-        uint256 bonus
-    ) external;
-
-    function mintGToken(
-        bool pwrd,
-        address account,
-        uint256 amount
-    ) external;
-
-    function getUserAssets(bool pwrd, address account)
-        external
-        view
-        returns (uint256 deductUsd);
-
-    function referrals(address account) external view returns (address);
-
-    function addReferral(address account, address referral) external;
-
-    function getStrategiesTargetRatio()
-        external
-        view
-        returns (uint256[] memory);
-
-    function withdrawalFee(bool pwrd) external view returns (uint256);
-
-    function validGTokenDecrease(uint256 amount) external view returns (bool);
-}
-
-interface IToken {
-    function factor() external view returns (uint256);
-
-    function factor(uint256 totalAssets) external view returns (uint256);
-
-    function mint(
-        address account,
-        uint256 _factor,
-        uint256 amount
-    ) external;
-
-    function burn(
-        address account,
-        uint256 _factor,
-        uint256 amount
-    ) external;
-
-    function burnAll(address account) external;
-
-    function totalAssets() external view returns (uint256);
-
-    function getPricePerShare() external view returns (uint256);
-
-    function getShareAssets(uint256 shares) external view returns (uint256);
-
-    function getAssets(address account) external view returns (uint256);
 }
 
 /// @notice Base contract for gro protocol tokens - The Gro token specifies some additional functionality
@@ -483,10 +346,10 @@ interface IToken {
 ///     - Total assets:
 ///         Total assets is the dollarvalue of the underlying assets used to mint Gtokens. The Gtoken
 ///         depends on an external contract (Controller.sol) to get this value (retrieved from PnL calculations)
-abstract contract GToken is GERC20, Constants, Whitelist, IToken {
+abstract contract GToken is GERC20, Constants, Whitelist {
     uint256 public constant BASE = DEFAULT_DECIMALS_FACTOR;
 
-    using SafeERC20 for IERC20;
+    using SafeTransferLib for IERC20;
     using SafeMath for uint256;
 
     IController public ctrl;
