@@ -100,11 +100,7 @@ contract TrancheTest is Test, BaseSetup {
         uint256 withdrawSenior = 4000E18;
         vm.expectEmit(true, true, false, true);
         // Make sure Senior withdraw amount that is not affected by factor
-        emit TransferWithFactor(
-            address(gRouter),
-            address(0),
-            withdrawSenior
-        );
+        emit TransferWithFactor(address(gRouter), address(0), withdrawSenior);
         gRouter.withdraw(4000E18, 0, true, 0);
         vm.expectEmit(true, true, false, true);
         emit TransferWithFactor(
