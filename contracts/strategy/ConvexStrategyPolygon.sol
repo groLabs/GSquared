@@ -81,32 +81,21 @@ struct StrategyParams {
     uint256 totalLoss;
 }
 
-/// CRV-ETH and CVX-ETH pool interface
-interface ICurveRewards {
-    function exchange(
-        uint256 from,
-        uint256 to,
-        uint256 _from_amount,
-        uint256 _min_to_amount,
-        bool use_eth
-    ) external returns (uint256);
-
-    function get_dy(
-        uint256 i,
-        uint256 j,
-        uint256 dx
-    ) external view returns (uint256);
-}
-
 interface ICurveZap {
     function exchange(
-        uint256 exchange,
         address _pool,
         uint256 i,
         uint256 j,
         uint256 _dx,
         uint256 _min_dy
     ) external returns (uint256);
+
+    function get_dy(
+        address _pool,
+        uint256 i,
+        uint256 j,
+        uint256 _dx
+    ) external view returns (uint256);
 }
 
 /// Uniswap v2 router interface
@@ -174,30 +163,25 @@ contract ConvexStrategy {
     address internal constant BOOSTER =
         address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
 
-    address internal constant CVX =
-        address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
     address internal constant CRV =
-        address(0x172370d5cd63279efa6d502dab29171933a610af);
+        address(0x172370d5Cd63279eFa6d502DAB29171933a610AF);
     address internal constant WETH =
         address(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);
 
     address internal constant USDC =
-        address(0x2791bca1f2de4661ed88a30c99a7a9449aa84174);
+        address(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
 
     address internal constant CRV_3POOL =
-        address(0x445fe580ef8d70ff569ab36e80c647af338db351);
+        address(0x445FE580eF8d70FF569aB36e80c647af338db351);
 
-    address internal constant CRV_CRV_3POOL = address(0xc7c939a474cb10eb837894d1ed1a77c61b268fa7);
+    address internal constant CRV_ATRICRYPTO_POOL =
+        address(0xc7c939A474CB10EB837894D1ed1a77C61B268Fa7);
 
-    address internal constant CRV_ATRICRYPTO_ZAP = address(0x3d8eadb739d1ef95dd53d718e4810721837c69c1);
-
-    address internal constant CRV_ETH =
-        address(0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511);
-    address internal constant CVX_ETH =
-        address(0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4);
+    address internal constant CRV_ATRICRYPTO_ZAP =
+        address(0x3d8EADb739D1Ef95dd53D718e4810721837c69c1);
 
     ERC20 internal constant CRV_3POOL_TOKEN =
-        ERC20(address(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490));
+        ERC20(address(0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171));
 
     address internal constant UNI_V2 =
         address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
@@ -216,7 +200,8 @@ contract ConvexStrategy {
 
     // meta pool token layout: [minor stable, 3Crv]
     int128 internal constant CRV3_INDEX = 1;
-    uint256 internal constant CRV_ETH_INDEX = 1;
+    uint8 internal constant CRV_INDEX_ATRICRYPTO = 0;
+    uint8 internal constant WETH_INDEX_ATRICRYPTO = 5;
 
     // Vault and core asset associated with strategy
     IGVault internal immutable VAULT;
@@ -330,8 +315,7 @@ contract ConvexStrategy {
         ASSET = _asset;
         _asset.approve(address(_vault), type(uint256).max); // Max approve asset for Vault to save gas
 
-        ERC20(CRV).approve(CRV_ETH, type(uint256).max);
-        ERC20(CVX).approve(CVX_ETH, type(uint256).max);
+        ERC20(CRV).approve(CRV_ATRICRYPTO_ZAP, type(uint256).max);
         ERC20(WETH).approve(UNI_V3, type(uint256).max);
 
         (address lp, , , address reward, , bool shutdown) = Booster(BOOSTER)
@@ -540,15 +524,20 @@ contract ConvexStrategy {
         return _claimableRewards() + _additionalRewardTokens();
     }
 
-    /// @notice Get price of cvx/crv in eth
-    /// @param _pool CVX/CRV pool
+    /// @notice Get price of crv in eth
     /// @param _amount Amount of rewards to swap
-    function getPriceCurve(address _pool, uint256 _amount)
+    function getPriceCurve(uint256 _amount)
         public
         view
         returns (uint256 price)
     {
-        return ICurveRewards(_pool).get_dy(CRV_ETH_INDEX, 0, _amount);
+        return
+            ICurveZap(CRV_ATRICRYPTO_ZAP).get_dy(
+                CRV_ATRICRYPTO_POOL,
+                CRV_INDEX_ATRICRYPTO,
+                WETH_INDEX_ATRICRYPTO,
+                _amount
+            );
     }
 
     /// @notice Get Uniswap v2 price of token in base asset
@@ -602,43 +591,20 @@ contract ConvexStrategy {
         return _totalAmount;
     }
 
-    /// @notice Value of CRV/CVX available to claim, denoted in base asset
+    /// @notice Value of CRV available to claim, denoted in base asset
     function _claimableRewards() internal view returns (uint256) {
-        uint256 crv = Rewards(rewardContract).earned(address(this));
-
-        // calculations pulled directly from CVX's contract for minting CVX per CRV claimed
-        uint256 supply = ERC20(CVX).totalSupply();
-        uint256 cvx;
-
-        uint256 cliff = supply / REDUCTION_PER_CLIFF;
-        // mint if below total cliffs
-        if (cliff < TOTAL_CLIFFS) {
-            // for reduction% take inverse of current cliff
-            uint256 reduction = TOTAL_CLIFFS - cliff;
-            // reduce
-            cvx = (crv * reduction) / TOTAL_CLIFFS;
-
-            // supply cap check
-            uint256 amtTillMax = MAX_SUPPLY - supply;
-            if (cvx > amtTillMax) {
-                cvx = amtTillMax;
-            }
-        }
+        uint256 crvAmount = Rewards(rewardContract).earned(address(this));
 
         uint256 crvValue;
-        if (crv > MIN_REWARD_SELL_AMOUNT) {
-            crvValue = getPriceCurve(CRV_ETH, crv);
+        if (crvAmount > MIN_REWARD_SELL_AMOUNT) {
+            crvValue = getPriceCurve(crvAmount);
         }
 
-        uint256 cvxValue;
-        if (cvx > MIN_REWARD_SELL_AMOUNT) {
-            cvxValue = getPriceCurve(CVX_ETH, cvx);
-        }
-
-        if (crvValue + cvxValue > MIN_WETH_SELL_AMOUNT) {
-            return getPriceV3(crvValue + cvxValue);
+        if (crvValue > MIN_WETH_SELL_AMOUNT) {
+            return getPriceV3(crvValue);
         }
     }
+
     /// TODO: Rewrite docs for function
     /// @notice Sell available reward tokens for underlying asset
     /// @return Contracts total amount of base assets
@@ -656,14 +622,15 @@ contract ConvexStrategy {
             wethAmount += _sellAdditionalRewards(_numberOfRewards);
         }
 
-        uint256 crv = ERC20(CRV).balanceOf(address(this));
-        if (crv > MIN_REWARD_SELL_AMOUNT) {
-            wethAmount += ICurveRewards(CRV_ETH).exchange(
-                0,
-                0,
-                crv,
-                0,
-                false
+        uint256 crvAmount = ERC20(CRV).balanceOf(address(this));
+        // Swap CRV for WETH using CRV/ATricrypto CRV pool
+        if (crvAmount > MIN_REWARD_SELL_AMOUNT) {
+            wethAmount += ICurveZap(CRV_ATRICRYPTO_ZAP).exchange(
+                CRV_ATRICRYPTO_POOL,
+                CRV_INDEX_ATRICRYPTO,
+                WETH_INDEX_ATRICRYPTO,
+                crvAmount,
+                0
             );
         }
 
