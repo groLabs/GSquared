@@ -4,53 +4,16 @@ pragma solidity 0.8.10;
 import "../interfaces/ICurve3Pool.sol";
 import "../interfaces/ICurveMeta.sol";
 import "../interfaces/IStop.sol";
-import "../interfaces/IStrategy.sol";
 import "../interfaces/IGVault.sol";
+import "../interfaces/IBooster.sol";
 import {ERC20} from "../solmate/src/tokens/ERC20.sol";
+import {StrategyErrors} from "../common/StrategyErrors.sol";
 
 // High level Responsibilities:
 // - Borrow funds from the vault (1)
 // - Invest borrowed funds into an underlying strategy (2)
 // - Correctly report PnL to the lender (GVault) (3)
 // - Responsibly handle 'borrowed' assets (4)
-
-library StrategyErrors {
-    error NotOwner(); // 0x30cd7471
-    error NotVault(); // 0x62df0545
-    error NotKeeper(); // 0xf512b278
-    error ConvexShutdown(); // 0xdbd83f91
-    error RewardsTokenMax(); // 0x8f24ac29
-    error Stopped(); // 0x7acc84e3
-    error SamePid(); // 0x4eb5bc6d
-    error BaseAsset(); // 0xaeca768b
-    error LpToken(); // 0xaeca768b
-    error ConvexToken(); // 0xaeca768b
-    error LTMinAmountExpected(); // 0x3d93e699
-    error ExcessDebtGtThanAssets(); // 0x961696d0
-    error LPNotZero(); // 0xe4e07afa
-    error SlippageProtection(); // 0x17d431f4
-}
-
-/// Convex booster interface
-interface Booster {
-    function poolInfo(uint256)
-        external
-        view
-        returns (
-            address,
-            address,
-            address,
-            address,
-            address,
-            bool
-        );
-
-    function deposit(
-        uint256 _pid,
-        uint256 _amount,
-        bool _stake
-    ) external returns (bool);
-}
 
 /// Convex rewards interface
 interface Rewards {
@@ -318,7 +281,7 @@ contract ConvexStrategyPolygon {
         ERC20(CRV).approve(CRV_ATRICRYPTO_ZAP, type(uint256).max);
         ERC20(WETH).approve(UNI_V3, type(uint256).max);
 
-        (address lp, , , address reward, , bool shutdown) = Booster(BOOSTER)
+        (address lp, , , address reward, , bool shutdown) = IBooster(BOOSTER)
             .poolInfo(_pid);
         if (shutdown) revert StrategyErrors.ConvexShutdown();
         pid = _pid;
@@ -894,7 +857,7 @@ contract ConvexStrategyPolygon {
             revert StrategyErrors.LTMinAmountExpected();
         }
 
-        Booster(BOOSTER).deposit(pid, amount, true);
+        IBooster(BOOSTER).deposit(pid, amount, true);
         return amount;
     }
 
@@ -1034,7 +997,7 @@ contract ConvexStrategyPolygon {
         CRV_3POOL_TOKEN.approve(metaPool, 0);
         lpToken.approve(BOOSTER, 0);
 
-        (address lp, , , address _reward, , bool shutdown) = Booster(BOOSTER)
+        (address lp, , , address _reward, , bool shutdown) = IBooster(BOOSTER)
             .poolInfo(_newPid);
         if (shutdown) revert StrategyErrors.ConvexShutdown();
         ERC20 _newLpToken = ERC20(lp);
