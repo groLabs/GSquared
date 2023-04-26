@@ -10,6 +10,12 @@ interface ICurve3Pool {
         uint256 _min_mint_amount
     ) external;
 
+    function add_liquidity(
+        uint256[3] calldata _deposit_amounts,
+        uint256 _min_mint_amount,
+        bool _use_underlying
+    ) external;
+
     function remove_liquidity_one_coin(
         uint256 _token_amount,
         int128 i,

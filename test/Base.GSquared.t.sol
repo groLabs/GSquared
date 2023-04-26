@@ -192,6 +192,7 @@ contract BaseSetup is Test {
 
     function genThreeCrv(uint256 amount, address _user)
         public
+        virtual
         returns (uint256)
     {
         vm.startPrank(_user);
@@ -307,6 +308,7 @@ contract BaseSetup is Test {
 
     function depositIntoVault(address _user, uint256 _amount)
         public
+        virtual
         returns (uint256 shares)
     {
         uint256 balance = genThreeCrv(_amount, _user);

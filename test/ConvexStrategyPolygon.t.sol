@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import "forge-std/Test.sol";
+import {BaseSetup} from "./Base.GSquared.t.sol";
+import {console2} from "../lib/forge-std/src/console2.sol";
 import {ERC20} from "../contracts/solmate/src/tokens/ERC20.sol";
 import "./utils/utils.sol";
 import "../contracts/GRouter.sol";
@@ -9,57 +10,37 @@ import "../contracts/GTranche.sol";
 import "../contracts/GMigration.sol";
 import "../contracts/strategy/ConvexStrategyPolygon.sol";
 import "../contracts/oracles/CurveOracle.sol";
+import "../contracts/strategy/stop-loss/StopLossLogic.sol";
 import "../contracts/oracles/RouterOracle.sol";
 import "../contracts/tokens/JuniorTranche.sol";
 import "../contracts/tokens/SeniorTranche.sol";
 import "../contracts/pnl/PnLFixedRate.sol";
-import "../contracts/mocks/MockStrategy.sol";
+import "../contracts/solmate/src/utils/SafeTransferLib.sol";
 
 // Polygon CVX Strategy integration test
-contract ConvexStrategyPolygonTest is Test {
-    address public constant THREE_POOL =
-        address(0x445FE580eF8d70FF569aB36e80c647af338db351);
-    ERC20 public constant THREE_POOL_TOKEN =
-        ERC20(address(0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171));
+contract ConvexStrategyPolygonTest is BaseSetup {
+    using SafeTransferLib for ERC20;
 
-    address constant ZERO = address(0x0000000000000000000000000000000000000000);
+    address public constant THREE_POOL_POLYGON =
+        address(0x445FE580eF8d70FF569aB36e80c647af338db351);
+    ERC20 public constant THREE_POOL_TOKEN_POLYGON =
+        ERC20(address(0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171));
+    ERC20 internal constant DAI_POLY =
+        ERC20(address(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063));
+    ERC20 internal constant USDC_POLY =
+        ERC20(address(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174));
+    ERC20 internal constant USDT_POLY =
+        ERC20(address(0xc2132D05D31c914a87C6611C10748AEb04B58e8F));
     uint256 public constant usdr_lp_pid = 11;
     address public constant usdr_lp =
         address(0xa138341185a9D0429B0021A11FB717B225e13e1F);
 
-    GTranche gTranche;
-    GVault gVault;
-    ConvexStrategyPolygon strategy;
-    CurveOracle curveOracle;
-    GRouter gRouter;
-    RouterOracle routerOracle;
-    PnLFixedRate pnl;
-    JuniorTranche GVT;
-    SeniorTranche PWRD;
-    Utils internal utils;
+    ConvexStrategyPolygon cvxStrategy;
+    StopLossLogic snl;
 
-    address[3] public CHAINLINK_AGG_ADDRESSES;
-    address[2] public TRANCHE_TOKENS;
-    address[] public YIELD_VAULTS;
-    address payable[] internal users;
-    address internal alice;
-    address internal bob;
-    address internal joe;
-    address internal torsten;
     address internal based;
 
-    /// @dev Polygon chain id is 137
-    /// Abort execution of test in case local fork is not forked from polygon
-    modifier polyOnly() {
-        // do nothing if chain is not polygon:
-        if (block.chainid != 137) {
-            return;
-        } else {
-            _;
-        }
-    }
-
-    function setUp() public virtual {
+    function setUp() public override {
         // do nothing if chain is not polygon:
         if (block.chainid != 137) {
             return;
@@ -91,14 +72,18 @@ contract ConvexStrategyPolygonTest is Test {
         GVT = new JuniorTranche("GVT", "GVT");
         PWRD = new SeniorTranche("PWRD", "PWRD");
         curveOracle = new CurveOracle();
-        gVault = new GVault(THREE_POOL_TOKEN);
-        strategy = new ConvexStrategyPolygon(
+        gVault = new GVault(THREE_POOL_TOKEN_POLYGON);
+        StopLossLogic snl = new StopLossLogic();
+        cvxStrategy = new ConvexStrategyPolygon(
             IGVault(address(gVault)),
             based,
             usdr_lp_pid,
             usdr_lp
         );
-        gVault.addStrategy(address(strategy), 10000);
+        cvxStrategy.setStopLossLogic(address(snl));
+        snl.setStrategy(address(cvxStrategy), 1e18, 400);
+        cvxStrategy.setKeeper(based);
+        gVault.addStrategy(address(cvxStrategy), 10000);
 
         TRANCHE_TOKENS[0] = address(GVT);
         TRANCHE_TOKENS[1] = address(PWRD);
@@ -123,13 +108,87 @@ contract ConvexStrategyPolygonTest is Test {
             gTranche,
             gVault,
             routerOracle,
-            ICurve3Pool(THREE_POOL),
-            ERC20(THREE_POOL_TOKEN)
+            ICurve3Pool(THREE_POOL_POLYGON),
+            ERC20(THREE_POOL_TOKEN_POLYGON)
         );
         vm.stopPrank();
     }
 
-    function testDummy() public polyOnly {
-        console2.log("Hello!");
+    /// @dev Polygon chain id is 137
+    /// Abort execution of test in case local fork is not forked from polygon
+    modifier polyOnly() {
+        // do nothing if chain is not polygon:
+        if (block.chainid != 137) {
+            return;
+        } else {
+            _;
+        }
+    }
+
+    function genThreeCrv(uint256 amount, address _user)
+        public
+        override
+        returns (uint256)
+    {
+        vm.startPrank(_user);
+        DAI_POLY.approve(THREE_POOL_POLYGON, amount);
+        USDC_POLY.approve(THREE_POOL_POLYGON, amount);
+        if (
+            ERC20(address(USDT_POLY)).allowance(_user, THREE_POOL_POLYGON) > 0
+        ) {
+            ERC20(address(USDT_POLY)).safeApprove(THREE_POOL_POLYGON, 0);
+        }
+        ERC20(address(USDT_POLY)).safeApprove(THREE_POOL_POLYGON, amount);
+        uint256 dai = amount;
+        uint256 usdt = amount / 10**12;
+        uint256 usdc = amount / 10**12;
+        setStorage(
+            _user,
+            DAI_POLY.balanceOf.selector,
+            address(DAI_POLY),
+            type(uint256).max
+        );
+        setStorage(
+            _user,
+            USDC_POLY.balanceOf.selector,
+            address(USDC_POLY),
+            type(uint256).max
+        );
+        setStorage(
+            _user,
+            USDT_POLY.balanceOf.selector,
+            address(USDT_POLY),
+            type(uint256).max
+        );
+        ICurve3Pool(THREE_POOL_POLYGON).add_liquidity(
+            [dai, usdc, usdt],
+            0,
+            true
+        );
+
+        vm.stopPrank();
+
+        return THREE_POOL_TOKEN_POLYGON.balanceOf(_user);
+    }
+
+    function depositIntoVault(address _user, uint256 _amount)
+        public
+        override
+        returns (uint256 shares)
+    {
+        uint256 balance = genThreeCrv(_amount, _user);
+        vm.startPrank(_user);
+        THREE_POOL_TOKEN_POLYGON.approve(address(gVault), balance);
+        shares = gVault.deposit(balance, _user);
+        vm.stopPrank();
+    }
+
+    function testHappyDepositAndHarvest(uint256 deposit) public polyOnly {
+        vm.assume(deposit > 1E20);
+        vm.assume(deposit < 1E25);
+        uint256 shares = depositIntoVault(alice, deposit);
+        //        vm.startPrank(based);
+        //        cvxStrategy.runHarvest();
+        //        vm.stopPrank();
     }
 }
