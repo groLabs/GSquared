@@ -152,7 +152,7 @@ interface IUniV3_POOL {
  *       and convex strategies to optimize yield/risk, and routes all assets through the following flow:
  *           3crv => metaLp => convex.
  */
-contract ConvexStrategy {
+contract ConvexStrategyPolygon {
     /*//////////////////////////////////////////////////////////////
                         CONSTANTS & IMMUTABLES
     //////////////////////////////////////////////////////////////*/
