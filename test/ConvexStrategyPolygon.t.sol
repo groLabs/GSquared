@@ -38,8 +38,6 @@ contract ConvexStrategyPolygonTest is BaseSetup {
     ConvexStrategyPolygon cvxStrategy;
     StopLossLogic snl;
 
-    address internal based;
-
     function setUp() public override {
         // do nothing if chain is not polygon:
         if (block.chainid != 137) {
@@ -56,8 +54,8 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         torsten = users[3];
         vm.label(torsten, "Torsten");
 
-        based = users[4];
-        vm.label(based, "Based");
+        basedAddress = users[4];
+        vm.label(basedAddress, "Based");
         CHAINLINK_AGG_ADDRESSES[0] = address(
             0x4746DeC9e833A82EC7C2C1356372CcF2cfcD2F3D // DAI
         );
@@ -67,7 +65,7 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         CHAINLINK_AGG_ADDRESSES[2] = address(
             0x0A6513e40db6EB1b165753AD52E80663aeA50545 // USDT
         );
-        vm.startPrank(based);
+        vm.startPrank(basedAddress);
 
         GVT = new JuniorTranche("GVT", "GVT");
         PWRD = new SeniorTranche("PWRD", "PWRD");
@@ -76,13 +74,13 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         StopLossLogic snl = new StopLossLogic();
         cvxStrategy = new ConvexStrategyPolygon(
             IGVault(address(gVault)),
-            based,
+            basedAddress,
             usdr_lp_pid,
             usdr_lp
         );
         cvxStrategy.setStopLossLogic(address(snl));
         snl.setStrategy(address(cvxStrategy), 1e18, 400);
-        cvxStrategy.setKeeper(based);
+        cvxStrategy.setKeeper(basedAddress);
         gVault.addStrategy(address(cvxStrategy), 10000);
 
         TRANCHE_TOKENS[0] = address(GVT);
@@ -185,10 +183,39 @@ contract ConvexStrategyPolygonTest is BaseSetup {
 
     function testHappyDepositAndHarvest(uint256 deposit) public polyOnly {
         vm.assume(deposit > 1E20);
-        vm.assume(deposit < 1E25);
+        vm.assume(deposit < 1E22);
+        depositIntoVault(alice, deposit);
+        uint256 initEstimatedAssets = cvxStrategy.estimatedTotalAssets();
+        // Make sure that strategy didn't invest any assets yet
+        assertEq(initEstimatedAssets, 0);
+        vm.startPrank(basedAddress);
+        cvxStrategy.runHarvest();
+        // Make sure assets appear in the strategy
+        assertGt(cvxStrategy.estimatedTotalAssets(), initEstimatedAssets);
+        vm.stopPrank();
+    }
+
+    function testStrategyProfit(uint128 _deposit, uint16 _profit)
+        public
+        polyOnly
+    {
+        uint256 deposit = uint256(_deposit);
+        uint256 profit = uint256(_profit);
+        vm.assume(deposit > 1E20);
+        vm.assume(deposit < 1E22);
+        vm.assume(profit > 500);
+        vm.assume(profit < 10000);
         uint256 shares = depositIntoVault(alice, deposit);
-        //        vm.startPrank(based);
-        //        cvxStrategy.runHarvest();
-        //        vm.stopPrank();
+        vm.startPrank(basedAddress);
+        cvxStrategy.runHarvest();
+        cvxStrategy.setBaseSlippage(1000);
+        vm.stopPrank();
+        // TODO: Manipulate pool with Zap
+        manipulatePool(
+            true,
+            profit,
+            usdr_lp,
+            address(THREE_POOL_TOKEN_POLYGON)
+        );
     }
 }

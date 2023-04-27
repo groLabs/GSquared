@@ -48,7 +48,7 @@ contract BaseSetup is Test {
     address[3] public CHAINLINK_AGG_ADDRESSES;
     address[2] public TRANCHE_TOKENS;
     address[] public YIELD_VAULTS;
-
+    address public basedAddress;
     GTranche gTranche;
     GVault gVault;
     MockStrategy strategy;
@@ -70,7 +70,7 @@ contract BaseSetup is Test {
     function setUp() public virtual {
         utils = new Utils();
         users = utils.createUsers(4);
-
+        basedAddress = address(0xBA5EDF9dAd66D9D81341eEf8131160c439dbA91B);
         alice = users[0];
         vm.label(alice, "Alice");
         bob = users[1];
@@ -90,7 +90,7 @@ contract BaseSetup is Test {
             0x3E7d1eAB13ad0104d2750B8863b489D65364e32D
         );
 
-        vm.startPrank(BASED_ADDRESS);
+        vm.startPrank(basedAddress);
 
         GVT = new JuniorTranche("GVT", "GVT");
         PWRD = new SeniorTranche("PWRD", "PWRD");
@@ -251,7 +251,9 @@ contract BaseSetup is Test {
         address token
     ) public {
         uint256 tokenAmount = IERC20(token).balanceOf(pool);
+        console2.log("tokenAmountPrev", tokenAmount);
         tokenAmount = ((tokenAmount * 10000) / (10000 - change));
+        console2.log("tokenAmount", tokenAmount);
         _manipulatePool(profit, pool, token, tokenAmount);
     }
 
@@ -275,7 +277,7 @@ contract BaseSetup is Test {
         address token
     ) public returns (uint256, uint256) {
         uint256 amount;
-        vm.startPrank(BASED_ADDRESS);
+        vm.startPrank(basedAddress);
         IERC20(token).approve(pool, type(uint256).max);
         if (profit) {
             amount = ICurveMeta(pool).exchange(1, 0, tokenAmount, 0);
@@ -292,9 +294,9 @@ contract BaseSetup is Test {
         address token,
         uint256 tokenAmount
     ) internal returns (uint256) {
-        genStable(tokenAmount, token, BASED_ADDRESS);
-
-        vm.startPrank(BASED_ADDRESS);
+        genStable(tokenAmount, token, basedAddress);
+        console2.log(tokenAmount);
+        vm.startPrank(basedAddress);
         IERC20(token).approve(pool, type(uint256).max);
         uint256 amount;
         if (profit) {

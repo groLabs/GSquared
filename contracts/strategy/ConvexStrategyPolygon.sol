@@ -26,18 +26,19 @@ interface IBoosterPolygon {
             address
         );
 
-    function deposit(
-        uint256 _pid,
-        uint256 _amount,
-        bool _stake
-    ) external returns (bool);
+    function deposit(uint256 _pid, uint256 _amount) external returns (bool);
 }
 
 /// Convex rewards interface
 interface Rewards {
+    struct EarnedData {
+        address token;
+        uint256 amount;
+    }
+
     function balanceOf(address account) external view returns (uint256);
 
-    function earned(address account) external view returns (uint256);
+    function earned(address account) external returns (EarnedData[] memory);
 
     function withdrawAndUnwrap(uint256 amount, bool claim)
         external
@@ -50,16 +51,6 @@ interface Rewards {
     function extraRewards(uint256 id) external view returns (address);
 
     function extraRewardsLength() external view returns (uint256);
-}
-
-/// GVault Strategy parameters
-struct StrategyParams {
-    bool active;
-    uint256 debtRatio;
-    uint256 lastReport;
-    uint256 totalDebt;
-    uint256 totalGain;
-    uint256 totalLoss;
 }
 
 interface ICurveZap {
@@ -77,22 +68,6 @@ interface ICurveZap {
         uint256 j,
         uint256 _dx
     ) external view returns (uint256);
-}
-
-/// Uniswap v2 router interface
-interface IUniV2 {
-    function getAmountsOut(uint256 amountIn, address[] calldata path)
-        external
-        view
-        returns (uint256[] memory amounts);
-
-    function swapExactTokensForTokens(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external returns (uint256[] memory amounts);
 }
 
 /// Uniswap v3 router interface
@@ -158,7 +133,7 @@ contract ConvexStrategyPolygon {
     address internal constant CRV_ATRICRYPTO_POOL =
         address(0xc7c939A474CB10EB837894D1ed1a77C61B268Fa7);
 
-    address internal constant CRV_ATRICRYPTO_ZAP =
+    address internal constant CRV_ZAP =
         address(0x3d8EADb739D1Ef95dd53D718e4810721837c69c1);
 
     ERC20 internal constant CRV_3POOL_TOKEN =
@@ -294,7 +269,7 @@ contract ConvexStrategyPolygon {
         ASSET = _asset;
         _asset.approve(address(_vault), type(uint256).max); // Max approve asset for Vault to save gas
 
-        ERC20(CRV).approve(CRV_ATRICRYPTO_ZAP, type(uint256).max);
+        ERC20(CRV).approve(CRV_ZAP, type(uint256).max);
         ERC20(WETH).approve(UNI_V3, type(uint256).max);
 
         (address lp, , address reward, bool shutdown, ) = IBoosterPolygon(
@@ -436,7 +411,7 @@ contract ConvexStrategyPolygon {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Get strategies current assets
-    function estimatedTotalAssets() external view returns (uint256) {
+    function estimatedTotalAssets() external returns (uint256) {
         (uint256 _assets, , ) = _estimatedTotalAssets(true);
         return _assets;
     }
@@ -445,7 +420,6 @@ contract ConvexStrategyPolygon {
     /// @param _rewards include rewards in return
     function _estimatedTotalAssets(bool _rewards)
         internal
-        view
         returns (
             uint256,
             uint256,
@@ -481,7 +455,7 @@ contract ConvexStrategyPolygon {
     }
 
     /// @notice Return combined value of all reward tokens in underlying asset
-    function rewards() public view returns (uint256) {
+    function rewards() public returns (uint256) {
         return _claimableRewards();
     }
 
@@ -493,7 +467,7 @@ contract ConvexStrategyPolygon {
         returns (uint256 price)
     {
         return
-            ICurveZap(CRV_ATRICRYPTO_ZAP).get_dy(
+            ICurveZap(CRV_ZAP).get_dy(
                 CRV_ATRICRYPTO_POOL,
                 CRV_INDEX_ATRICRYPTO,
                 WETH_INDEX_ATRICRYPTO,
@@ -519,14 +493,15 @@ contract ConvexStrategyPolygon {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Value of CRV available to claim, denoted in base asset
-    function _claimableRewards() internal view returns (uint256) {
-        uint256 crvAmount = Rewards(rewardContract).earned(address(this));
-
+    function _claimableRewards() internal returns (uint256) {
+        Rewards.EarnedData[] memory rewards = Rewards(rewardContract).earned(
+            address(this)
+        );
         uint256 crvValue;
+        uint256 crvAmount = rewards[0].amount;
         if (crvAmount > MIN_REWARD_SELL_AMOUNT) {
             crvValue = getPriceCurve(crvAmount);
         }
-
         if (crvValue > MIN_WETH_SELL_AMOUNT) {
             return getPriceV3(crvValue);
         }
@@ -543,17 +518,10 @@ contract ConvexStrategyPolygon {
     ///     <UNI v2> => <UNI v2>
     function _sellRewards() internal returns (uint256) {
         uint256 wethAmount = ERC20(WETH).balanceOf(address(this));
-        // TODO: No sell of additional rewards for now
-        //        uint256 _numberOfRewards = numberOfRewards;
-        //
-        //        if (_numberOfRewards > 0) {
-        //            wethAmount += _sellAdditionalRewards(_numberOfRewards);
-        //        }
-
         uint256 crvAmount = ERC20(CRV).balanceOf(address(this));
         // Swap CRV for WETH using CRV/ATricrypto CRV pool
         if (crvAmount > MIN_REWARD_SELL_AMOUNT) {
-            wethAmount += ICurveZap(CRV_ATRICRYPTO_ZAP).exchange(
+            wethAmount += ICurveZap(CRV_ZAP).exchange(
                 CRV_ATRICRYPTO_POOL,
                 CRV_INDEX_ATRICRYPTO,
                 WETH_INDEX_ATRICRYPTO,
@@ -649,13 +617,11 @@ contract ConvexStrategyPolygon {
         uint256 debtRepayment;
 
         uint256 debt = VAULT.getStrategyDebt();
-
         (
             uint256 assets,
             uint256 balance,
             uint256 _rewards
         ) = _estimatedTotalAssets(true);
-
         if (_rewards > MIN_REWARD_SELL_AMOUNT) balance = sellAllRewards();
         if (_excessDebt > assets) {
             // if we have more excess debt, this is an edge case and we shouldn't do any harvest at this point
@@ -786,7 +752,6 @@ contract ConvexStrategyPolygon {
     /// @param _credit Amount available to invest
     function invest(uint256 _credit) internal returns (uint256) {
         uint256 amount = ICurveMeta(metaPool).add_liquidity([0, _credit], 0);
-
         uint256 ratio = curveValue();
         if (
             (amount * ratio) / PERCENTAGE_DECIMAL_FACTOR <
@@ -796,7 +761,7 @@ contract ConvexStrategyPolygon {
             revert StrategyErrors.LTMinAmountExpected();
         }
 
-        IBoosterPolygon(BOOSTER).deposit(pid, amount, true);
+        IBoosterPolygon(BOOSTER).deposit(pid, amount);
         return amount;
     }
 
@@ -881,37 +846,6 @@ contract ConvexStrategyPolygon {
     /*//////////////////////////////////////////////////////////////
                            TRIGGERS
     //////////////////////////////////////////////////////////////*/
-
-    /// @notice Checks if the strategy should be harvested
-    function canHarvest() external view returns (bool) {
-        (bool active, uint256 totalDebt, uint256 lastReport) = VAULT
-            .getStrategyData();
-
-        // Should not trigger if strategy is not activated
-        if (!active) return false;
-        if (stop) return false;
-
-        // Should trigger if hadn't been called in a while
-        uint256 timeSinceLastHarvest = block.timestamp - lastReport;
-        if (timeSinceLastHarvest > MAX_REPORT_DELAY) return true;
-
-        // Check for profits and losses
-        (uint256 assets, , ) = _estimatedTotalAssets(true);
-        uint256 debt = totalDebt;
-        (uint256 excessDebt, ) = VAULT.excessDebt(address(this));
-        uint256 profit;
-        if (assets > debt) {
-            profit = assets - debt;
-        } else {
-            excessDebt += debt - assets;
-        }
-        profit += VAULT.creditAvailable();
-        if (excessDebt > debtThreshold) return true;
-        if (profit > profitThreshold && timeSinceLastHarvest > MIN_REPORT_DELAY)
-            return true;
-
-        return false;
-    }
 
     /// @notice Check if stop loss needs to be triggered
     function canStopLoss() external view returns (bool) {
