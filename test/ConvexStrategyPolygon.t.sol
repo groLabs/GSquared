@@ -38,6 +38,8 @@ contract ConvexStrategyPolygonTest is BaseSetup {
     ConvexStrategyPolygon cvxStrategy;
     StopLossLogic snl;
 
+    address public basedAddress;
+
     function setUp() public override {
         // do nothing if chain is not polygon:
         if (block.chainid != 137) {
