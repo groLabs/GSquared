@@ -7,6 +7,7 @@ import "../interfaces/IStop.sol";
 import "../interfaces/IGVault.sol";
 import {ERC20} from "../solmate/src/tokens/ERC20.sol";
 import {StrategyErrors} from "../common/StrategyErrors.sol";
+import {console2} from "../../lib/forge-std/src/console2.sol";
 
 // High level Responsibilities:
 // - Borrow funds from the vault (1)
@@ -40,13 +41,11 @@ interface Rewards {
 
     function earned(address account) external returns (EarnedData[] memory);
 
-    function withdrawAndUnwrap(uint256 amount, bool claim)
-        external
-        returns (bool);
+    function withdraw(uint256 amount, bool claim) external returns (bool);
 
-    function withdrawAllAndUnwrap(bool claim) external;
+    function withdrawAll(bool claim) external;
 
-    function getReward() external returns (bool);
+    function getReward(address _account) external returns (bool);
 
     function extraRewards(uint256 id) external view returns (address);
 
@@ -450,7 +449,8 @@ contract ConvexStrategyPolygon {
 
     /// @notice Claim and sell off all reward tokens for underlying asset
     function sellAllRewards() internal returns (uint256) {
-        Rewards(rewardContract).getReward();
+        // TODO: Right now rewards are unclaimed
+//        Rewards(rewardContract).getReward(address(this));
         return _sellRewards();
     }
 
@@ -499,6 +499,8 @@ contract ConvexStrategyPolygon {
         );
         uint256 crvValue;
         uint256 crvAmount = rewards[0].amount;
+        address token = rewards[0].token;
+        require(token == CRV, "!Invalid reward token");
         if (crvAmount > MIN_REWARD_SELL_AMOUNT) {
             crvValue = getPriceCurve(crvAmount);
         }
@@ -622,7 +624,9 @@ contract ConvexStrategyPolygon {
             uint256 balance,
             uint256 _rewards
         ) = _estimatedTotalAssets(true);
+        console2.log("Rewards: ", _rewards);
         if (_rewards > MIN_REWARD_SELL_AMOUNT) balance = sellAllRewards();
+        console2.log("Balance", balance);
         if (_excessDebt > assets) {
             // if we have more excess debt, this is an edge case and we shouldn't do any harvest at this point
             revert StrategyErrors.ExcessDebtGtThanAssets();
@@ -692,7 +696,7 @@ contract ConvexStrategyPolygon {
                 revert StrategyErrors.SlippageProtection();
             }
         }
-        Rewards(rewardContract).withdrawAndUnwrap(meta_amount, false);
+        Rewards(rewardContract).withdraw(meta_amount, false);
         return
             ICurveMeta(metaPool).remove_liquidity_one_coin(
                 meta_amount,
@@ -711,7 +715,7 @@ contract ConvexStrategyPolygon {
                 return 0;
             }
         } else {
-            Rewards(rewardContract).withdrawAllAndUnwrap(false);
+            Rewards(rewardContract).withdrawAll(false);
         }
         uint256 minAmount;
         if (_slippage) {
@@ -805,7 +809,11 @@ contract ConvexStrategyPolygon {
             );
         }
         uint256 credit = VAULT.report(profit, loss, debtRepayment, emergency);
-
+        console2.log("profit", profit);
+        console2.log("loss", loss);
+        console2.log("debtRepayment", debtRepayment);
+        console2.log("balance", balance);
+        console2.log("credit", credit);
         // invest any free funds in the strategy
         if (balance + credit > debtRepayment + INVESTMENT_BUFFER) {
             invest(balance + credit - debtRepayment);

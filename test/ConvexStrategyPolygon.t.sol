@@ -20,7 +20,8 @@ import "../contracts/solmate/src/utils/SafeTransferLib.sol";
 // Polygon CVX Strategy integration test
 contract ConvexStrategyPolygonTest is BaseSetup {
     using SafeTransferLib for ERC20;
-
+    uint256 constant MIN_REPORT_DELAY = 172801;
+    uint256 constant MAX_REPORT_DELAY = 604800;
     address public constant THREE_POOL_POLYGON =
         address(0x445FE580eF8d70FF569aB36e80c647af338db351);
     ERC20 public constant THREE_POOL_TOKEN_POLYGON =
@@ -40,6 +41,9 @@ contract ConvexStrategyPolygonTest is BaseSetup {
     uint256 public constant USDR_LP_PID = 11;
     address public constant USDR_LP =
         address(0xa138341185a9D0429B0021A11FB717B225e13e1F);
+    address public constant USDR_META_REWARDS =
+        address(0x3D17b2BcfcD7E0Dc4d6a0d6bA67c29FBc592B323);
+    address public constant USDR_WHALE = address(0xAF0D9D65fC54de245cdA37af3d18cbEc860A4D4b);
 
     ConvexStrategyPolygon cvxStrategy;
     StopLossLogic snl;
@@ -186,11 +190,15 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         vm.stopPrank();
     }
 
+    /// @notice Note that USDR has decimals == 9
     // Deal USDR to based address so it can do manipulation shenanigans
-    function _dealUSDR() internal {
-        vm.startPrank(USDR_DEPLOYER);
-        USDR.transfer(basedAddress, 1e7);
+    function _dealUSDR(address pool) internal returns (uint256) {
+        // Steal some USDR from whale
+        uint256 amount = 13634897857023374;
+        vm.startPrank(USDR_WHALE);
+        USDR.transfer(basedAddress, amount);
         vm.stopPrank();
+        return amount / 2;
     }
 
     // @dev Manipulate the pool
@@ -206,19 +214,26 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         address token,
         address underlyingToken
     ) public {
-        uint256 tokenAmount = ERC20(underlyingToken).balanceOf(pool);
+        uint256 tokenAmount;
+        if (profit) {
+            tokenAmount = ERC20(underlyingToken).balanceOf(pool);
+        } else {
+            // Give USDR to based address and get half of that amount
+            tokenAmount = _dealUSDR(pool);
+        }
         tokenAmount = ((tokenAmount * 10000) / (10000 - change));
         // Give 3pool token
         genStable(tokenAmount, address(token), basedAddress);
-        // Give USDR to based address
-        _dealUSDR();
         vm.startPrank(basedAddress);
         THREE_POOL_TOKEN_POLYGON.approve(pool, type(uint256).max);
+        USDR.approve(pool, type(uint256).max);
         uint256 amount;
         if (profit) {
+            // Swap 3pool token for USDR
             amount = ICurveMeta(pool).exchange(1, 0, tokenAmount, 0);
         } else {
-            amount = ICurveMeta(pool).exchange(0, 1, tokenAmount, 0);
+            // Swap USDR for underlying 3pool token
+            amount = ICurveMeta(pool).exchange_underlying(0, 1, tokenAmount, 0);
         }
         vm.stopPrank();
     }
@@ -255,6 +270,9 @@ contract ConvexStrategyPolygonTest is BaseSetup {
 
         uint256 initEstimatedAssets = cvxStrategy.estimatedTotalAssets();
         uint256 initVaultAssets = gVault.realizedTotalAssets();
+        (, , , , uint256 initProfit, ) = gVault.strategies(
+            address(cvxStrategy)
+        );
         manipulateMetaPoolOnPoly(
             true,
             profit,
@@ -273,6 +291,114 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         assertGt(cvxStrategy.estimatedTotalAssets(), initEstimatedAssets);
         assertGt(gVault.realizedTotalAssets(), initVaultAssets);
 
+        (, , , , uint256 finalProfit, ) = gVault.strategies(
+            address(cvxStrategy)
+        );
+
         vm.stopPrank();
+        // Make vault report profit after pool manipulation
+        assertGt(finalProfit, initProfit);
+    }
+
+    function testStrategyLoss(uint128 _deposit) public polyOnly {
+        uint256 deposit = uint256(_deposit);
+        vm.assume(deposit > 1E20);
+        vm.assume(deposit < 1E22);
+        uint256 shares = depositIntoVault(alice, deposit);
+        vm.startPrank(basedAddress);
+        cvxStrategy.runHarvest();
+        cvxStrategy.setBaseSlippage(1000);
+        vm.stopPrank();
+
+        uint256 initEstimatedAssets = cvxStrategy.estimatedTotalAssets();
+        uint256 initVaultAssets = gVault.realizedTotalAssets();
+        (, , , , , uint256 initLoss) = gVault.strategies(
+            address(cvxStrategy)
+        );
+        manipulateMetaPoolOnPoly(
+            false,
+            500,
+            USDR_LP,
+            address(THREE_POOL_TOKEN_POLYGON),
+            address(AM_THREE_POOL_TOKEN_POLYGON)
+        );
+        // Make sure that estimated assets decreased after loss
+        assertLt(cvxStrategy.estimatedTotalAssets(), initEstimatedAssets);
+        // Make sure that vault assets didn't change
+        assertEq(gVault.realizedTotalAssets(), initVaultAssets);
+        // Run harvest again to realize profit
+        vm.startPrank(basedAddress);
+        cvxStrategy.runHarvest();
+        // Make sure loss is realized
+        assertLt(cvxStrategy.estimatedTotalAssets(), initEstimatedAssets);
+        assertLt(gVault.realizedTotalAssets(), initVaultAssets);
+
+        (, , , , , uint256 finalLoss) = gVault.strategies(
+            address(cvxStrategy)
+        );
+
+        vm.stopPrank();
+        // Make sure vault's loss is GT then loss that was before
+        assertGt(finalLoss, initLoss);
+    }
+
+    function testStrategyCanInvestIntoConvex(uint128 _deposit) public polyOnly {
+        uint256 deposit = uint256(_deposit);
+        vm.assume(deposit > 1E20);
+        vm.assume(deposit < 1E22);
+        depositIntoVault(alice, deposit);
+        vm.startPrank(basedAddress);
+        IERC20 usdrRewardsContract = IERC20(USDR_META_REWARDS);
+        assertEq(usdrRewardsContract.balanceOf(address(cvxStrategy)), 0);
+        cvxStrategy.runHarvest();
+        assertGt(usdrRewardsContract.balanceOf(address(cvxStrategy)), 0);
+        vm.stopPrank();
+    }
+
+    function testStrategyCanDivestAssetsFromConvex(uint128 _deposit)
+        public
+        polyOnly
+    {
+        uint256 deposit = uint256(_deposit);
+        vm.assume(deposit > 1E20);
+        vm.assume(deposit < 1E22);
+        depositIntoVault(alice, deposit);
+        vm.startPrank(basedAddress);
+        IERC20 rewardsPool = IERC20(USDR_META_REWARDS);
+        cvxStrategy.runHarvest();
+        uint256 initInvestment = rewardsPool.balanceOf(address(cvxStrategy));
+
+        gVault.setDebtRatio(address(cvxStrategy), 5000);
+
+        cvxStrategy.runHarvest();
+        // Make sure that strategy divested half of the assets because debtRatio is 50%
+        assertApproxEqRel(
+            rewardsPool.balanceOf(address(cvxStrategy)),
+            initInvestment / 2,
+            1E16
+        );
+        vm.stopPrank();
+    }
+
+    function testHarvestTriggers() public {
+        depositIntoVault(alice, 1E22);
+        vm.startPrank(basedAddress);
+
+        // set harvest > min report time
+        vm.warp(block.timestamp + MIN_REPORT_DELAY);
+        // excess debt > debt_threshold
+        gVault.setDebtRatio(address(cvxStrategy), 5000);
+        cvxStrategy.runHarvest();
+        // Make sure assets are invested into Rewards Pool
+        IERC20 usdrRewardsContract = IERC20(USDR_META_REWARDS);
+        uint256 initInvestment = usdrRewardsContract.balanceOf(address(cvxStrategy));
+        assertGt(initInvestment, 0);
+        vm.warp(block.timestamp + MAX_REPORT_DELAY);
+
+        cvxStrategy.runHarvest();
+
+//        // Make sure rewards are re-invested into Convex
+//        uint256 finalInvestment = usdrRewardsContract.balanceOf(address(cvxStrategy));
+//        assertGt(finalInvestment, initInvestment);
     }
 }
