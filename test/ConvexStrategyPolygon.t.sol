@@ -377,7 +377,7 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         vm.stopPrank();
     }
 
-    function testHarvestTriggers() public {
+    function testHarvestTriggers() public polyOnly {
         depositIntoVault(alice, 1E22);
         vm.startPrank(basedAddress);
 
