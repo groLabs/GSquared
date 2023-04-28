@@ -25,14 +25,20 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         address(0x445FE580eF8d70FF569aB36e80c647af338db351);
     ERC20 public constant THREE_POOL_TOKEN_POLYGON =
         ERC20(address(0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171));
+    ERC20 public constant AM_THREE_POOL_TOKEN_POLYGON =
+        ERC20(address(0x19793B454D3AfC7b454F206Ffe95aDE26cA6912c));
     ERC20 internal constant DAI_POLY =
         ERC20(address(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063));
     ERC20 internal constant USDC_POLY =
         ERC20(address(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174));
     ERC20 internal constant USDT_POLY =
         ERC20(address(0xc2132D05D31c914a87C6611C10748AEb04B58e8F));
-    uint256 public constant usdr_lp_pid = 11;
-    address public constant usdr_lp =
+    ERC20 internal constant USDR =
+        ERC20(address(0xb5DFABd7fF7F83BAB83995E72A52B97ABb7bcf63));
+    address constant USDR_DEPLOYER =
+        address(0x3d41487A3c5662eDE90D0eE8854f3cC59E8D66AD);
+    uint256 public constant USDR_LP_PID = 11;
+    address public constant USDR_LP =
         address(0xa138341185a9D0429B0021A11FB717B225e13e1F);
 
     ConvexStrategyPolygon cvxStrategy;
@@ -52,9 +58,6 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         bob = users[1];
         vm.label(bob, "Bob");
         joe = users[2];
-        vm.label(joe, "Joe");
-        torsten = users[3];
-        vm.label(torsten, "Torsten");
 
         basedAddress = users[4];
         vm.label(basedAddress, "Based");
@@ -77,8 +80,8 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         cvxStrategy = new ConvexStrategyPolygon(
             IGVault(address(gVault)),
             basedAddress,
-            usdr_lp_pid,
-            usdr_lp
+            USDR_LP_PID,
+            USDR_LP
         );
         cvxStrategy.setStopLossLogic(address(snl));
         snl.setStrategy(address(cvxStrategy), 1e18, 400);
@@ -183,6 +186,43 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         vm.stopPrank();
     }
 
+    // Deal USDR to based address so it can do manipulation shenanigans
+    function _dealUSDR() internal {
+        vm.startPrank(USDR_DEPLOYER);
+        USDR.transfer(basedAddress, 1e7);
+        vm.stopPrank();
+    }
+
+    // @dev Manipulate the pool
+    // @param profit True if we want to make a profit, false if we want to lose money
+    // @param change The percentage of the pool we want to change
+    // @param pool The pool we want to manipulate
+    // @param token The token we want to manipulate, should be 3Pool token usually
+    // @param underlyingToken The underlying token of the pool such as Aave 3pool token
+    function manipulateMetaPoolOnPoly(
+        bool profit,
+        uint256 change,
+        address pool,
+        address token,
+        address underlyingToken
+    ) public {
+        uint256 tokenAmount = ERC20(underlyingToken).balanceOf(pool);
+        tokenAmount = ((tokenAmount * 10000) / (10000 - change));
+        // Give 3pool token
+        genStable(tokenAmount, address(token), basedAddress);
+        // Give USDR to based address
+        _dealUSDR();
+        vm.startPrank(basedAddress);
+        THREE_POOL_TOKEN_POLYGON.approve(pool, type(uint256).max);
+        uint256 amount;
+        if (profit) {
+            amount = ICurveMeta(pool).exchange(1, 0, tokenAmount, 0);
+        } else {
+            amount = ICurveMeta(pool).exchange(0, 1, tokenAmount, 0);
+        }
+        vm.stopPrank();
+    }
+
     function testHappyDepositAndHarvest(uint256 deposit) public polyOnly {
         vm.assume(deposit > 1E20);
         vm.assume(deposit < 1E22);
@@ -212,12 +252,27 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         cvxStrategy.runHarvest();
         cvxStrategy.setBaseSlippage(1000);
         vm.stopPrank();
-        // TODO: Manipulate pool with Zap
-        manipulatePool(
+
+        uint256 initEstimatedAssets = cvxStrategy.estimatedTotalAssets();
+        uint256 initVaultAssets = gVault.realizedTotalAssets();
+        manipulateMetaPoolOnPoly(
             true,
             profit,
-            usdr_lp,
-            address(THREE_POOL_TOKEN_POLYGON)
+            USDR_LP,
+            address(THREE_POOL_TOKEN_POLYGON),
+            address(AM_THREE_POOL_TOKEN_POLYGON)
         );
+        // Make sure that estimated assets increased after profit
+        assertGt(cvxStrategy.estimatedTotalAssets(), initEstimatedAssets);
+        // Make sure that vault assets didn't change
+        assertEq(gVault.realizedTotalAssets(), initVaultAssets);
+        // Run harvest again to realize profit
+        vm.startPrank(basedAddress);
+        cvxStrategy.runHarvest();
+        // Make sure profit is realized
+        assertGt(cvxStrategy.estimatedTotalAssets(), initEstimatedAssets);
+        assertGt(gVault.realizedTotalAssets(), initVaultAssets);
+
+        vm.stopPrank();
     }
 }

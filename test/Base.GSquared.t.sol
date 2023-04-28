@@ -249,9 +249,7 @@ contract BaseSetup is Test {
         address token
     ) public {
         uint256 tokenAmount = IERC20(token).balanceOf(pool);
-        console2.log("tokenAmountPrev", tokenAmount);
         tokenAmount = ((tokenAmount * 10000) / (10000 - change));
-        console2.log("tokenAmount", tokenAmount);
         _manipulatePool(profit, pool, token, tokenAmount);
     }
 
@@ -293,7 +291,6 @@ contract BaseSetup is Test {
         uint256 tokenAmount
     ) internal returns (uint256) {
         genStable(tokenAmount, token, BASED_ADDRESS);
-        console2.log(tokenAmount);
         vm.startPrank(BASED_ADDRESS);
         IERC20(token).approve(pool, type(uint256).max);
         uint256 amount;
