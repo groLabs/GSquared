@@ -43,7 +43,8 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         address(0xa138341185a9D0429B0021A11FB717B225e13e1F);
     address public constant USDR_META_REWARDS =
         address(0x3D17b2BcfcD7E0Dc4d6a0d6bA67c29FBc592B323);
-    address public constant USDR_WHALE = address(0xAF0D9D65fC54de245cdA37af3d18cbEc860A4D4b);
+    address public constant USDR_WHALE =
+        address(0xAF0D9D65fC54de245cdA37af3d18cbEc860A4D4b);
 
     ConvexStrategyPolygon cvxStrategy;
     StopLossLogic snl;
@@ -312,9 +313,7 @@ contract ConvexStrategyPolygonTest is BaseSetup {
 
         uint256 initEstimatedAssets = cvxStrategy.estimatedTotalAssets();
         uint256 initVaultAssets = gVault.realizedTotalAssets();
-        (, , , , , uint256 initLoss) = gVault.strategies(
-            address(cvxStrategy)
-        );
+        (, , , , , uint256 initLoss) = gVault.strategies(address(cvxStrategy));
         manipulateMetaPoolOnPoly(
             false,
             500,
@@ -333,9 +332,7 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         assertLt(cvxStrategy.estimatedTotalAssets(), initEstimatedAssets);
         assertLt(gVault.realizedTotalAssets(), initVaultAssets);
 
-        (, , , , , uint256 finalLoss) = gVault.strategies(
-            address(cvxStrategy)
-        );
+        (, , , , , uint256 finalLoss) = gVault.strategies(address(cvxStrategy));
 
         vm.stopPrank();
         // Make sure vault's loss is GT then loss that was before
@@ -391,14 +388,16 @@ contract ConvexStrategyPolygonTest is BaseSetup {
         cvxStrategy.runHarvest();
         // Make sure assets are invested into Rewards Pool
         IERC20 usdrRewardsContract = IERC20(USDR_META_REWARDS);
-        uint256 initInvestment = usdrRewardsContract.balanceOf(address(cvxStrategy));
+        uint256 initInvestment = usdrRewardsContract.balanceOf(
+            address(cvxStrategy)
+        );
         assertGt(initInvestment, 0);
         vm.warp(block.timestamp + MAX_REPORT_DELAY);
 
         cvxStrategy.runHarvest();
 
-//        // Make sure rewards are re-invested into Convex
-//        uint256 finalInvestment = usdrRewardsContract.balanceOf(address(cvxStrategy));
-//        assertGt(finalInvestment, initInvestment);
+        //        // Make sure rewards are re-invested into Convex
+        //        uint256 finalInvestment = usdrRewardsContract.balanceOf(address(cvxStrategy));
+        //        assertGt(finalInvestment, initInvestment);
     }
 }
