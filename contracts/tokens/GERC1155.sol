@@ -116,7 +116,6 @@ library TokenCalculations {
 /// @title Gro extension of ERC1155
 /// @notice Token definition contract
 contract GERC1155 is ERC1155 {
-    using SafeMath for uint256;
     // Extend amount of tokens as needed
     // TODO: Move to constants and derive?
     uint8 public constant JUNIOR = 0;
