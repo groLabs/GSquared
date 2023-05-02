@@ -9,7 +9,6 @@ import {Constants} from "./common/Constants.sol";
 import {Errors} from "./common/Errors.sol";
 import {GTranche} from "./GTranche.sol";
 import {GVault} from "./GVault.sol";
-import {SeniorTranche} from "./tokens/SeniorTranche.sol";
 
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \
@@ -67,7 +66,7 @@ contract GMigration is Owned, Constants {
         }
 
         // read senior tranche value before migration
-        seniorTrancheDollarAmount = SeniorTranche(PWRD).totalAssets();
+        seniorTrancheDollarAmount = gTranche.getTrancheBalance(1);
 
         uint256 DAI_BALANCE = ERC20(DAI).balanceOf(address(this));
         uint256 USDC_BALANCE = ERC20(USDC).balanceOf(address(this));

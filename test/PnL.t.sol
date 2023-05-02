@@ -26,10 +26,7 @@ contract PnLTest is Test, BaseSetup {
         gTranche.deposit(depositSenior, 0, true, alice);
 
         vm.stopPrank();
-        assertLe(
-            gTranche.trancheBalances(true),
-            gTranche.trancheBalances(false)
-        );
+        assertLe(gTranche.trancheBalances(1), gTranche.trancheBalances(0));
         vm.stopPrank();
     }
 
@@ -76,7 +73,7 @@ contract PnLTest is Test, BaseSetup {
 
         uint256 withdraw = ((shares / 2 - depositSenior) *
             ICurve3Pool(THREE_POOL).get_virtual_price()) /
-            GVT.getPricePerShare();
+            gTranche.getPricePerShare(0);
         if (withdraw == 0) withdraw = 1;
 
         gTranche.withdraw(withdraw, 0, false, alice);
@@ -102,9 +99,10 @@ contract PnLTest is Test, BaseSetup {
 
         uint256 withdraw = ((shares / 2 - depositSenior + depositSenior / 10) *
             ICurve3Pool(THREE_POOL).get_virtual_price()) /
-            GVT.getPricePerShare();
+            gTranche.getPricePerShare(0);
         if (withdraw == 0) withdraw = 1E16;
-        if (withdraw > GVT.balanceOf(alice)) withdraw = GVT.balanceOf(alice);
+        if (withdraw > gTranche.balanceOfWithFactor(alice, 0))
+            withdraw = gTranche.balanceOfWithFactor(alice, 0);
 
         vm.expectRevert(
             abi.encodeWithSelector(Errors.UtilisationTooHigh.selector)
@@ -135,15 +133,15 @@ contract PnLTest is Test, BaseSetup {
         uint256 withdraw = uint256(_withdrawSenior);
         uint256 seniorAmount = (depositSenior *
             ICurve3Pool(THREE_POOL).get_virtual_price()) /
-            GVT.getPricePerShare();
+            gTranche.getPricePerShare(0);
         if (withdraw > seniorAmount) {
             withdraw = seniorAmount;
         }
 
-        uint256 seniorAssets = gTranche.trancheBalances(true);
+        uint256 seniorAssets = gTranche.trancheBalances(1);
         gTranche.withdraw(withdraw, 0, true, alice);
         vm.stopPrank();
-        assertLt(gTranche.trancheBalances(true), seniorAssets);
+        assertLt(gTranche.trancheBalances(1), seniorAssets);
     }
 
     function test_senior_tranche_assets_increase_on_deposit(
@@ -161,11 +159,11 @@ contract PnLTest is Test, BaseSetup {
         vm.startPrank(alice);
         ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
         gTranche.deposit(shares / 2, 0, false, alice);
-        uint256 seniorAssets = gTranche.trancheBalances(true);
+        uint256 seniorAssets = gTranche.trancheBalances(1);
         gTranche.deposit(depositSenior, 0, true, alice);
 
         vm.stopPrank();
-        assertGt(gTranche.trancheBalances(true), seniorAssets);
+        assertGt(gTranche.trancheBalances(1), seniorAssets);
     }
 
     function test_junior_tranche_assets_decrease_on_withdrawal(
@@ -187,12 +185,12 @@ contract PnLTest is Test, BaseSetup {
 
         uint256 withdraw = ((shares / 2 - depositSenior) *
             ICurve3Pool(THREE_POOL).get_virtual_price()) /
-            GVT.getPricePerShare();
+            gTranche.getPricePerShare(0);
         if (withdraw == 0) withdraw = 1;
 
-        uint256 juniorAssets = gTranche.trancheBalances(false);
+        uint256 juniorAssets = gTranche.trancheBalances(0);
         gTranche.withdraw(withdraw, 0, false, alice);
-        assertLt(gTranche.trancheBalances(false), juniorAssets);
+        assertLt(gTranche.trancheBalances(0), juniorAssets);
         vm.stopPrank();
     }
 
@@ -205,12 +203,12 @@ contract PnLTest is Test, BaseSetup {
         uint256 shares = depositIntoVault(address(alice), amount);
 
         vm.startPrank(alice);
-        uint256 juniorAssets = gTranche.trancheBalances(false);
+        uint256 juniorAssets = gTranche.trancheBalances(0);
         ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
         gTranche.deposit(shares / 2, 0, false, alice);
 
         vm.stopPrank();
-        assertGt(gTranche.trancheBalances(false), juniorAssets);
+        assertGt(gTranche.trancheBalances(0), juniorAssets);
     }
 
     function test_utilisation_increases_on_minting_of_senior_tranche_token(
@@ -257,7 +255,7 @@ contract PnLTest is Test, BaseSetup {
         uint256 withdraw = uint256(_withdrawSenior);
         uint256 seniorAmount = (depositSenior *
             ICurve3Pool(THREE_POOL).get_virtual_price()) /
-            PWRD.getPricePerShare();
+            gTranche.getPricePerShare(1);
         if (withdraw > seniorAmount) {
             withdraw = seniorAmount;
         }
@@ -307,7 +305,7 @@ contract PnLTest is Test, BaseSetup {
 
         uint256 withdraw = ((shares / 2 - depositSenior) *
             ICurve3Pool(THREE_POOL).get_virtual_price()) /
-            GVT.getPricePerShare();
+            gTranche.getPricePerShare(0);
         if (withdraw == 0) withdraw = 1;
 
         uint256 initialUtlization = gTranche.utilisation();
@@ -408,7 +406,7 @@ contract PnLTest is Test, BaseSetup {
             .pnlDistribution();
         uint256 withdraw = ((shares / 4 - depositSenior) *
             ICurve3Pool(THREE_POOL).get_virtual_price()) /
-            GVT.getPricePerShare();
+            gTranche.getPricePerShare(0);
         if (withdraw == 0) withdraw = 1;
         (, uint256 withdrawnAssetValue) = gTranche.withdraw(
             withdraw,
@@ -538,7 +536,7 @@ contract PnLTest is Test, BaseSetup {
             .pnlDistribution();
         vm.startPrank(alice);
         (, uint256 withdrawnAssetValue) = gTranche.withdraw(
-            PWRD.balanceOf(alice) / 2,
+            gTranche.balanceOfWithFactor(alice, 1) / 2,
             0,
             true,
             alice
@@ -593,7 +591,7 @@ contract PnLTest is Test, BaseSetup {
             .pnlDistribution();
         vm.startPrank(alice);
         (, uint256 withdrawnAssetValue) = gTranche.withdraw(
-            PWRD.balanceOf(alice) / 2,
+            gTranche.balanceOfWithFactor(alice, 1) / 2,
             0,
             true,
             alice

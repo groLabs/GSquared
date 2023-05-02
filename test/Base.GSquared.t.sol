@@ -1,5 +1,6 @@
 import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
+import "forge-std/interfaces/IERC20.sol";
 import "./utils/utils.sol";
 import "../contracts/GRouter.sol";
 import "../contracts/GVault.sol";
@@ -7,8 +8,6 @@ import "../contracts/GTranche.sol";
 import "../contracts/GMigration.sol";
 import "../contracts/oracles/CurveOracle.sol";
 import "../contracts/oracles/RouterOracle.sol";
-import "../contracts/tokens/JuniorTranche.sol";
-import "../contracts/tokens/SeniorTranche.sol";
 import "../contracts/pnl/PnLFixedRate.sol";
 import "../contracts/strategy/stop-loss/StopLossLogic.sol";
 import "../contracts/strategy/keeper/GStrategyGuard.sol";
