@@ -27,7 +27,6 @@ contract PnLTest is Test, BaseSetup {
 
         vm.stopPrank();
         assertLe(gTranche.trancheBalances(1), gTranche.trancheBalances(0));
-        vm.stopPrank();
     }
 
     function testCannotDepositAboveUtilisation(
