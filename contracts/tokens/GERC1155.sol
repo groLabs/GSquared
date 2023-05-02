@@ -204,7 +204,7 @@ contract GERC1155 is ERC1155 {
             _asSingletonArray(id),
             _asSingletonArray(factoredAmount)
         );
-        super.safeTransferFrom(from, to, id, factoredAmount, "");
+        safeTransferFrom(from, to, id, factoredAmount, "");
     }
 
     /*///////////////////////////////////////////////////////////////
