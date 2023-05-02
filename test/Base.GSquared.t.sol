@@ -56,8 +56,6 @@ contract BaseSetup is Test {
     GRouter gRouter;
     RouterOracle routerOracle;
     PnLFixedRate pnl;
-    JuniorTranche GVT;
-    SeniorTranche PWRD;
 
     Utils internal utils;
 
@@ -91,30 +89,20 @@ contract BaseSetup is Test {
         );
 
         vm.startPrank(BASED_ADDRESS);
-
-        GVT = new JuniorTranche("GVT", "GVT");
-        PWRD = new SeniorTranche("PWRD", "PWRD");
         curveOracle = new CurveOracle();
         gVault = new GVault(THREE_POOL_TOKEN);
         strategy = new MockStrategy(address(gVault));
         gVault.addStrategy(address(strategy), 10000);
 
-        TRANCHE_TOKENS[0] = address(GVT);
-        TRANCHE_TOKENS[1] = address(PWRD);
         YIELD_VAULTS.push(address(gVault));
 
         gTranche = new GTranche(
             YIELD_VAULTS,
-            TRANCHE_TOKENS,
             IOracle(curveOracle),
             GMigration(ZERO)
         );
 
         pnl = new PnLFixedRate(address(gTranche));
-        GVT.setController(address(gTranche));
-        GVT.addToWhitelist(address(gTranche));
-        PWRD.setController(address(gTranche));
-        PWRD.addToWhitelist(address(gTranche));
 
         gTranche.setPnL(pnl);
         routerOracle = new RouterOracle(CHAINLINK_AGG_ADDRESSES);
@@ -159,8 +147,7 @@ contract BaseSetup is Test {
     function prepUser(address _user) internal {
         vm.startPrank(_user);
         DAI.approve(address(gRouter), MAX_UINT);
-        GVT.approve(address(gRouter), MAX_UINT);
-        PWRD.approve(address(gRouter), MAX_UINT);
+        gTranche.setApprovalForAll(address(gRouter), true);
         setStorage(
             _user,
             DAI.balanceOf.selector,
@@ -174,8 +161,6 @@ contract BaseSetup is Test {
         vm.startPrank(_user);
         DAI.approve(address(THREE_POOL), MAX_UINT);
         THREE_POOL_TOKEN.approve(address(gVault), MAX_UINT);
-        GVT.approve(address(gTranche), MAX_UINT);
-        PWRD.approve(address(gTranche), MAX_UINT);
         ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
         setStorage(
             _user,

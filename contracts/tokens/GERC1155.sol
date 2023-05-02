@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 library TokenCalculations {
     using SafeMath for uint256;
-    uint256 public constant BASE = 10e18;
+    uint256 public constant BASE = 10**18;
     uint256 public constant INIT_BASE_JUNIOR = 5000000000000000;
     uint256 public constant INIT_BASE_SENIOR = 10e18;
 
@@ -26,7 +26,7 @@ library TokenCalculations {
             return gerc1155.balanceOfBase(account, tokenId);
         } else if (tokenId == gerc1155.SENIOR()) {
             // If senior, apply the factor
-            uint256 f = factor(gerc1155, tokenId);
+            uint256 f = factor(gerc1155, tokenId, 0);
             return
                 f > 0
                     ? applyFactor(
@@ -49,7 +49,7 @@ library TokenCalculations {
             return gerc1155.totalSupplyBase(tokenId);
         } else if (tokenId == gerc1155.SENIOR()) {
             // If senior, apply the factor
-            uint256 f = factor(gerc1155, tokenId);
+            uint256 f = factor(gerc1155, tokenId, 0);
             return
                 f > 0
                     ? applyFactor(gerc1155.totalSupplyBase(tokenId), f, false)
@@ -59,15 +59,23 @@ library TokenCalculations {
         }
     }
 
-    function factor(GERC1155 gerc1155, uint256 tokenId)
-        public
-        view
-        returns (uint256)
-    {
+    /// @notice Calculate tranche factor
+    /// @param tokenId Token ID
+    /// @param assets Total assets. Pass 0 to calculate from the current tranche balance
+    function factor(
+        GERC1155 gerc1155,
+        uint256 tokenId,
+        uint256 assets
+    ) public view returns (uint256) {
         if (gerc1155.totalSupplyBase(tokenId) == 0) {
-            return tokenId == 1 ? INIT_BASE_SENIOR : INIT_BASE_JUNIOR;
+            return
+                tokenId == gerc1155.SENIOR()
+                    ? INIT_BASE_SENIOR
+                    : INIT_BASE_JUNIOR;
         }
-        uint256 assets = gerc1155.getTrancheBalance(tokenId);
+        if (assets == 0) {
+            assets = gerc1155.getTrancheBalance(tokenId);
+        }
         if (assets > 0) {
             return totalSupply(gerc1155, tokenId).mul(BASE).div(assets);
         } else {
@@ -100,7 +108,7 @@ library TokenCalculations {
         uint256 amount,
         bool toUnderlying
     ) public view returns (uint256) {
-        uint256 f = factor(gerc1155, tokenId);
+        uint256 f = factor(gerc1155, tokenId, 0);
         return f > 0 ? applyFactor(amount, f, toUnderlying) : 0;
     }
 }
@@ -110,6 +118,7 @@ library TokenCalculations {
 contract GERC1155 is ERC1155 {
     using SafeMath for uint256;
     // Extend amount of tokens as needed
+    // TODO: Move to constants and derive?
     uint8 public constant JUNIOR = 0;
     uint8 public constant SENIOR = 1;
 
@@ -118,8 +127,7 @@ contract GERC1155 is ERC1155 {
     //////////////////////////////////////////////////////////////*/
     // Accounting for the total "value" (as defined in the oracle/relation module)
     //  of the tranches: True => Senior Tranche, False => Junior Tranche
-    mapping(bool => uint256) public trancheBalances;
-    mapping(uint256 => uint256) public trancheBalancesNew;
+    mapping(uint256 => uint256) public trancheBalances;
     mapping(uint256 => uint256) private _totalSupply;
     mapping(uint256 => uint256) public tokenBase;
 
@@ -130,7 +138,7 @@ contract GERC1155 is ERC1155 {
         address account,
         uint256 id,
         uint256 amount
-    ) external {
+    ) internal {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
         uint256 factoredAmount = TokenCalculations.convertAmount(
@@ -154,7 +162,7 @@ contract GERC1155 is ERC1155 {
         address account,
         uint256 id,
         uint256 amount
-    ) external {
+    ) internal {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
         uint256 factoredAmount = TokenCalculations.convertAmount(
@@ -232,7 +240,7 @@ contract GERC1155 is ERC1155 {
         virtual
         returns (uint256)
     {
-        return trancheBalancesNew[id];
+        return trancheBalances[id];
     }
 
     /// @notice Amount of token the user owns
@@ -250,6 +258,14 @@ contract GERC1155 is ERC1155 {
         returns (uint256)
     {
         return balanceOf[account][id];
+    }
+
+    function _calcFactor(uint256 id, uint256 _totalAssets)
+        internal
+        view
+        returns (uint256)
+    {
+        return TokenCalculations.factor(this, id, _totalAssets);
     }
 
     /*///////////////////////////////////////////////////////////////

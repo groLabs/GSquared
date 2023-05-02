@@ -10,7 +10,6 @@ import {GERC1155} from "./tokens/GERC1155.sol";
 import {Errors} from "./common/Errors.sol";
 import {FixedTokensCurve} from "./utils/FixedTokensCurve.sol";
 import {GMigration} from "./GMigration.sol";
-import {IGToken} from "./interfaces/IGToken.sol";
 
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \
@@ -120,10 +119,9 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
 
     constructor(
         address[] memory _yieldTokens,
-        address[2] memory _trancheTokens,
         IOracle _oracle,
         GMigration _gMigration
-    ) FixedTokensCurve(_yieldTokens, _trancheTokens) Owned(msg.sender) {
+    ) FixedTokensCurve(_yieldTokens) Owned(msg.sender) {
         oracle = _oracle;
         gMigration = _gMigration;
     }
@@ -175,8 +173,6 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
         ERC4626 token = getYieldToken(_index);
         token.transferFrom(msg.sender, address(this), _amount);
 
-        IGToken trancheToken = getTrancheToken(_tranche);
-
         uint256 factor;
         uint256 trancheUtilisation;
 
@@ -196,7 +192,7 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
         }
 
         tokenBalances[_index] += _amount;
-        trancheToken.mint(_recipient, factor, calcAmount);
+        mint(_recipient, _tranche ? SENIOR : JUNIOR, calcAmount);
         emit LogNewDeposit(
             msg.sender,
             _recipient,
@@ -230,14 +226,15 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
         override
         returns (uint256 yieldTokenAmounts, uint256 calcAmount)
     {
-        IGToken trancheToken = getTrancheToken(_tranche);
-
-        if (_amount > trancheToken.balanceOf(msg.sender)) {
+        if (
+            _amount >
+            balanceOfWithFactor(msg.sender, _tranche ? SENIOR : JUNIOR)
+        ) {
             revert Errors.NotEnoughBalance();
         }
         ERC4626 token = getYieldToken(_index);
 
-        uint256 factor; // = _calcFactor(_tranche);
+        uint256 factor;
         uint256 trancheUtilisation;
 
         // update value of current tranches - this prevents front-running of losses
@@ -255,7 +252,7 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
         yieldTokenAmounts = _calcTokenAmount(_index, calcAmount, false);
         tokenBalances[_index] -= yieldTokenAmounts;
 
-        trancheToken.burn(msg.sender, factor, calcAmount);
+        burn(_recipient, _tranche ? SENIOR : JUNIOR, calcAmount);
         token.transfer(_recipient, yieldTokenAmounts);
 
         emit LogNewWithdrawal(
@@ -315,8 +312,8 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
         ) = _pnlDistribution();
 
         factor = _tranche
-            ? _calcFactor(_tranche, _totalValue[1])
-            : _calcFactor(_tranche, _totalValue[0]);
+            ? _calcFactor(_tranche ? SENIOR : JUNIOR, _totalValue[1])
+            : _calcFactor(_tranche ? SENIOR : JUNIOR, _totalValue[0]);
         if (_withdraw) {
             calcAmount = _tranche
                 ? _amount
@@ -328,8 +325,8 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
             if (_tranche) _totalValue[1] += calcAmount;
             else _totalValue[0] += calcAmount;
         }
-        trancheBalances[SENIOR_TRANCHE_ID] = _totalValue[1];
-        trancheBalances[JUNIOR_TRANCHE_ID] = _totalValue[0];
+        trancheBalances[SENIOR] = _totalValue[1];
+        trancheBalances[JUNIOR] = _totalValue[0];
 
         if (_totalValue[1] == 0) trancheUtilisation = 0;
         else
@@ -353,8 +350,8 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
     {
         int256[NO_OF_TRANCHES] memory _trancheBalances;
         int256 totalValue = int256(_calcUnifiedValue());
-        _trancheBalances[0] = int256(trancheBalances[JUNIOR_TRANCHE_ID]);
-        _trancheBalances[1] = int256(trancheBalances[SENIOR_TRANCHE_ID]);
+        _trancheBalances[0] = int256(trancheBalances[JUNIOR]);
+        _trancheBalances[1] = int256(trancheBalances[SENIOR]);
         int256 lastTotal = _trancheBalances[0] + _trancheBalances[1];
         if (lastTotal > totalValue) {
             unchecked {
@@ -392,8 +389,8 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
     {
         int256[NO_OF_TRANCHES] memory _trancheBalances;
         int256 totalValue = int256(_calcUnifiedValue());
-        _trancheBalances[0] = int256(trancheBalances[JUNIOR_TRANCHE_ID]);
-        _trancheBalances[1] = int256(trancheBalances[SENIOR_TRANCHE_ID]);
+        _trancheBalances[0] = int256(trancheBalances[JUNIOR]);
+        _trancheBalances[1] = int256(trancheBalances[SENIOR]);
         int256 lastTotal = _trancheBalances[0] + _trancheBalances[1];
         if (lastTotal > totalValue) {
             unchecked {
@@ -502,8 +499,8 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
         uint256 seniorValue = _calcTokenValue(0, seniorShares, true);
 
         // update tranche $ balances
-        trancheBalances[SENIOR_TRANCHE_ID] += seniorValue;
-        trancheBalances[JUNIOR_TRANCHE_ID] += juniorValue;
+        trancheBalances[SENIOR] += seniorValue;
+        trancheBalances[JUNIOR] += juniorValue;
 
         // update yield token balances
         tokenBalances[0] += _shares;
@@ -549,11 +546,11 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
     /// @param _oldGTranche address of the old GTranche
     function migrate(address _oldGTranche) external onlyOwner {
         GTranche oldTranche = GTranche(_oldGTranche);
-        uint256 oldSeniorTrancheBalance = oldTranche.trancheBalances(true);
-        uint256 oldJuniorTrancheBalance = oldTranche.trancheBalances(false);
+        uint256 oldSeniorTrancheBalance = oldTranche.trancheBalances(SENIOR);
+        uint256 oldJuniorTrancheBalance = oldTranche.trancheBalances(JUNIOR);
 
-        trancheBalances[SENIOR_TRANCHE_ID] += oldSeniorTrancheBalance;
-        trancheBalances[JUNIOR_TRANCHE_ID] += oldJuniorTrancheBalance;
+        trancheBalances[SENIOR] += oldSeniorTrancheBalance;
+        trancheBalances[JUNIOR] += oldJuniorTrancheBalance;
 
         uint256[] memory yieldTokenBalances = new uint256[](
             oldTranche.NO_OF_TOKENS()
@@ -575,8 +572,8 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
         hasMigrated = true;
 
         emit LogMigration(
-            trancheBalances[JUNIOR_TRANCHE_ID],
-            trancheBalances[SENIOR_TRANCHE_ID],
+            trancheBalances[JUNIOR],
+            trancheBalances[SENIOR],
             yieldTokenBalances
         );
     }
@@ -584,18 +581,6 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
     /*//////////////////////////////////////////////////////////////
                         Legacy logic (GTokens)
     //////////////////////////////////////////////////////////////*/
-
-    // Current BASE of legacy GVT (Junior tranche token)
-    uint256 internal constant JUNIOR_INIT_BASE = 5000000000000000;
-
-    /// @notice This function exists to support the older versions of the GToken
-    ///     return value of underlying token based on caller
-    function gTokenTotalAssets() external view returns (uint256) {
-        (uint256[NO_OF_TRANCHES] memory _totalValue, , ) = pnlDistribution();
-        if (msg.sender == JUNIOR_TRANCHE) return _totalValue[0];
-        else if (msg.sender == SENIOR_TRANCHE) return _totalValue[1];
-        else return _totalValue[0] + _totalValue[1];
-    }
 
     /// @notice calculate the number of tokens for the given amount
     /// @param _tranche junior or senior tranche
@@ -612,29 +597,5 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
         amount = (_amount * DEFAULT_FACTOR) / _factor;
         if (amount > _total) return _total;
         return amount;
-    }
-
-    /// @notice calculate the tranches factor
-    /// @param _tranche junior or senior tranche
-    /// @param _totalAssets total value in tranche
-    /// @return factor factor to be applied to tranche
-    /// @dev The factor is used to either determine the value of the tranche
-    ///     or the number of tokens to be issued for a given amount
-    function _calcFactor(bool _tranche, uint256 _totalAssets)
-        internal
-        view
-        returns (uint256 factor)
-    {
-        IGToken trancheToken = getTrancheToken(_tranche);
-        uint256 init_base = _tranche ? DEFAULT_FACTOR : JUNIOR_INIT_BASE;
-        uint256 supply = trancheToken.totalSupplyBase();
-
-        if (supply == 0) {
-            return init_base;
-        }
-
-        if (_totalAssets > 0) {
-            return (supply * DEFAULT_FACTOR) / _totalAssets;
-        }
     }
 }

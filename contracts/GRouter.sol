@@ -109,16 +109,6 @@ contract GRouter is IGRouter {
             address(_threePool),
             type(uint256).max
         );
-
-        // Approve GTokens for Tranche
-        ERC20(address(tranche.getTrancheToken(false))).safeApprove(
-            address(_GTranche),
-            type(uint256).max
-        );
-        ERC20(address(tranche.getTrancheToken(true))).safeApprove(
-            address(_GTranche),
-            type(uint256).max
-        );
     }
 
     /// @notice Helper Function to get correct input for curve 'add_liquidity' function
@@ -444,11 +434,13 @@ contract GRouter is IGRouter {
         bool _tranche,
         uint256 _minAmount
     ) internal returns (uint256 amount) {
-        ERC20(address(tranche.getTrancheToken(_tranche))).safeTransferFrom(
+        tranche.transferFrom(
             msg.sender,
             address(this),
+            _tranche ? 1 : 0,
             _amount
         );
+
         // withdraw from tranche
         // index is zero for ETH mainnet as there is just one yield token
         // returns usd value of withdrawal
