@@ -17,11 +17,11 @@ library TokenCalculations {
     uint256 public constant INIT_BASE_JUNIOR = 5000000000000000;
     uint256 public constant INIT_BASE_SENIOR = 10e18;
 
-    function balanceOf(GERC1155 gerc1155, address account, uint256 tokenId)
-        public
-        view
-        returns (uint256)
-    {
+    function balanceOf(
+        GERC1155 gerc1155,
+        address account,
+        uint256 tokenId
+    ) public view returns (uint256) {
         if (tokenId == gerc1155.JUNIOR()) {
             return gerc1155.balanceOfBase(account, tokenId);
         } else if (tokenId == gerc1155.SENIOR()) {
@@ -173,6 +173,33 @@ contract GERC1155 is ERC1155 {
     }
 
     /*///////////////////////////////////////////////////////////////
+                       Transfer Logic
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Transfer tokens from one address to another with factor taken into account
+    /// @param from The address to transfer from
+    /// @param to The address to transfer to
+    /// @param id The token id to transfer
+    /// @param amount The amount to be transferred
+    function transferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount
+    ) public {
+        uint256 factoredAmount = id == SENIOR
+            ? TokenCalculations.convertAmount(this, id, amount, true)
+            : amount;
+        _beforeTokenTransfer(
+            from,
+            to,
+            _asSingletonArray(id),
+            _asSingletonArray(factoredAmount)
+        );
+        super.safeTransferFrom(from, to, id, factoredAmount, "");
+    }
+
+    /*///////////////////////////////////////////////////////////////
                        Public views
     //////////////////////////////////////////////////////////////*/
 
@@ -209,11 +236,19 @@ contract GERC1155 is ERC1155 {
     }
 
     /// @notice Amount of token the user owns
-    function balanceOfWithFactor(address account, uint256 id) public view returns (uint256) {
+    function balanceOfWithFactor(address account, uint256 id)
+        public
+        view
+        returns (uint256)
+    {
         return TokenCalculations.balanceOf(this, account, id);
     }
 
-    function balanceOfBase(address account, uint256 id) public view returns (uint256) {
+    function balanceOfBase(address account, uint256 id)
+        public
+        view
+        returns (uint256)
+    {
         return balanceOf[account][id];
     }
 
