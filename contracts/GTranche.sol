@@ -6,6 +6,7 @@ import {IGTranche} from "./interfaces/IGTranche.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
 import {IPnL} from "./interfaces/IPnL.sol";
 import {ERC4626} from "./tokens/ERC4626.sol";
+import {GERC1155} from "./tokens/GERC1155.sol";
 import {Errors} from "./common/Errors.sol";
 import {FixedTokensCurve} from "./utils/FixedTokensCurve.sol";
 import {GMigration} from "./GMigration.sol";
@@ -57,7 +58,7 @@ import {IGToken} from "./interfaces/IGToken.sol";
 ///                4626 compatible tokens, effectively handling front-running of gains/losses.
 ///                Its important that the underlying EIP-4626 cannot be price manipulated, as this
 ///                would break the pnl functionality of this contract.
-contract GTranche is IGTranche, FixedTokensCurve, Owned {
+contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
     /*//////////////////////////////////////////////////////////////
                         CONSTANTS & IMMUTABLES
     //////////////////////////////////////////////////////////////*/
