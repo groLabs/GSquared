@@ -268,6 +268,16 @@ contract GERC1155 is ERC1155 {
         return TokenCalculations.factor(this, id, _totalAssets);
     }
 
+    /// @notice Price should always be 10**18 for Senior
+    function getPricePerShare(uint256 id) external view returns (uint256) {
+        uint256 _base = TokenCalculations.BASE;
+        if (id == SENIOR) {
+            return _base;
+        } else {
+            return TokenCalculations.convertAmount(this, id, _base, false);
+        }
+    }
+
     /*///////////////////////////////////////////////////////////////
                        Internal logic
     //////////////////////////////////////////////////////////////*/

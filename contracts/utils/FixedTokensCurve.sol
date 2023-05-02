@@ -63,7 +63,6 @@ contract FixedTokensCurve {
     address internal immutable FIRST_TOKEN;
     uint256 internal immutable FIRST_TOKEN_DECIMALS;
 
-
     /*//////////////////////////////////////////////////////////////
                     STORAGE VARIABLES & TYPES
     //////////////////////////////////////////////////////////////*/
