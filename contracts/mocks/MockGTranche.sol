@@ -7,8 +7,15 @@ import {Owned} from "../solmate/src/auth/Owned.sol";
 import "./MockFixedTokens.sol";
 import "../interfaces/IGTranche.sol";
 import "../interfaces/IOracle.sol";
+import {GERC1155} from "../tokens/GERC1155.sol";
 
-contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Owned {
+contract MockGTranche is
+    IGTranche,
+    GERC1155,
+    MockFixedTokens,
+    ReentrancyGuard,
+    Owned
+{
     uint256 public utilisationThreshold = 5000;
     IOracle public immutable oracle;
 
@@ -51,10 +58,9 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Owned {
         bool _tranche,
         address _recipient
     ) external override returns (uint256, uint256) {
+        uint256 id = _tranche ? 1 : 0;
         ERC4626 token = ERC4626(getYieldToken(_index));
         token.transferFrom(msg.sender, address(this), _amount);
-        GToken trancheToken = getTrancheToken(_tranche);
-        uint256 factor = trancheToken.factor();
 
         token_balances[_index] += _amount;
 
@@ -62,10 +68,10 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Owned {
         tranche_balances[_tranche] += calc_amount;
         if (_tranche)
             require(utilisation() <= utilisationThreshold, "!utilisation");
-        trancheToken.mint(_recipient, trancheToken.factor(), calc_amount);
+        mint(_recipient, id, calc_amount);
         uint256 trancheAmount;
         if (_tranche) trancheAmount = calc_amount;
-        else trancheAmount = (calc_amount * factor) / DEFAULT_FACTOR;
+        else trancheAmount = (calc_amount * factor(id)) / DEFAULT_FACTOR;
         emit LogNewDeposit(msg.sender, _recipient, _amount, _index, _tranche);
         return (trancheAmount, calc_amount);
     }
@@ -76,13 +82,13 @@ contract MockGTranche is IGTranche, MockFixedTokens, ReentrancyGuard, Owned {
         bool _tranche,
         address _recipient
     ) external override returns (uint256, uint256) {
-        GToken trancheToken = getTrancheToken(_tranche);
-        require(_amount <= trancheToken.balanceOf(msg.sender));
+        uint256 id = _tranche ? 1 : 0;
+        require(_amount <= balanceOfWithFactor(msg.sender, id));
 
         ERC4626 token = ERC4626(getYieldToken(_index));
         uint256 calc_amount = _calcTokenValue(_index, _amount, false);
 
-        trancheToken.burn(msg.sender, trancheToken.factor(), calc_amount);
+        burn(msg.sender, id, calc_amount);
         tranche_balances[_tranche] -= calc_amount;
         if (!_tranche) require(utilisation() <= utilisationThreshold);
         token_balances[_index] -= _amount;

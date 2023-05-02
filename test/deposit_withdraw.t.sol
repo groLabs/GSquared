@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./Base.GSquared.t.sol";
-import {GERC20} from "../contracts/tokens/GToken.sol";
 
 contract TrancheTest is Test, BaseSetup {
     using stdStorage for StdStorage;

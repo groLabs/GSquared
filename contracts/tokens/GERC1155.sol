@@ -277,6 +277,10 @@ contract GERC1155 is ERC1155 {
         }
     }
 
+    function factor(uint256 id) public view returns (uint256) {
+        return TokenCalculations.factor(this, id, trancheBalances[id]);
+    }
+
     /*///////////////////////////////////////////////////////////////
                        Internal logic
     //////////////////////////////////////////////////////////////*/
