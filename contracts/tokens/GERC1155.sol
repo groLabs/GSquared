@@ -2,6 +2,7 @@
 pragma solidity 0.8.10;
 import {ERC1155} from "../solmate/src/tokens/ERC1155.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "../common/Constants.sol";
 
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \
@@ -14,9 +15,10 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 library TokenCalculations {
     using SafeMath for uint256;
     uint256 public constant BASE = 10**18;
-    uint256 public constant INIT_BASE_JUNIOR = 5000000000000000;
-    uint256 public constant INIT_BASE_SENIOR = 10e18;
 
+    /// @notice Balance of account for a specific token with applied factor in case of senior tranche
+    /// @param account Account address
+    /// @param tokenId Token ID
     function balanceOf(
         GERC1155 gerc1155,
         address account,
@@ -40,6 +42,9 @@ library TokenCalculations {
         }
     }
 
+    /// @notice Calculate total supply. In case of senior, apply the factor,
+    /// in case junior, return the base(raw _totalSupply)
+    /// @param tokenId Token ID
     function totalSupply(GERC1155 gerc1155, uint256 tokenId)
         public
         view
@@ -70,8 +75,8 @@ library TokenCalculations {
         if (gerc1155.totalSupplyBase(tokenId) == 0) {
             return
                 tokenId == gerc1155.SENIOR()
-                    ? INIT_BASE_SENIOR
-                    : INIT_BASE_JUNIOR;
+                    ? gerc1155.INIT_BASE_SENIOR()
+                    : gerc1155.INIT_BASE_JUNIOR();
         }
         if (assets == 0) {
             assets = gerc1155.getTrancheBalance(tokenId);
@@ -83,25 +88,33 @@ library TokenCalculations {
         }
     }
 
+    /// @notice Apply tranche factor
+    /// @param a Amount to apply factor to
+    /// @param factor Factor to apply
+    /// @param base true to convert to underlying, false to convert to tokens
     function applyFactor(
         uint256 a,
-        uint256 b,
+        uint256 factor,
         bool base
     ) internal pure returns (uint256 resultant) {
         uint256 _BASE = BASE;
         uint256 diff;
         if (base) {
-            diff = a.mul(b) % _BASE;
-            resultant = a.mul(b).div(_BASE);
+            diff = a.mul(factor) % _BASE;
+            resultant = a.mul(factor).div(_BASE);
         } else {
-            diff = a.mul(_BASE) % b;
-            resultant = a.mul(_BASE).div(b);
+            diff = a.mul(_BASE) % factor;
+            resultant = a.mul(_BASE).div(factor);
         }
         if (diff >= 5E17) {
             resultant = resultant.add(1);
         }
     }
 
+    /// @notice Convert amount to underlying or tokens
+    /// @param tokenId Token ID
+    /// @param amount Amount to convert
+    /// @param toUnderlying true to convert to underlying, false to convert to tokens
     function convertAmount(
         GERC1155 gerc1155,
         uint256 tokenId,
@@ -115,11 +128,8 @@ library TokenCalculations {
 
 /// @title Gro extension of ERC1155
 /// @notice Token definition contract
-contract GERC1155 is ERC1155 {
+contract GERC1155 is ERC1155, Constants {
     // Extend amount of tokens as needed
-    // TODO: Move to constants and derive?
-    uint8 public constant JUNIOR = 0;
-    uint8 public constant SENIOR = 1;
 
     /*///////////////////////////////////////////////////////////////
                        Storage values
@@ -133,6 +143,11 @@ contract GERC1155 is ERC1155 {
     /*///////////////////////////////////////////////////////////////
                        Mint burn external logic
     //////////////////////////////////////////////////////////////*/
+
+    /// @notice Mint tokens to an address
+    /// @param account The address to mint tokens to
+    /// @param id The token id to mint
+    /// @param amount The amount to be minted
     function mint(
         address account,
         uint256 id,
@@ -157,6 +172,10 @@ contract GERC1155 is ERC1155 {
         _mint(account, id, factoredAmount, "");
     }
 
+    /// @notice Burn tokens from an account
+    /// @param account Account to burn tokens from
+    /// @param id Token ID
+    /// @param amount Amount to burn
     function burn(
         address account,
         uint256 id,
@@ -221,18 +240,20 @@ contract GERC1155 is ERC1155 {
         return "";
     }
 
-    /**
-     * @dev Total amount of tokens in with a given id and applied factor in case tranche token dictates it
-     */
+    /// @notice Total supply of token with factor applied
+    /// @param id Token ID
     function totalSupply(uint256 id) public view virtual returns (uint256) {
         return TokenCalculations.totalSupply(this, id);
     }
 
+    /// @notice Total amount of tokens in with a given id without applied factor
+    /// @param id Token ID
     function totalSupplyBase(uint256 id) public view virtual returns (uint256) {
         return tokenBase[id];
     }
 
     /// @notice Returns the USD balance of tranche token
+    /// @param id Token ID
     function getTrancheBalance(uint256 id)
         public
         view
@@ -242,7 +263,9 @@ contract GERC1155 is ERC1155 {
         return trancheBalances[id];
     }
 
-    /// @notice Amount of token the user owns
+    /// @notice Amount of token the user owns with factor applied
+    /// @param account Address of the user
+    /// @param id Token ID
     function balanceOfWithFactor(address account, uint256 id)
         public
         view
@@ -251,6 +274,9 @@ contract GERC1155 is ERC1155 {
         return TokenCalculations.balanceOf(this, account, id);
     }
 
+    /// @notice Amount of token the user owns without factor applied
+    /// @param account Address of the user
+    /// @param id Token ID
     function balanceOfBase(address account, uint256 id)
         public
         view
@@ -259,6 +285,9 @@ contract GERC1155 is ERC1155 {
         return balanceOf[account][id];
     }
 
+    /// @notice Calculate factor with respect to total assets passed in function argument
+    /// @param id Token ID
+    /// @param _totalAssets Total assets of the tranche
     function _calcFactor(uint256 id, uint256 _totalAssets)
         internal
         view
@@ -268,8 +297,9 @@ contract GERC1155 is ERC1155 {
     }
 
     /// @notice Price should always be 10**18 for Senior
+    /// @param id Token ID
     function getPricePerShare(uint256 id) external view returns (uint256) {
-        uint256 _base = TokenCalculations.BASE;
+        uint256 _base = BASE;
         if (id == SENIOR) {
             return _base;
         } else {
@@ -284,9 +314,11 @@ contract GERC1155 is ERC1155 {
     /*///////////////////////////////////////////////////////////////
                        Internal logic
     //////////////////////////////////////////////////////////////*/
-    /**
-     * @dev See {ERC1155-_beforeTokenTransfer}.
-     */
+    /// @notice Internal hook to run before any token transfer to capture changes in total supply
+    /// @param from Address of the sender
+    /// @param to Address of the receiver
+    /// @param ids Array of token IDs
+    /// @param amounts Array of token amounts
     function _beforeTokenTransfer(
         address from,
         address to,

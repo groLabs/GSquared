@@ -51,7 +51,6 @@ contract FixedTokensCurve {
                         CONSTANTS & IMMUTABLES
     //////////////////////////////////////////////////////////////*/
 
-    uint256 internal constant DEFAULT_DECIMALS = 10_000;
     uint256 internal constant DEFAULT_FACTOR = 1_000_000_000_000_000_000;
 
     // Tranches
