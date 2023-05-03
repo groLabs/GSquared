@@ -195,7 +195,6 @@ contract ConvexStrategyTest is BaseSetup {
         (, , , uint256 strategyDebt, , ) = gVault.strategies(
             address(convexStrategy)
         );
-        vm.stopPrank();
     }
 
     function test_strategy_can_invest_assets_into_convex(uint128 _deposit)
