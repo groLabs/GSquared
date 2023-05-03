@@ -1,0 +1,5 @@
+ignore:
+  - "contracts/solmate"
+  - "contracts/mocks"
+  - "solmate"
+  - "mocks"
