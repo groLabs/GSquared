@@ -3,3 +3,4 @@ ignore:
   - "contracts/mocks"
   - "solmate"
   - "mocks"
+  - "test"
