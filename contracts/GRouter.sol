@@ -24,7 +24,7 @@ import {GTranche} from "./GTranche.sol";
 
 // gro protocol: https://github.com/groLabs/GSquared
 
-/// @title GRouter
+/// @title GRouter Zap
 /// @notice Handles deposits and withdrawals from the three supported stablecoins
 /// DAI, USDC and USDT into Gro Protocol
 /// @dev The legacy deposit and withdrawal flows are for old integrations and
