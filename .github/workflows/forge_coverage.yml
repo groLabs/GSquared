@@ -1,50 +1,50 @@
-on:
-  push:
-    branches:
-      - master
-  pull_request:
-    paths:
-      - "contracts/**"
-
-name: coverage
-
-env:
-  FOUNDRY_PROFILE: ci
-
-jobs:
-  check:
-    strategy:
-      fail-fast: true
-
-    name: Forge Coverage
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-
-      - name: Install hardhat & dependencies
-        run: npm install
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Run Forge build
-        run: |
-          forge --version
-          forge build --sizes
-
-      - name: Run Forge tests
-        run: |
-          forge coverage --fork-url ${{ secrets.ALCHEMY_RPC_URL }} -vvv --fork-block-number 16025905 --report lcov
-
-      - uses: codecov/codecov-action@v3
-        with:
-          files: lcov.info
-          fail_ci_if_error: false
-          verbose: true
+#on:
+#  push:
+#    branches:
+#      - master
+#  pull_request:
+#    paths:
+#      - "contracts/**"
+#
+#name: coverage
+#
+#env:
+#  FOUNDRY_PROFILE: ci
+#
+#jobs:
+#  check:
+#    strategy:
+#      fail-fast: true
+#
+#    name: Forge Coverage
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v3
+#        with:
+#          submodules: recursive
+#
+#      - name: Setup Node.js
+#        uses: actions/setup-node@v3
+#
+#      - name: Install hardhat & dependencies
+#        run: npm install
+#
+#      - name: Install Foundry
+#        uses: foundry-rs/foundry-toolchain@v1
+#        with:
+#          version: nightly
+#
+#      - name: Run Forge build
+#        run: |
+#          forge --version
+#          forge build --sizes
+#
+#      - name: Run Forge tests
+#        run: |
+#          forge coverage --fork-url ${{ secrets.ALCHEMY_RPC_URL }} -vvv --fork-block-number 16025905 --report lcov
+#
+#      - uses: codecov/codecov-action@v3
+#        with:
+#          files: lcov.info
+#          fail_ci_if_error: false
+#          verbose: true

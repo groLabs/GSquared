@@ -48,4 +48,8 @@ jobs:
       run: brownie networks modify mainnet host=${{ secrets.ALCHEMY_RPC_URL }}
 
     - name: Run Tests
-      run: brownie test --network hardhat-fork
+      run: brownie test --network hardhat-fork --coverage
+
+    - uses: codecov/codecov-action@v3
+      with:
+        files: reports/coverage.json
