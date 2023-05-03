@@ -34,7 +34,6 @@ contract GRouter is IGRouter {
     /*//////////////////////////////////////////////////////////////
                         CONSTANTS & IMMUTABLES
     //////////////////////////////////////////////////////////////*/
-
     uint8 public constant N_COINS = 3; // number of underlying tokens in curve pool
 
     GTranche public immutable tranche;
