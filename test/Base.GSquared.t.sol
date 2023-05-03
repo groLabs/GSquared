@@ -23,6 +23,7 @@ interface IConvexRewards {
     function periodFinish() external view returns (uint256);
 }
 
+// Base fixture
 contract BaseSetup is Test {
     using stdStorage for StdStorage;
     using SafeTransferLib for ERC20;
