@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity 0.8.10;
 import {ERC1155} from "../solmate/src/tokens/ERC1155.sol";
+import {IGERC1155} from "../interfaces/IGERC1155.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../common/Constants.sol";
 
@@ -14,7 +15,11 @@ import "../common/Constants.sol";
 
 library TokenCalculations {
     using SafeMath for uint256;
+    uint8 public constant JUNIOR = 0;
+    uint8 public constant SENIOR = 1;
     uint256 public constant BASE = 10**18;
+    uint256 public constant INIT_BASE_JUNIOR = 5000000000000000;
+    uint256 public constant INIT_BASE_SENIOR = 10e18;
 
     /// @notice Balance of account for a specific token with applied factor in case of senior tranche
     /// @param account Account address
@@ -24,9 +29,9 @@ library TokenCalculations {
         address account,
         uint256 tokenId
     ) public view returns (uint256) {
-        if (tokenId == gerc1155.JUNIOR()) {
+        if (tokenId == JUNIOR) {
             return gerc1155.balanceOfBase(account, tokenId);
-        } else if (tokenId == gerc1155.SENIOR()) {
+        } else if (tokenId == SENIOR) {
             // If senior, apply the factor
             uint256 f = factor(gerc1155, tokenId, 0);
             return
@@ -50,9 +55,9 @@ library TokenCalculations {
         view
         returns (uint256)
     {
-        if (tokenId == gerc1155.JUNIOR()) {
+        if (tokenId == JUNIOR) {
             return gerc1155.totalSupplyBase(tokenId);
-        } else if (tokenId == gerc1155.SENIOR()) {
+        } else if (tokenId == SENIOR) {
             // If senior, apply the factor
             uint256 f = factor(gerc1155, tokenId, 0);
             return
@@ -74,9 +79,9 @@ library TokenCalculations {
     ) public view returns (uint256) {
         if (gerc1155.totalSupplyBase(tokenId) == 0) {
             return
-                tokenId == gerc1155.SENIOR()
-                    ? gerc1155.INIT_BASE_SENIOR()
-                    : gerc1155.INIT_BASE_JUNIOR();
+                tokenId == SENIOR
+                    ? INIT_BASE_SENIOR
+                    : INIT_BASE_JUNIOR;
         }
         if (assets == 0) {
             assets = gerc1155.getTrancheBalance(tokenId);
@@ -128,7 +133,7 @@ library TokenCalculations {
 
 /// @title Gro extension of ERC1155
 /// @notice Token definition contract
-contract GERC1155 is ERC1155, Constants {
+contract GERC1155 is ERC1155, IGERC1155, Constants {
     // Extend amount of tokens as needed
 
     /*///////////////////////////////////////////////////////////////
@@ -242,13 +247,13 @@ contract GERC1155 is ERC1155, Constants {
 
     /// @notice Total supply of token with factor applied
     /// @param id Token ID
-    function totalSupply(uint256 id) public view virtual returns (uint256) {
+    function totalSupply(uint256 id) public view override returns (uint256) {
         return TokenCalculations.totalSupply(this, id);
     }
 
     /// @notice Total amount of tokens in with a given id without applied factor
     /// @param id Token ID
-    function totalSupplyBase(uint256 id) public view virtual returns (uint256) {
+    function totalSupplyBase(uint256 id) public view override returns (uint256) {
         return tokenBase[id];
     }
 
@@ -269,6 +274,7 @@ contract GERC1155 is ERC1155, Constants {
     function balanceOfWithFactor(address account, uint256 id)
         public
         view
+        override
         returns (uint256)
     {
         return TokenCalculations.balanceOf(this, account, id);
@@ -280,6 +286,7 @@ contract GERC1155 is ERC1155, Constants {
     function balanceOfBase(address account, uint256 id)
         public
         view
+        override
         returns (uint256)
     {
         return balanceOf[account][id];
@@ -298,7 +305,7 @@ contract GERC1155 is ERC1155, Constants {
 
     /// @notice Price should always be 10**18 for Senior
     /// @param id Token ID
-    function getPricePerShare(uint256 id) external view returns (uint256) {
+    function getPricePerShare(uint256 id) external view override returns (uint256) {
         uint256 _base = BASE;
         if (id == SENIOR) {
             return _base;
@@ -307,7 +314,7 @@ contract GERC1155 is ERC1155, Constants {
         }
     }
 
-    function factor(uint256 id) public view returns (uint256) {
+    function factor(uint256 id) public view override returns (uint256) {
         return TokenCalculations.factor(this, id, trancheBalances[id]);
     }
 
