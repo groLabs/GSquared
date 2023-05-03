@@ -16,7 +16,5 @@ interface IGTranche {
         address recipient
     ) external returns (uint256, uint256);
 
-    function finalizeMigration() external;
-
     function utilisationThreshold() external view returns (uint256);
 }

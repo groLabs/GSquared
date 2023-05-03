@@ -5,7 +5,6 @@ import "./utils/utils.sol";
 import "../contracts/GRouter.sol";
 import "../contracts/GVault.sol";
 import "../contracts/GTranche.sol";
-import "../contracts/GMigration.sol";
 import "../contracts/oracles/CurveOracle.sol";
 import "../contracts/oracles/RouterOracle.sol";
 import "../contracts/pnl/PnLFixedRate.sol";
@@ -96,11 +95,7 @@ contract BaseSetup is Test {
 
         YIELD_VAULTS.push(address(gVault));
 
-        gTranche = new GTranche(
-            YIELD_VAULTS,
-            IOracle(curveOracle),
-            GMigration(ZERO)
-        );
+        gTranche = new GTranche(YIELD_VAULTS, IOracle(curveOracle));
 
         pnl = new PnLFixedRate(address(gTranche));
 
