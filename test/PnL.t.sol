@@ -30,7 +30,6 @@ contract PnLTest is Test, BaseSetup {
             gTranche.trancheBalances(true),
             gTranche.trancheBalances(false)
         );
-        vm.stopPrank();
     }
 
     function testCannotDepositAboveUtilisation(

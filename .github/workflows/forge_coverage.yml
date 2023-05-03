@@ -6,7 +6,7 @@ on:
     paths:
       - "contracts/**"
 
-name: foundry-test
+name: coverage
 
 env:
   FOUNDRY_PROFILE: ci
