@@ -10,6 +10,7 @@ import {Errors} from "./common/Errors.sol";
 import {FixedTokensCurve} from "./utils/FixedTokensCurve.sol";
 import {GMigration} from "./GMigration.sol";
 import {IGToken} from "./interfaces/IGToken.sol";
+import {GStorage} from "./GStorage.sol";
 
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \
@@ -66,6 +67,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
     IOracle public immutable oracle;
     // Migration contract
     GMigration private immutable gMigration;
+
+    GStorage public immutable gStorage;
+
     uint256 public constant minDeposit = 1e18;
 
     /*//////////////////////////////////////////////////////////////
@@ -121,10 +125,12 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
         address[] memory _yieldTokens,
         address[2] memory _trancheTokens,
         IOracle _oracle,
-        GMigration _gMigration
+        GMigration _gMigration,
+        GStorage _storage
     ) FixedTokensCurve(_yieldTokens, _trancheTokens) Owned(msg.sender) {
         oracle = _oracle;
         gMigration = _gMigration;
+        gStorage = _storage;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -327,8 +333,8 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
             if (_tranche) _totalValue[1] += calcAmount;
             else _totalValue[0] += calcAmount;
         }
-        trancheBalances[SENIOR_TRANCHE_ID] = _totalValue[1];
-        trancheBalances[JUNIOR_TRANCHE_ID] = _totalValue[0];
+        gStorage.setTrancheBalance(true, _totalValue[1]);
+        gStorage.setTrancheBalance(false, _totalValue[0]);
 
         if (_totalValue[1] == 0) trancheUtilisation = 0;
         else
@@ -352,8 +358,8 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
     {
         int256[NO_OF_TRANCHES] memory _trancheBalances;
         int256 totalValue = int256(_calcUnifiedValue());
-        _trancheBalances[0] = int256(trancheBalances[JUNIOR_TRANCHE_ID]);
-        _trancheBalances[1] = int256(trancheBalances[SENIOR_TRANCHE_ID]);
+        _trancheBalances[0] = int256(gStorage.getTrancheBalance(false));
+        _trancheBalances[1] = int256(gStorage.getTrancheBalance(true));
         int256 lastTotal = _trancheBalances[0] + _trancheBalances[1];
         if (lastTotal > totalValue) {
             unchecked {
@@ -391,8 +397,8 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
     {
         int256[NO_OF_TRANCHES] memory _trancheBalances;
         int256 totalValue = int256(_calcUnifiedValue());
-        _trancheBalances[0] = int256(trancheBalances[JUNIOR_TRANCHE_ID]);
-        _trancheBalances[1] = int256(trancheBalances[SENIOR_TRANCHE_ID]);
+        _trancheBalances[0] = int256(gStorage.getTrancheBalance(false));
+        _trancheBalances[1] = int256(gStorage.getTrancheBalance(true));
         int256 lastTotal = _trancheBalances[0] + _trancheBalances[1];
         if (lastTotal > totalValue) {
             unchecked {
@@ -501,8 +507,8 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
         uint256 seniorValue = _calcTokenValue(0, seniorShares, true);
 
         // update tranche $ balances
-        trancheBalances[SENIOR_TRANCHE_ID] += seniorValue;
-        trancheBalances[JUNIOR_TRANCHE_ID] += juniorValue;
+        gStorage.increaseTrancheBalance(JUNIOR_TRANCHE_ID, juniorValue);
+        gStorage.increaseTrancheBalance(SENIOR_TRANCHE_ID, seniorValue);
 
         // update yield token balances
         tokenBalances[0] += _shares;
@@ -548,11 +554,21 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
     /// @param _oldGTranche address of the old GTranche
     function migrate(address _oldGTranche) external onlyOwner {
         GTranche oldTranche = GTranche(_oldGTranche);
-        uint256 oldSeniorTrancheBalance = oldTranche.trancheBalances(true);
-        uint256 oldJuniorTrancheBalance = oldTranche.trancheBalances(false);
+        uint256 oldSeniorTrancheBalance = oldTranche
+            .gStorage()
+            .getTrancheBalance(true);
+        uint256 oldJuniorTrancheBalance = oldTranche
+            .gStorage()
+            .getTrancheBalance(false);
 
-        trancheBalances[SENIOR_TRANCHE_ID] += oldSeniorTrancheBalance;
-        trancheBalances[JUNIOR_TRANCHE_ID] += oldJuniorTrancheBalance;
+        gStorage.increaseTrancheBalance(
+            SENIOR_TRANCHE_ID,
+            oldSeniorTrancheBalance
+        );
+        gStorage.increaseTrancheBalance(
+            JUNIOR_TRANCHE_ID,
+            oldJuniorTrancheBalance
+        );
 
         uint256[] memory yieldTokenBalances = new uint256[](
             oldTranche.NO_OF_TOKENS()
@@ -574,8 +590,8 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
         hasMigrated = true;
 
         emit LogMigration(
-            trancheBalances[JUNIOR_TRANCHE_ID],
-            trancheBalances[SENIOR_TRANCHE_ID],
+            gStorage.getTrancheBalance(JUNIOR_TRANCHE_ID),
+            gStorage.getTrancheBalance(SENIOR_TRANCHE_ID),
             yieldTokenBalances
         );
     }

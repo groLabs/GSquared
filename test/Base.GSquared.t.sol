@@ -4,6 +4,7 @@ import "./utils/utils.sol";
 import "../contracts/GRouter.sol";
 import "../contracts/GVault.sol";
 import "../contracts/GTranche.sol";
+import "../contracts/GStorage.sol";
 import "../contracts/GMigration.sol";
 import "../contracts/oracles/CurveOracle.sol";
 import "../contracts/oracles/RouterOracle.sol";
@@ -104,13 +105,16 @@ contract BaseSetup is Test {
         TRANCHE_TOKENS[1] = address(PWRD);
         YIELD_VAULTS.push(address(gVault));
 
+        GStorage gstorage = new GStorage();
+
         gTranche = new GTranche(
             YIELD_VAULTS,
             TRANCHE_TOKENS,
             IOracle(curveOracle),
-            GMigration(ZERO)
+            GMigration(ZERO),
+            gstorage
         );
-
+        gstorage.setGTrancheAddress(address(gTranche));
         pnl = new PnLFixedRate(address(gTranche));
         GVT.setController(address(gTranche));
         GVT.addToWhitelist(address(gTranche));

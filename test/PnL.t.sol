@@ -27,8 +27,8 @@ contract PnLTest is Test, BaseSetup {
 
         vm.stopPrank();
         assertLe(
-            gTranche.trancheBalances(true),
-            gTranche.trancheBalances(false)
+            gTranche.gStorage().getTrancheBalance(true),
+            gTranche.gStorage().getTrancheBalance(false)
         );
     }
 
@@ -139,10 +139,10 @@ contract PnLTest is Test, BaseSetup {
             withdraw = seniorAmount;
         }
 
-        uint256 seniorAssets = gTranche.trancheBalances(true);
+        uint256 seniorAssets = gTranche.gStorage().getTrancheBalance(true);
         gTranche.withdraw(withdraw, 0, true, alice);
         vm.stopPrank();
-        assertLt(gTranche.trancheBalances(true), seniorAssets);
+        assertLt(gTranche.gStorage().getTrancheBalance(true), seniorAssets);
     }
 
     function test_senior_tranche_assets_increase_on_deposit(
@@ -160,11 +160,11 @@ contract PnLTest is Test, BaseSetup {
         vm.startPrank(alice);
         ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
         gTranche.deposit(shares / 2, 0, false, alice);
-        uint256 seniorAssets = gTranche.trancheBalances(true);
+        uint256 seniorAssets = gTranche.gStorage().getTrancheBalance(true);
         gTranche.deposit(depositSenior, 0, true, alice);
 
         vm.stopPrank();
-        assertGt(gTranche.trancheBalances(true), seniorAssets);
+        assertGt(gTranche.gStorage().getTrancheBalance(true), seniorAssets);
     }
 
     function test_junior_tranche_assets_decrease_on_withdrawal(
@@ -189,9 +189,9 @@ contract PnLTest is Test, BaseSetup {
             GVT.getPricePerShare();
         if (withdraw == 0) withdraw = 1;
 
-        uint256 juniorAssets = gTranche.trancheBalances(false);
+        uint256 juniorAssets = gTranche.gStorage().getTrancheBalance(false);
         gTranche.withdraw(withdraw, 0, false, alice);
-        assertLt(gTranche.trancheBalances(false), juniorAssets);
+        assertLt(gTranche.gStorage().getTrancheBalance(false), juniorAssets);
         vm.stopPrank();
     }
 
@@ -204,12 +204,12 @@ contract PnLTest is Test, BaseSetup {
         uint256 shares = depositIntoVault(address(alice), amount);
 
         vm.startPrank(alice);
-        uint256 juniorAssets = gTranche.trancheBalances(false);
+        uint256 juniorAssets = gTranche.gStorage().getTrancheBalance(false);
         ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
         gTranche.deposit(shares / 2, 0, false, alice);
 
         vm.stopPrank();
-        assertGt(gTranche.trancheBalances(false), juniorAssets);
+        assertGt(gTranche.gStorage().getTrancheBalance(false), juniorAssets);
     }
 
     function test_utilisation_increases_on_minting_of_senior_tranche_token(
