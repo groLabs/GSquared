@@ -26,7 +26,7 @@ library TokenCalculations {
         IGERC1155 gerc1155,
         address account,
         uint256 tokenId
-    ) public view returns (uint256) {
+    ) internal view returns (uint256) {
         if (tokenId == JUNIOR) {
             return gerc1155.balanceOfBase(account, tokenId);
         } else if (tokenId == SENIOR) {
@@ -49,7 +49,7 @@ library TokenCalculations {
     /// in case junior, return the base(raw _totalSupply)
     /// @param tokenId Token ID
     function totalSupplyOf(IGERC1155 gerc1155, uint256 tokenId)
-        public
+        internal
         view
         returns (uint256)
     {
@@ -74,7 +74,7 @@ library TokenCalculations {
         IGERC1155 gerc1155,
         uint256 tokenId,
         uint256 assets
-    ) public view returns (uint256) {
+    ) internal view returns (uint256) {
         if (gerc1155.totalSupplyBase(tokenId) == 0) {
             return tokenId == SENIOR ? INIT_BASE_SENIOR : INIT_BASE_JUNIOR;
         }
@@ -120,7 +120,7 @@ library TokenCalculations {
         uint256 tokenId,
         uint256 amount,
         bool toUnderlying
-    ) public view returns (uint256) {
+    ) internal view returns (uint256) {
         uint256 f = factor(gerc1155, tokenId, 0);
         return f > 0 ? applyFactor(amount, f, toUnderlying) : 0;
     }
