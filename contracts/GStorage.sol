@@ -28,6 +28,7 @@ contract GStorage is IGStorage, Owned {
     function setGTrancheAddress(address _gtranche) external onlyOwner {
         gTranche = _gtranche;
     }
+
     /// @notice Require that the caller is the GTranche contract
     /// @notice Use this carefully
     /// TODO: need to check all possible implications of this in terms of security
