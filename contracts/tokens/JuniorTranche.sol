@@ -27,6 +27,11 @@ contract JuniorTranche is GToken {
         GToken(name, symbol)
     {}
 
+    /// @notice Returns the total assets of the tranche
+    function totalAssets() public view override returns (uint256) {
+        return gStorage.getTrancheBalance(false);
+    }
+
     /// @notice Return the base supply of the token - This is similar
     ///     to the original ERC20 totalSupply method for NonRebasingGTokens
     function totalSupply() public view override returns (uint256) {

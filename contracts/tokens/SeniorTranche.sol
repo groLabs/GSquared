@@ -28,6 +28,11 @@ contract SeniorTranche is GToken {
         GToken(name, symbol)
     {}
 
+    /// @notice Returns the total assets of the tranche
+    function totalAssets() public view override returns (uint256) {
+        return gStorage.getTrancheBalance(true);
+    }
+
     /// @notice TotalSupply override - the totalsupply of the Rebasing token is
     ///     calculated by dividing the totalSupplyBase (standard ERC20 totalSupply)
     ///     by the factor. This result is the rebased amount

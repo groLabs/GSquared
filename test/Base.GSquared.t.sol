@@ -116,9 +116,9 @@ contract BaseSetup is Test {
         );
         gstorage.setGTrancheAddress(address(gTranche));
         pnl = new PnLFixedRate(address(gTranche));
-        GVT.setController(address(gTranche));
+        GVT.setGStorage(address(gstorage));
         GVT.addToWhitelist(address(gTranche));
-        PWRD.setController(address(gTranche));
+        PWRD.setGStorage(address(gstorage));
         PWRD.addToWhitelist(address(gTranche));
 
         gTranche.setPnL(pnl);

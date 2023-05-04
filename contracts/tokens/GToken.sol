@@ -9,6 +9,7 @@ import "../common/Whitelist.sol";
 import "../interfaces/IERC20Detailed.sol";
 import "../interfaces/IController.sol";
 import "../interfaces/IGToken.sol";
+import "../interfaces/IGStorage.sol";
 
 abstract contract GERC20 is IGToken {
     using SafeMath for uint256;
@@ -352,14 +353,14 @@ abstract contract GToken is GERC20, Constants, Whitelist {
     using SafeTransferLib for IERC20;
     using SafeMath for uint256;
 
-    IController public ctrl;
+    IGStorage public gStorage;
 
     constructor(string memory name, string memory symbol)
         GERC20(name, symbol, DEFAULT_DECIMALS)
     {}
 
-    function setController(address controller) external onlyOwner {
-        ctrl = IController(controller);
+    function setGStorage(address _gstorage) external onlyOwner {
+        gStorage = IGStorage(_gstorage);
     }
 
     function factor() public view override returns (uint256) {
@@ -403,9 +404,7 @@ abstract contract GToken is GERC20, Constants, Whitelist {
         return 0;
     }
 
-    function totalAssets() public view override returns (uint256) {
-        return ctrl.gTokenTotalAssets();
-    }
+    function totalAssets() public view virtual returns (uint256);
 
     function getInitialBase() internal pure virtual returns (uint256) {
         return BASE;
