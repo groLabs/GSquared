@@ -9,7 +9,7 @@ import {TokenCalculations} from "../common/TokenCalculations.sol";
 /// @notice Token definition contract
 contract GERC1155 is ERC1155, IGERC1155, Constants {
     // Extend amount of tokens as needed
-
+    using TokenCalculations for GERC1155;
     /*///////////////////////////////////////////////////////////////
                        Storage values
     //////////////////////////////////////////////////////////////*/
@@ -34,12 +34,7 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
     ) internal {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
-        uint256 factoredAmount = TokenCalculations.convertAmount(
-            this,
-            id,
-            amount,
-            true
-        );
+        uint256 factoredAmount = this.convertAmount(id, amount, true);
         // Update the tranche supply
         _beforeTokenTransfer(
             address(0),
@@ -62,12 +57,7 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
     ) internal {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
-        uint256 factoredAmount = TokenCalculations.convertAmount(
-            this,
-            id,
-            amount,
-            true
-        );
+        uint256 factoredAmount = this.convertAmount(id, amount, true);
         _beforeTokenTransfer(
             account,
             address(0),
@@ -93,7 +83,7 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         uint256 amount
     ) public {
         uint256 factoredAmount = id == SENIOR
-            ? TokenCalculations.convertAmount(this, id, amount, true)
+            ? this.convertAmount(id, amount, true)
             : amount;
         _beforeTokenTransfer(
             from,
@@ -122,7 +112,7 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
     /// @notice Total supply of token with factor applied
     /// @param id Token ID
     function totalSupply(uint256 id) public view override returns (uint256) {
-        return TokenCalculations.totalSupply(this, id);
+        return this.totalSupplyOf(id);
     }
 
     /// @notice Total amount of tokens in with a given id without applied factor
@@ -156,7 +146,7 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         override
         returns (uint256)
     {
-        return TokenCalculations.balanceOf(this, account, id);
+        return this.balanceOfForId(account, id);
     }
 
     /// @notice Amount of token the user owns without factor applied
@@ -179,7 +169,7 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         view
         returns (uint256)
     {
-        return TokenCalculations.factor(this, id, _totalAssets);
+        return this.factor(id, _totalAssets);
     }
 
     /// @notice Price should always be 10**18 for Senior
@@ -194,12 +184,12 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         if (id == SENIOR) {
             return _base;
         } else {
-            return TokenCalculations.convertAmount(this, id, _base, false);
+            return this.convertAmount(id, _base, false);
         }
     }
 
     function factor(uint256 id) public view override returns (uint256) {
-        return TokenCalculations.factor(this, id, trancheBalances[id]);
+        return this.factor(id, trancheBalances[id]);
     }
 
     /*///////////////////////////////////////////////////////////////

@@ -22,7 +22,7 @@ library TokenCalculations {
     /// @notice Balance of account for a specific token with applied factor in case of senior tranche
     /// @param account Account address
     /// @param tokenId Token ID
-    function balanceOf(
+    function balanceOfForId(
         IGERC1155 gerc1155,
         address account,
         uint256 tokenId
@@ -48,7 +48,7 @@ library TokenCalculations {
     /// @notice Calculate total supply. In case of senior, apply the factor,
     /// in case junior, return the base(raw _totalSupply)
     /// @param tokenId Token ID
-    function totalSupply(IGERC1155 gerc1155, uint256 tokenId)
+    function totalSupplyOf(IGERC1155 gerc1155, uint256 tokenId)
         public
         view
         returns (uint256)
@@ -82,7 +82,7 @@ library TokenCalculations {
             assets = gerc1155.getTrancheBalance(tokenId);
         }
         if (assets > 0) {
-            return totalSupply(gerc1155, tokenId).mul(BASE).div(assets);
+            return totalSupplyOf(gerc1155, tokenId).mul(BASE).div(assets);
         } else {
             return 0;
         }
