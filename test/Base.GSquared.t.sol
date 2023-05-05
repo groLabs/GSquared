@@ -5,7 +5,6 @@ import "../contracts/GRouter.sol";
 import "../contracts/GVault.sol";
 import "../contracts/GTranche.sol";
 import "../contracts/GStorage.sol";
-import "../contracts/GMigration.sol";
 import "../contracts/oracles/CurveOracle.sol";
 import "../contracts/oracles/RouterOracle.sol";
 import "../contracts/tokens/JuniorTranche.sol";
@@ -111,7 +110,6 @@ contract BaseSetup is Test {
             YIELD_VAULTS,
             TRANCHE_TOKENS,
             IOracle(curveOracle),
-            GMigration(ZERO),
             gstorage
         );
         gstorage.setGTrancheAddress(address(gTranche));

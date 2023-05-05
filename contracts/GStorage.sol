@@ -37,18 +37,6 @@ contract GStorage is IGStorage, Owned {
         trancheBalances[_tranche] = _balance;
     }
 
-    /// @notice Increase the USD balance of the tranche
-    function increaseTrancheBalance(bool _tranche, uint256 _balance) external {
-        _requireCallerIsGTranche();
-        trancheBalances[_tranche] += _balance;
-    }
-
-    /// @notice Decrease the USD balance of the tranche
-    function decreaseTrancheBalance(bool _tranche, uint256 _balance) external {
-        _requireCallerIsGTranche();
-        trancheBalances[_tranche] -= _balance;
-    }
-
     /// @notice Returns the USD balance of the tranche
     function getTrancheBalance(bool _tranche) external view returns (uint256) {
         return trancheBalances[_tranche];

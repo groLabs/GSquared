@@ -12,9 +12,5 @@ pragma solidity 0.8.10;
 interface IGStorage {
     function setTrancheBalance(bool _tranche, uint256 _balance) external;
 
-    function increaseTrancheBalance(bool _tranche, uint256 _balance) external;
-
-    function decreaseTrancheBalance(bool _tranche, uint256 _balance) external;
-
     function getTrancheBalance(bool _tranche) external view returns (uint256);
 }
