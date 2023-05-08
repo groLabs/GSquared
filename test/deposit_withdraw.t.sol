@@ -363,7 +363,7 @@ contract TrancheTest is Test, BaseSetup {
         );
     }
 
-    function testDepositWithPermitCannotDepositSameSig() public {
+    function testDepositWithPermitCannotDepositSameSigDAI() public {
         (address addr, uint256 key) = makeAddrAndKey("1337");
         setStorage(addr, DAI.balanceOf.selector, address(DAI), 1000000000e18);
         uint256 initialSenior = gTranche.trancheBalances(true);
@@ -430,5 +430,125 @@ contract TrancheTest is Test, BaseSetup {
             r,
             s
         );
+        vm.stopPrank;
+    }
+
+    function testDepositWithPermitHappyUSDC() public {
+        // Make new address and extract private key
+        (address addr, uint256 key) = makeAddrAndKey("1337");
+        // Give some USDC to the new address
+        setStorage(addr, USDC.balanceOf.selector, address(USDC), 1000000000e18);
+        uint256 initialSenior = gTranche.trancheBalances(true);
+        uint256 initialJunior = gTranche.trancheBalances(false);
+        uint256 depositAmountJr = 100e6;
+        uint256 depositAmountSenior = 10e6;
+        vm.startPrank(addr);
+        (uint8 v, bytes32 r, bytes32 s) = signPermitUSDC(
+            addr,
+            address(gRouter),
+            depositAmountJr,
+            0,
+            block.timestamp + 1,
+            key
+        );
+        // Deposit to Junior first
+        gRouter.depositWithPermit(
+            depositAmountJr,
+            1,
+            false,
+            0,
+            block.timestamp + 1,
+            v,
+            r,
+            s
+        );
+        // Bump nonce and deposit to Senior with new signature
+        (v, r, s) = signPermitUSDC(
+            addr,
+            address(gRouter),
+            depositAmountSenior,
+            1,
+            block.timestamp + 1,
+            key
+        );
+        gRouter.depositWithPermit(
+            depositAmountSenior,
+            1,
+            true,
+            0,
+            block.timestamp + 1,
+            v,
+            r,
+            s
+        );
+        assertApproxEqRel(
+            gTranche.trancheBalances(false),
+            initialJunior + (depositAmountJr * 1e12), // Convert to 18 decimals
+            1e15
+        );
+        assertApproxEqRel(
+            gTranche.trancheBalances(true),
+            initialSenior + (depositAmountSenior * 1e12), // Convert to 18 decimals
+            1e15
+        );
+        vm.stopPrank();
+    }
+
+    function testDepositWithPermitCannotDepositSameSigUSDC() public {
+        (address addr, uint256 key) = makeAddrAndKey("1337");
+        setStorage(addr, USDC.balanceOf.selector, address(USDC), 1000000000e18);
+        uint256 initialSenior = gTranche.trancheBalances(true);
+        uint256 initialJunior = gTranche.trancheBalances(false);
+        uint256 depositAmountJr = 100e6;
+        uint256 depositAmountSenior = 10e6;
+        vm.startPrank(addr);
+        (uint8 v, bytes32 r, bytes32 s) = signPermitUSDC(
+            addr,
+            address(gRouter),
+            depositAmountJr,
+            0,
+            block.timestamp + 1,
+            key
+        );
+        // Deposit to Junior first
+        gRouter.depositWithPermit(
+            depositAmountJr,
+            1,
+            false,
+            0,
+            block.timestamp + 1,
+            v,
+            r,
+            s
+        );
+        vm.expectRevert("EIP2612: invalid signature");
+        // Try to deposit with same sig and expect revert
+        gRouter.depositWithPermit(
+            depositAmountJr,
+            1,
+            false,
+            0,
+            block.timestamp + 1,
+            v,
+            r,
+            s
+        );
+        vm.stopPrank();
+    }
+
+    function testDepositWithPermitZeroAmountUSDC() public {
+        (address addr, uint256 key) = makeAddrAndKey("1337");
+        setStorage(addr, USDC.balanceOf.selector, address(USDC), 1000000000e18);
+        vm.startPrank(addr);
+        (uint8 v, bytes32 r, bytes32 s) = signPermitUSDC(
+            addr,
+            address(gRouter),
+            0,
+            0,
+            block.timestamp + 1,
+            key
+        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.AmountIsZero.selector));
+        gRouter.depositWithPermit(0, 1, false, 0, block.timestamp + 1, v, r, s);
     }
 }

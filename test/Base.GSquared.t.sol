@@ -31,6 +31,11 @@ contract BaseSetup is Test {
         0xdbb8cf42e1ecb028be3f3dbc922e1d878b963f411dc388ced501601c60f7c6f7;
     bytes32 public DAI_TYPEHASH =
         0xea2aa0a1be11a07ed86d755c93467f4f82362b452371d1ba94d1715123511acb;
+
+    bytes32 public USDC_DOMAIN_SEPARATOR =
+        0x06c37168a7db5138defc7866392bb87a741f9b3d104deb5094588ce041cae335;
+    bytes32 public USDC_TYPEHASH =
+        0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     address public constant THREE_POOL =
         address(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     ERC20 public constant THREE_POOL_TOKEN =
@@ -360,6 +365,43 @@ contract BaseSetup is Test {
                         nonce,
                         deadline,
                         true // Allowed
+                    )
+                )
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pkey, hash);
+        assertEq(owner, ecrecover(hash, v, r, s));
+        return (v, r, s);
+    }
+
+    /// @notice utils function to sign permit and return k, v and r
+    function signPermitUSDC(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 nonce,
+        uint256 deadline,
+        uint256 pkey
+    )
+        public
+        returns (
+            uint8 v,
+            bytes32 r,
+            bytes32 s
+        )
+    {
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                USDC_DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        USDC_TYPEHASH,
+                        owner,
+                        spender,
+                        value,
+                        nonce,
+                        deadline
                     )
                 )
             )
