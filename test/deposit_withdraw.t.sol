@@ -301,7 +301,10 @@ contract TrancheTest is Test, BaseSetup {
     }
 
     /// @dev Test depositing with approvals
-    function testDepositWithPermitHappyDAI() public {
+    function testDepositWithPermitHappyDAI(uint256 juniorAmnt) public {
+        vm.assume(juniorAmnt > 10e18);
+        vm.assume(juniorAmnt < 10000000e18);
+        uint256 seniorAmnt = juniorAmnt / 10;
         // Make new address and extract private key
         (address addr, uint256 key) = makeAddrAndKey("1337");
         // Give some DAI to the new address
@@ -309,8 +312,6 @@ contract TrancheTest is Test, BaseSetup {
         uint256 initialSenior = gTranche.trancheBalances(true);
         uint256 initialJunior = gTranche.trancheBalances(false);
 
-        uint256 depositAmountJr = 100e18;
-        uint256 depositAmountSenior = 10e18;
         vm.startPrank(addr);
         (uint8 v, bytes32 r, bytes32 s) = signPermitDAI(
             addr,
@@ -321,7 +322,7 @@ contract TrancheTest is Test, BaseSetup {
         );
         // Deposit to Junior first
         gRouter.depositWithAllowedPermit(
-            depositAmountJr,
+            juniorAmnt,
             0,
             false,
             0,
@@ -340,7 +341,7 @@ contract TrancheTest is Test, BaseSetup {
             key
         );
         gRouter.depositWithAllowedPermit(
-            depositAmountSenior,
+            seniorAmnt,
             0,
             true,
             0,
@@ -353,12 +354,12 @@ contract TrancheTest is Test, BaseSetup {
         vm.stopPrank();
         assertApproxEqRel(
             gTranche.trancheBalances(false),
-            initialJunior + depositAmountJr,
+            initialJunior + juniorAmnt,
             1e15
         );
         assertApproxEqRel(
             gTranche.trancheBalances(true),
-            initialSenior + depositAmountSenior,
+            initialSenior + seniorAmnt,
             1e15
         );
     }
@@ -433,27 +434,30 @@ contract TrancheTest is Test, BaseSetup {
         vm.stopPrank;
     }
 
-    function testDepositWithPermitHappyUSDC() public {
+    function testDepositWithPermitHappyUSDC(uint256 juniorAmnt) public {
+        vm.assume(juniorAmnt > 10e6);
+        vm.assume(juniorAmnt < 10000000e6);
+
+        uint256 seniorAmnt = juniorAmnt / 10;
         // Make new address and extract private key
         (address addr, uint256 key) = makeAddrAndKey("1337");
         // Give some USDC to the new address
         setStorage(addr, USDC.balanceOf.selector, address(USDC), 1000000000e18);
         uint256 initialSenior = gTranche.trancheBalances(true);
         uint256 initialJunior = gTranche.trancheBalances(false);
-        uint256 depositAmountJr = 100e6;
-        uint256 depositAmountSenior = 10e6;
+
         vm.startPrank(addr);
         (uint8 v, bytes32 r, bytes32 s) = signPermitUSDC(
             addr,
             address(gRouter),
-            depositAmountJr,
+            juniorAmnt,
             0,
             block.timestamp + 1,
             key
         );
         // Deposit to Junior first
         gRouter.depositWithPermit(
-            depositAmountJr,
+            juniorAmnt,
             1,
             false,
             0,
@@ -466,13 +470,13 @@ contract TrancheTest is Test, BaseSetup {
         (v, r, s) = signPermitUSDC(
             addr,
             address(gRouter),
-            depositAmountSenior,
+            seniorAmnt,
             1,
             block.timestamp + 1,
             key
         );
         gRouter.depositWithPermit(
-            depositAmountSenior,
+            seniorAmnt,
             1,
             true,
             0,
@@ -483,12 +487,12 @@ contract TrancheTest is Test, BaseSetup {
         );
         assertApproxEqRel(
             gTranche.trancheBalances(false),
-            initialJunior + (depositAmountJr * 1e12), // Convert to 18 decimals
+            initialJunior + (juniorAmnt * 1e12), // Convert to 18 decimals
             1e15
         );
         assertApproxEqRel(
             gTranche.trancheBalances(true),
-            initialSenior + (depositAmountSenior * 1e12), // Convert to 18 decimals
+            initialSenior + (seniorAmnt * 1e12), // Convert to 18 decimals
             1e15
         );
         vm.stopPrank();
