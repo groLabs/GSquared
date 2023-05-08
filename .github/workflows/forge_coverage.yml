@@ -3,8 +3,6 @@ on:
     branches:
       - master
   pull_request:
-    paths:
-      - "contracts/**"
 
 name: coverage
 
@@ -45,6 +43,7 @@ jobs:
 
       - uses: codecov/codecov-action@v3
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
           fail_ci_if_error: false
           verbose: true
