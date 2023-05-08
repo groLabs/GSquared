@@ -300,7 +300,7 @@ contract TrancheTest is Test, BaseSetup {
         );
     }
 
-    /// @dev Test depositing with approvals by another user
+    /// @dev Test depositing with approvals
     function testDepositWithPermitHappyDAI() public {
         // Make new address and extract private key
         (address addr, uint256 key) = makeAddrAndKey("1337");
