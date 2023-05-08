@@ -425,4 +425,67 @@ contract TrancheTest is Test, BaseSetup {
             1E6
         );
     }
+
+    /// @dev Test depositing with approvals by another user
+    function testDepositWithPermitHappyDAIJunior() public {
+        // Make new address and extract private key
+        (address addr, uint256 key) = makeAddrAndKey("1337");
+        // Give some DAI to the new address
+        setStorage(addr, DAI.balanceOf.selector, address(DAI), 1000000000e18);
+        uint256 initialSenior = gTranche.trancheBalances(true);
+        uint256 initialJunior = gTranche.trancheBalances(false);
+
+        uint256 depositAmountJr = 100e18;
+        uint256 depositAmountSenior = 10e18;
+        vm.startPrank(addr);
+        (uint8 v, bytes32 r, bytes32 s) = signPermitDAI(
+            addr,
+            address(gRouter),
+            0,
+            block.timestamp + 1000, // deadline
+            key
+        );
+        // Deposit to Junior first
+        gRouter.depositWithAllowedPermit(
+            depositAmountJr,
+            0,
+            false,
+            0,
+            block.timestamp + 1000, // deadline
+            0,
+            v,
+            r,
+            s
+        );
+        // Bump nonce and deposit to Senior with new signature
+        (uint8 v1, bytes32 r1, bytes32 s1) = signPermitDAI(
+            addr,
+            address(gRouter),
+            1,
+            block.timestamp + 1000, // deadline
+            key
+        );
+        gRouter.depositWithAllowedPermit(
+            depositAmountSenior,
+            0,
+            true,
+            0,
+            block.timestamp + 1000, // deadline
+            1,
+            v1,
+            r1,
+            s1
+        );
+        vm.stopPrank();
+        assertApproxEqRel(
+            gTranche.trancheBalances(false),
+            initialJunior + depositAmountJr,
+            1e15
+        );
+        assertApproxEqRel(
+            gTranche.trancheBalances(true),
+            initialSenior + depositAmountSenior,
+            1e15
+        );
+    }
 }

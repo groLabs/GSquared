@@ -193,6 +193,7 @@ contract GRouter is IGRouter {
             revert Errors.AmountIsZero();
         }
         ERC20 token = ERC20(routerOracle.getToken(_token_index));
+        // TODO:????? WTF is this
         token.permit(msg.sender, address(this), _amount, deadline, v, r, s);
         amount = depositIntoTrancheForCaller(
             _amount,

@@ -85,4 +85,10 @@ contract RouterTest is Test, BaseSetup {
 
         vm.stopPrank();
     }
+
+    /// @dev Test depositing with zero amount should revert
+    function testDepositZeroAmount() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.AmountIsZero.selector));
+        gRouter.deposit(0, 0, true, 123e18);
+    }
 }

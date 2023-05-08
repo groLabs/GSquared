@@ -27,7 +27,10 @@ interface IConvexRewards {
 contract BaseSetup is Test {
     using stdStorage for StdStorage;
     using SafeTransferLib for ERC20;
-
+    bytes32 public DAI_DOMAIN_SEPARATOR =
+        0xdbb8cf42e1ecb028be3f3dbc922e1d878b963f411dc388ced501601c60f7c6f7;
+    bytes32 public DAI_TYPEHASH =
+        0xea2aa0a1be11a07ed86d755c93467f4f82362b452371d1ba94d1715123511acb;
     address public constant THREE_POOL =
         address(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     ERC20 public constant THREE_POOL_TOKEN =
@@ -328,5 +331,41 @@ contract BaseSetup is Test {
             bytes32(50 * IConvexRewards(_convexPool).rewardRate())
         );
         vm.warp(IConvexRewards(_convexPool).periodFinish() - 100);
+    }
+
+    /// @notice utils function to sign permit and return k, v and r
+    function signPermitDAI(
+        address owner,
+        address spender,
+        uint256 nonce,
+        uint256 deadline,
+        uint256 pkey
+    )
+        public
+        returns (
+            uint8 v,
+            bytes32 r,
+            bytes32 s
+        )
+    {
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                DAI_DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        DAI_TYPEHASH,
+                        owner,
+                        spender,
+                        nonce,
+                        deadline,
+                        true // Allowed
+                    )
+                )
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pkey, hash);
+        assertEq(owner, ecrecover(hash, v, r, s));
+        return (v, r, s);
     }
 }
