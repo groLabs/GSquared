@@ -300,132 +300,6 @@ contract TrancheTest is Test, BaseSetup {
         );
     }
 
-    function runDeposit(
-        address payable[] memory _users,
-        uint256 deposit,
-        uint256 i,
-        uint256 k
-    ) public {
-        bool _break;
-        for (uint256 j; j < i; j++) {
-            address user = _users[j];
-            prepUserCrv(user);
-            vm.startPrank(user);
-            _break = false;
-            for (uint256 l; l < k; l++) {
-                if (deposit > DAI.balanceOf(user)) {
-                    ICurve3Pool(THREE_POOL).add_liquidity(
-                        [DAI.balanceOf(user), 0, 0],
-                        0
-                    );
-                } else {
-                    ICurve3Pool(THREE_POOL).add_liquidity([deposit, 0, 0], 0);
-                }
-                uint256 balance = THREE_POOL_TOKEN.balanceOf(address(user));
-                uint256 shares = gVault.deposit(balance, address(user));
-
-                gTranche.deposit(shares / 2, 0, false, address(user));
-                gTranche.deposit(shares / 2, 0, true, address(user));
-                if (_break) break;
-            }
-            vm.stopPrank();
-        }
-    }
-
-    function _withdraw(
-        bool tranche,
-        uint256 amount,
-        address user
-    ) public returns (uint256 withdrawAmount) {
-        (, withdrawAmount) = gTranche.withdraw(amount, 0, tranche, user);
-    }
-
-    function userWithdrawCheck(
-        address user,
-        uint256 userSeniorAssets,
-        uint256 userJuniorAssets,
-        uint256 k
-    )
-        public
-        returns (uint256 seniorAmountWithdrawn, uint256 juniorAmountWithdrawn)
-    {
-        uint256 SeniorTrancheAssets;
-        uint256 JuniorTrancheAssets;
-
-        for (uint256 l; l < k; l++) {
-            JuniorTrancheAssets = gTranche.trancheBalances(false);
-            vm.startPrank(user);
-            if (l + 1 == k) {
-                seniorAmountWithdrawn += _withdraw(
-                    true,
-                    PWRD.balanceOf(user),
-                    address(user)
-                );
-            } else {
-                seniorAmountWithdrawn += _withdraw(
-                    true,
-                    userSeniorAssets / k,
-                    address(user)
-                );
-            }
-            assertApproxEqAbs(
-                gTranche.trancheBalances(false),
-                JuniorTrancheAssets,
-                1E6
-            );
-
-            SeniorTrancheAssets = gTranche.trancheBalances(true);
-            if (l + 1 == k) {
-                juniorAmountWithdrawn += _withdraw(
-                    false,
-                    GVT.balanceOf(user),
-                    address(user)
-                );
-            } else {
-                juniorAmountWithdrawn += _withdraw(
-                    false,
-                    userJuniorAssets / k,
-                    address(user)
-                );
-            }
-            vm.stopPrank();
-            assertApproxEqAbs(
-                gTranche.trancheBalances(true),
-                SeniorTrancheAssets,
-                1E6
-            );
-        }
-    }
-
-    function runWithdrawal(address user, uint256 k)
-        public
-        returns (uint256 withdrawnSenior, uint256 withdrawnJunior)
-    {
-        uint256 userSeniorAssets = PWRD.balanceOf(user);
-        uint256 userJuniorAssets = GVT.balanceOf(user);
-
-        uint256 initialSeniorTrancheAssets = gTranche.trancheBalances(true);
-        uint256 initialJuniorTrancheAssets = gTranche.trancheBalances(false);
-
-        (withdrawnSenior, withdrawnJunior) = userWithdrawCheck(
-            user,
-            userSeniorAssets,
-            userJuniorAssets,
-            k
-        );
-
-        assertApproxEqAbs(
-            gTranche.trancheBalances(false),
-            delta(initialJuniorTrancheAssets, withdrawnJunior),
-            1E6
-        );
-        assertApproxEqAbs(
-            gTranche.trancheBalances(true),
-            delta(initialSeniorTrancheAssets, withdrawnSenior),
-            1E6
-        );
-    }
-
     /// @dev Test depositing with approvals by another user
     function testDepositWithPermitHappyDAI() public {
         // Make new address and extract private key
@@ -531,5 +405,30 @@ contract TrancheTest is Test, BaseSetup {
             s
         );
         vm.stopPrank();
+    }
+
+    function testDepositWithPermitZeroAmount() public {
+        (address addr, uint256 key) = makeAddrAndKey("1337");
+        setStorage(addr, DAI.balanceOf.selector, address(DAI), 1000000000e18);
+        vm.startPrank(addr);
+        (uint8 v, bytes32 r, bytes32 s) = signPermitDAI(
+            addr,
+            address(gRouter),
+            0,
+            block.timestamp + 1000,
+            key
+        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.AmountIsZero.selector));
+        gRouter.depositWithAllowedPermit(
+            0,
+            0,
+            false,
+            0,
+            block.timestamp + 1000,
+            0,
+            v,
+            r,
+            s
+        );
     }
 }
