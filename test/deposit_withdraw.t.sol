@@ -427,7 +427,7 @@ contract TrancheTest is Test, BaseSetup {
     }
 
     /// @dev Test depositing with approvals by another user
-    function testDepositWithPermitHappyDAIJunior() public {
+    function testDepositWithPermitHappyDAI() public {
         // Make new address and extract private key
         (address addr, uint256 key) = makeAddrAndKey("1337");
         // Give some DAI to the new address
@@ -487,5 +487,49 @@ contract TrancheTest is Test, BaseSetup {
             initialSenior + depositAmountSenior,
             1e15
         );
+    }
+
+    function testDepositWithPermitCannotDepositSameSig() public {
+        (address addr, uint256 key) = makeAddrAndKey("1337");
+        setStorage(addr, DAI.balanceOf.selector, address(DAI), 1000000000e18);
+        uint256 initialSenior = gTranche.trancheBalances(true);
+        uint256 initialJunior = gTranche.trancheBalances(false);
+
+        uint256 depositAmountJr = 100e18;
+        uint256 depositAmountSenior = 10e18;
+        vm.startPrank(addr);
+        (uint8 v, bytes32 r, bytes32 s) = signPermitDAI(
+            addr,
+            address(gRouter),
+            0,
+            block.timestamp + 1000,
+            key
+        );
+        // Deposit to Junior first
+        gRouter.depositWithAllowedPermit(
+            depositAmountJr,
+            0,
+            false,
+            0,
+            block.timestamp + 1000,
+            0,
+            v,
+            r,
+            s
+        );
+        // Try to deposit with same signature and expect revert
+        vm.expectRevert("Dai/invalid-permit");
+        gRouter.depositWithAllowedPermit(
+            depositAmountSenior,
+            0,
+            true,
+            0,
+            block.timestamp + 1000,
+            1,
+            v,
+            r,
+            s
+        );
+        vm.stopPrank();
     }
 }
