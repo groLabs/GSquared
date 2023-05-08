@@ -27,7 +27,15 @@ interface IConvexRewards {
 contract BaseSetup is Test {
     using stdStorage for StdStorage;
     using SafeTransferLib for ERC20;
+    bytes32 public DAI_DOMAIN_SEPARATOR =
+        0xdbb8cf42e1ecb028be3f3dbc922e1d878b963f411dc388ced501601c60f7c6f7;
+    bytes32 public DAI_TYPEHASH =
+        0xea2aa0a1be11a07ed86d755c93467f4f82362b452371d1ba94d1715123511acb;
 
+    bytes32 public USDC_DOMAIN_SEPARATOR =
+        0x06c37168a7db5138defc7866392bb87a741f9b3d104deb5094588ce041cae335;
+    bytes32 public USDC_TYPEHASH =
+        0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     address public constant THREE_POOL =
         address(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
     ERC20 public constant THREE_POOL_TOKEN =
@@ -328,5 +336,204 @@ contract BaseSetup is Test {
             bytes32(50 * IConvexRewards(_convexPool).rewardRate())
         );
         vm.warp(IConvexRewards(_convexPool).periodFinish() - 100);
+    }
+
+    /// @notice utils function to sign permit and return k, v and r
+    function signPermitDAI(
+        address owner,
+        address spender,
+        uint256 nonce,
+        uint256 deadline,
+        uint256 pkey
+    )
+        public
+        returns (
+            uint8 v,
+            bytes32 r,
+            bytes32 s
+        )
+    {
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                DAI_DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        DAI_TYPEHASH,
+                        owner,
+                        spender,
+                        nonce,
+                        deadline,
+                        true // Allowed
+                    )
+                )
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pkey, hash);
+        assertEq(owner, ecrecover(hash, v, r, s));
+        return (v, r, s);
+    }
+
+    /// @notice utils function to sign permit and return k, v and r
+    function signPermitUSDC(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 nonce,
+        uint256 deadline,
+        uint256 pkey
+    )
+        public
+        returns (
+            uint8 v,
+            bytes32 r,
+            bytes32 s
+        )
+    {
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                USDC_DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        USDC_TYPEHASH,
+                        owner,
+                        spender,
+                        value,
+                        nonce,
+                        deadline
+                    )
+                )
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pkey, hash);
+        assertEq(owner, ecrecover(hash, v, r, s));
+        return (v, r, s);
+    }
+
+    function runDeposit(
+        address payable[] memory _users,
+        uint256 deposit,
+        uint256 i,
+        uint256 k
+    ) public {
+        bool _break;
+        for (uint256 j; j < i; j++) {
+            address user = _users[j];
+            prepUserCrv(user);
+            vm.startPrank(user);
+            _break = false;
+            for (uint256 l; l < k; l++) {
+                if (deposit > DAI.balanceOf(user)) {
+                    ICurve3Pool(THREE_POOL).add_liquidity(
+                        [DAI.balanceOf(user), 0, 0],
+                        0
+                    );
+                } else {
+                    ICurve3Pool(THREE_POOL).add_liquidity([deposit, 0, 0], 0);
+                }
+                uint256 balance = THREE_POOL_TOKEN.balanceOf(address(user));
+                uint256 shares = gVault.deposit(balance, address(user));
+
+                gTranche.deposit(shares / 2, 0, false, address(user));
+                gTranche.deposit(shares / 2, 0, true, address(user));
+                if (_break) break;
+            }
+            vm.stopPrank();
+        }
+    }
+
+    function _withdraw(
+        bool tranche,
+        uint256 amount,
+        address user
+    ) public returns (uint256 withdrawAmount) {
+        (, withdrawAmount) = gTranche.withdraw(amount, 0, tranche, user);
+    }
+
+    function userWithdrawCheck(
+        address user,
+        uint256 userSeniorAssets,
+        uint256 userJuniorAssets,
+        uint256 k
+    )
+        public
+        returns (uint256 seniorAmountWithdrawn, uint256 juniorAmountWithdrawn)
+    {
+        uint256 SeniorTrancheAssets;
+        uint256 JuniorTrancheAssets;
+
+        for (uint256 l; l < k; l++) {
+            JuniorTrancheAssets = gTranche.trancheBalances(false);
+            vm.startPrank(user);
+            if (l + 1 == k) {
+                seniorAmountWithdrawn += _withdraw(
+                    true,
+                    PWRD.balanceOf(user),
+                    address(user)
+                );
+            } else {
+                seniorAmountWithdrawn += _withdraw(
+                    true,
+                    userSeniorAssets / k,
+                    address(user)
+                );
+            }
+            assertApproxEqAbs(
+                gTranche.trancheBalances(false),
+                JuniorTrancheAssets,
+                1E6
+            );
+
+            SeniorTrancheAssets = gTranche.trancheBalances(true);
+            if (l + 1 == k) {
+                juniorAmountWithdrawn += _withdraw(
+                    false,
+                    GVT.balanceOf(user),
+                    address(user)
+                );
+            } else {
+                juniorAmountWithdrawn += _withdraw(
+                    false,
+                    userJuniorAssets / k,
+                    address(user)
+                );
+            }
+            vm.stopPrank();
+            assertApproxEqAbs(
+                gTranche.trancheBalances(true),
+                SeniorTrancheAssets,
+                1E6
+            );
+        }
+    }
+
+    function runWithdrawal(address user, uint256 k)
+        public
+        returns (uint256 withdrawnSenior, uint256 withdrawnJunior)
+    {
+        uint256 userSeniorAssets = PWRD.balanceOf(user);
+        uint256 userJuniorAssets = GVT.balanceOf(user);
+
+        uint256 initialSeniorTrancheAssets = gTranche.trancheBalances(true);
+        uint256 initialJuniorTrancheAssets = gTranche.trancheBalances(false);
+
+        (withdrawnSenior, withdrawnJunior) = userWithdrawCheck(
+            user,
+            userSeniorAssets,
+            userJuniorAssets,
+            k
+        );
+
+        assertApproxEqAbs(
+            gTranche.trancheBalances(false),
+            delta(initialJuniorTrancheAssets, withdrawnJunior),
+            1E6
+        );
+        assertApproxEqAbs(
+            gTranche.trancheBalances(true),
+            delta(initialSeniorTrancheAssets, withdrawnSenior),
+            1E6
+        );
     }
 }

@@ -300,129 +300,259 @@ contract TrancheTest is Test, BaseSetup {
         );
     }
 
-    function runDeposit(
-        address payable[] memory _users,
-        uint256 deposit,
-        uint256 i,
-        uint256 k
-    ) public {
-        bool _break;
-        for (uint256 j; j < i; j++) {
-            address user = _users[j];
-            prepUserCrv(user);
-            vm.startPrank(user);
-            _break = false;
-            for (uint256 l; l < k; l++) {
-                if (deposit > DAI.balanceOf(user)) {
-                    ICurve3Pool(THREE_POOL).add_liquidity(
-                        [DAI.balanceOf(user), 0, 0],
-                        0
-                    );
-                } else {
-                    ICurve3Pool(THREE_POOL).add_liquidity([deposit, 0, 0], 0);
-                }
-                uint256 balance = THREE_POOL_TOKEN.balanceOf(address(user));
-                uint256 shares = gVault.deposit(balance, address(user));
+    /// @dev Test depositing with approvals
+    function testDepositWithPermitHappyDAI(uint256 juniorAmnt) public {
+        vm.assume(juniorAmnt > 10e18);
+        vm.assume(juniorAmnt < 10000000e18);
+        uint256 seniorAmnt = juniorAmnt / 10;
+        // Make new address and extract private key
+        (address addr, uint256 key) = makeAddrAndKey("1337");
+        // Give some DAI to the new address
+        setStorage(addr, DAI.balanceOf.selector, address(DAI), 1000000000e18);
+        uint256 initialSenior = gTranche.trancheBalances(true);
+        uint256 initialJunior = gTranche.trancheBalances(false);
 
-                gTranche.deposit(shares / 2, 0, false, address(user));
-                gTranche.deposit(shares / 2, 0, true, address(user));
-                if (_break) break;
-            }
-            vm.stopPrank();
-        }
-    }
-
-    function _withdraw(
-        bool tranche,
-        uint256 amount,
-        address user
-    ) public returns (uint256 withdrawAmount) {
-        (, withdrawAmount) = gTranche.withdraw(amount, 0, tranche, user);
-    }
-
-    function userWithdrawCheck(
-        address user,
-        uint256 userSeniorAssets,
-        uint256 userJuniorAssets,
-        uint256 k
-    )
-        public
-        returns (uint256 seniorAmountWithdrawn, uint256 juniorAmountWithdrawn)
-    {
-        uint256 SeniorTrancheAssets;
-        uint256 JuniorTrancheAssets;
-
-        for (uint256 l; l < k; l++) {
-            JuniorTrancheAssets = gTranche.trancheBalances(false);
-            vm.startPrank(user);
-            if (l + 1 == k) {
-                seniorAmountWithdrawn += _withdraw(
-                    true,
-                    PWRD.balanceOf(user),
-                    address(user)
-                );
-            } else {
-                seniorAmountWithdrawn += _withdraw(
-                    true,
-                    userSeniorAssets / k,
-                    address(user)
-                );
-            }
-            assertApproxEqAbs(
-                gTranche.trancheBalances(false),
-                JuniorTrancheAssets,
-                1E6
-            );
-
-            SeniorTrancheAssets = gTranche.trancheBalances(true);
-            if (l + 1 == k) {
-                juniorAmountWithdrawn += _withdraw(
-                    false,
-                    GVT.balanceOf(user),
-                    address(user)
-                );
-            } else {
-                juniorAmountWithdrawn += _withdraw(
-                    false,
-                    userJuniorAssets / k,
-                    address(user)
-                );
-            }
-            vm.stopPrank();
-            assertApproxEqAbs(
-                gTranche.trancheBalances(true),
-                SeniorTrancheAssets,
-                1E6
-            );
-        }
-    }
-
-    function runWithdrawal(address user, uint256 k)
-        public
-        returns (uint256 withdrawnSenior, uint256 withdrawnJunior)
-    {
-        uint256 userSeniorAssets = PWRD.balanceOf(user);
-        uint256 userJuniorAssets = GVT.balanceOf(user);
-
-        uint256 initialSeniorTrancheAssets = gTranche.trancheBalances(true);
-        uint256 initialJuniorTrancheAssets = gTranche.trancheBalances(false);
-
-        (withdrawnSenior, withdrawnJunior) = userWithdrawCheck(
-            user,
-            userSeniorAssets,
-            userJuniorAssets,
-            k
+        vm.startPrank(addr);
+        (uint8 v, bytes32 r, bytes32 s) = signPermitDAI(
+            addr,
+            address(gRouter),
+            0,
+            block.timestamp + 1000, // deadline
+            key
         );
-
-        assertApproxEqAbs(
+        // Deposit to Junior first
+        gRouter.depositWithAllowedPermit(
+            juniorAmnt,
+            0,
+            false,
+            0,
+            block.timestamp + 1000, // deadline
+            0,
+            v,
+            r,
+            s
+        );
+        // Bump nonce and deposit to Senior with new signature
+        (uint8 v1, bytes32 r1, bytes32 s1) = signPermitDAI(
+            addr,
+            address(gRouter),
+            1,
+            block.timestamp + 1000, // deadline
+            key
+        );
+        gRouter.depositWithAllowedPermit(
+            seniorAmnt,
+            0,
+            true,
+            0,
+            block.timestamp + 1000, // deadline
+            1,
+            v1,
+            r1,
+            s1
+        );
+        vm.stopPrank();
+        assertApproxEqRel(
             gTranche.trancheBalances(false),
-            delta(initialJuniorTrancheAssets, withdrawnJunior),
-            1E6
+            initialJunior + juniorAmnt,
+            1e15
         );
-        assertApproxEqAbs(
+        assertApproxEqRel(
             gTranche.trancheBalances(true),
-            delta(initialSeniorTrancheAssets, withdrawnSenior),
-            1E6
+            initialSenior + seniorAmnt,
+            1e15
         );
+    }
+
+    function testDepositWithPermitCannotDepositSameSigDAI() public {
+        (address addr, uint256 key) = makeAddrAndKey("1337");
+        setStorage(addr, DAI.balanceOf.selector, address(DAI), 1000000000e18);
+        uint256 initialSenior = gTranche.trancheBalances(true);
+        uint256 initialJunior = gTranche.trancheBalances(false);
+
+        uint256 depositAmountJr = 100e18;
+        uint256 depositAmountSenior = 10e18;
+        vm.startPrank(addr);
+        (uint8 v, bytes32 r, bytes32 s) = signPermitDAI(
+            addr,
+            address(gRouter),
+            0,
+            block.timestamp + 1000,
+            key
+        );
+        // Deposit to Junior first
+        gRouter.depositWithAllowedPermit(
+            depositAmountJr,
+            0,
+            false,
+            0,
+            block.timestamp + 1000,
+            0,
+            v,
+            r,
+            s
+        );
+        // Try to deposit with same signature and expect revert
+        vm.expectRevert("Dai/invalid-permit");
+        gRouter.depositWithAllowedPermit(
+            depositAmountSenior,
+            0,
+            true,
+            0,
+            block.timestamp + 1000,
+            1,
+            v,
+            r,
+            s
+        );
+        vm.stopPrank();
+    }
+
+    function testDepositWithPermitZeroAmount() public {
+        (address addr, uint256 key) = makeAddrAndKey("1337");
+        setStorage(addr, DAI.balanceOf.selector, address(DAI), 1000000000e18);
+        vm.startPrank(addr);
+        (uint8 v, bytes32 r, bytes32 s) = signPermitDAI(
+            addr,
+            address(gRouter),
+            0,
+            block.timestamp + 1000,
+            key
+        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.AmountIsZero.selector));
+        gRouter.depositWithAllowedPermit(
+            0,
+            0,
+            false,
+            0,
+            block.timestamp + 1000,
+            0,
+            v,
+            r,
+            s
+        );
+        vm.stopPrank;
+    }
+
+    function testDepositWithPermitHappyUSDC(uint256 juniorAmnt) public {
+        vm.assume(juniorAmnt > 10e6);
+        vm.assume(juniorAmnt < 10000000e6);
+
+        uint256 seniorAmnt = juniorAmnt / 10;
+        // Make new address and extract private key
+        (address addr, uint256 key) = makeAddrAndKey("1337");
+        // Give some USDC to the new address
+        setStorage(addr, USDC.balanceOf.selector, address(USDC), 1000000000e18);
+        uint256 initialSenior = gTranche.trancheBalances(true);
+        uint256 initialJunior = gTranche.trancheBalances(false);
+
+        vm.startPrank(addr);
+        (uint8 v, bytes32 r, bytes32 s) = signPermitUSDC(
+            addr,
+            address(gRouter),
+            juniorAmnt,
+            0,
+            block.timestamp + 1,
+            key
+        );
+        // Deposit to Junior first
+        gRouter.depositWithPermit(
+            juniorAmnt,
+            1,
+            false,
+            0,
+            block.timestamp + 1,
+            v,
+            r,
+            s
+        );
+        // Bump nonce and deposit to Senior with new signature
+        (v, r, s) = signPermitUSDC(
+            addr,
+            address(gRouter),
+            seniorAmnt,
+            1,
+            block.timestamp + 1,
+            key
+        );
+        gRouter.depositWithPermit(
+            seniorAmnt,
+            1,
+            true,
+            0,
+            block.timestamp + 1,
+            v,
+            r,
+            s
+        );
+        assertApproxEqRel(
+            gTranche.trancheBalances(false),
+            initialJunior + (juniorAmnt * 1e12), // Convert to 18 decimals
+            1e15
+        );
+        assertApproxEqRel(
+            gTranche.trancheBalances(true),
+            initialSenior + (seniorAmnt * 1e12), // Convert to 18 decimals
+            1e15
+        );
+        vm.stopPrank();
+    }
+
+    function testDepositWithPermitCannotDepositSameSigUSDC() public {
+        (address addr, uint256 key) = makeAddrAndKey("1337");
+        setStorage(addr, USDC.balanceOf.selector, address(USDC), 1000000000e18);
+        uint256 initialSenior = gTranche.trancheBalances(true);
+        uint256 initialJunior = gTranche.trancheBalances(false);
+        uint256 depositAmountJr = 100e6;
+        uint256 depositAmountSenior = 10e6;
+        vm.startPrank(addr);
+        (uint8 v, bytes32 r, bytes32 s) = signPermitUSDC(
+            addr,
+            address(gRouter),
+            depositAmountJr,
+            0,
+            block.timestamp + 1,
+            key
+        );
+        // Deposit to Junior first
+        gRouter.depositWithPermit(
+            depositAmountJr,
+            1,
+            false,
+            0,
+            block.timestamp + 1,
+            v,
+            r,
+            s
+        );
+        vm.expectRevert("EIP2612: invalid signature");
+        // Try to deposit with same sig and expect revert
+        gRouter.depositWithPermit(
+            depositAmountJr,
+            1,
+            false,
+            0,
+            block.timestamp + 1,
+            v,
+            r,
+            s
+        );
+        vm.stopPrank();
+    }
+
+    function testDepositWithPermitZeroAmountUSDC() public {
+        (address addr, uint256 key) = makeAddrAndKey("1337");
+        setStorage(addr, USDC.balanceOf.selector, address(USDC), 1000000000e18);
+        vm.startPrank(addr);
+        (uint8 v, bytes32 r, bytes32 s) = signPermitUSDC(
+            addr,
+            address(gRouter),
+            0,
+            0,
+            block.timestamp + 1,
+            key
+        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.AmountIsZero.selector));
+        gRouter.depositWithPermit(0, 1, false, 0, block.timestamp + 1, v, r, s);
     }
 }
