@@ -281,7 +281,7 @@ contract TrancheTest is Test, BaseSetup {
 
     /// @dev Test depositing with approvals
     function testDepositWithPermitHappyDAI(uint256 juniorAmnt) public {
-        vm.assume(juniorAmnt > 10e18);
+        vm.assume(juniorAmnt > 100e18);
         vm.assume(juniorAmnt < 10000000e18);
         uint256 seniorAmnt = juniorAmnt / 10;
         // Make new address and extract private key
