@@ -14,6 +14,7 @@ import "../contracts/strategy/keeper/GStrategyResolver.sol";
 import "../contracts/mocks/MockStrategy.sol";
 import "../contracts/strategy/ConvexStrategy.sol";
 import "../contracts/solmate/src/utils/SafeTransferLib.sol";
+import "../contracts/solmate/src/utils/CREATE3.sol";
 
 interface IConvexRewards {
     function rewardRate() external view returns (uint256);
@@ -117,6 +118,14 @@ contract BaseSetup is Test {
             ERC20(THREE_POOL_TOKEN)
         );
         vm.stopPrank();
+    }
+
+    function arbitraryCreate(
+        bytes32 salt,
+        bytes memory creationCode,
+        uint256 ethValue
+    ) public returns (address) {
+        return CREATE3.deploy(salt, creationCode, ethValue);
     }
 
     function findStorage(
