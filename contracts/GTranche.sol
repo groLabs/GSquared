@@ -9,6 +9,7 @@ import {ERC4626} from "./tokens/ERC4626.sol";
 import {GERC1155} from "./tokens/GERC1155.sol";
 import {Errors} from "./common/Errors.sol";
 import {FixedTokensCurve} from "./utils/FixedTokensCurve.sol";
+import {ITokenLogic} from "./common/TokenCalculations.sol";
 
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \
@@ -104,10 +105,12 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
 
     event LogSetNewPnLLogic(address pnl);
 
-    constructor(address[] memory _yieldTokens, IOracle _oracle)
-        FixedTokensCurve(_yieldTokens)
-        Owned(msg.sender)
-    {
+    constructor(
+        address[] memory _yieldTokens,
+        IOracle _oracle,
+        ITokenLogic tokenLogic
+    ) FixedTokensCurve(_yieldTokens) Owned(msg.sender) GERC1155(tokenLogic) {
+        require(address(tokenLogic) != address(0), "!Zero address");
         oracle = _oracle;
     }
 

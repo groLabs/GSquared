@@ -15,6 +15,7 @@ import "../contracts/mocks/MockStrategy.sol";
 import "../contracts/strategy/ConvexStrategy.sol";
 import "../contracts/solmate/src/utils/SafeTransferLib.sol";
 import "../contracts/solmate/src/utils/CREATE3.sol";
+import {TokenCalculations} from "../contracts/common/TokenCalculations.sol";
 
 interface IConvexRewards {
     function rewardRate() external view returns (uint256);
@@ -95,16 +96,25 @@ contract BaseSetup is Test {
         CHAINLINK_AGG_ADDRESSES[2] = address(
             0x3E7d1eAB13ad0104d2750B8863b489D65364e32D
         );
-
+        vm.deal(BASED_ADDRESS, 100000e18);
+        bytes32 salt = bytes32(uint256(block.number));
+        address tokenLogic = arbitraryCreate(
+            salt,
+            type(TokenCalculations).creationCode,
+            1e18
+        );
         vm.startPrank(BASED_ADDRESS);
         curveOracle = new CurveOracle();
         gVault = new GVault(THREE_POOL_TOKEN);
         strategy = new MockStrategy(address(gVault));
         gVault.addStrategy(address(strategy), 10000);
-
         YIELD_VAULTS.push(address(gVault));
 
-        gTranche = new GTranche(YIELD_VAULTS, IOracle(curveOracle));
+        gTranche = new GTranche(
+            YIELD_VAULTS,
+            IOracle(curveOracle),
+            ITokenLogic(tokenLogic)
+        );
 
         pnl = new PnLFixedRate(address(gTranche));
 

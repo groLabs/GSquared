@@ -8,6 +8,7 @@ import "./MockFixedTokens.sol";
 import "../interfaces/IGTranche.sol";
 import "../interfaces/IOracle.sol";
 import {GERC1155} from "../tokens/GERC1155.sol";
+import {ITokenLogic} from "../common/TokenCalculations.sol";
 
 contract MockGTranche is
     IGTranche,
@@ -40,8 +41,13 @@ contract MockGTranche is
     constructor(
         address[] memory _yieldTokens,
         address[2] memory _trancheTokens,
-        address _oracle
-    ) MockFixedTokens(_yieldTokens, _trancheTokens) Owned(msg.sender) {
+        address _oracle,
+        ITokenLogic _tokenLogic
+    )
+        MockFixedTokens(_yieldTokens, _trancheTokens)
+        Owned(msg.sender)
+        GERC1155(_tokenLogic)
+    {
         oracle = IOracle(_oracle);
     }
 
