@@ -180,7 +180,7 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
         }
 
         tokenBalances[_index] += _amount;
-        mint(_recipient, _tranche ? SENIOR : JUNIOR, calcAmount);
+        mint(_recipient, _tranche ? SENIOR : JUNIOR, calcAmount, factor);
         emit LogNewDeposit(
             msg.sender,
             _recipient,
@@ -239,8 +239,7 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
 
         yieldTokenAmounts = _calcTokenAmount(_index, calcAmount, false);
         tokenBalances[_index] -= yieldTokenAmounts;
-
-        burn(_recipient, _tranche ? SENIOR : JUNIOR, calcAmount);
+        burn(_recipient, _tranche ? SENIOR : JUNIOR, calcAmount, factor);
         token.transfer(_recipient, yieldTokenAmounts);
 
         emit LogNewWithdrawal(

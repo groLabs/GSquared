@@ -74,7 +74,7 @@ contract MockGTranche is
         tranche_balances[_tranche] += calc_amount;
         if (_tranche)
             require(utilisation() <= utilisationThreshold, "!utilisation");
-        mint(_recipient, id, calc_amount);
+        mint(_recipient, id, calc_amount, 0);
         uint256 trancheAmount;
         if (_tranche) trancheAmount = calc_amount;
         else trancheAmount = (calc_amount * factor(id)) / DEFAULT_FACTOR;
@@ -94,7 +94,7 @@ contract MockGTranche is
         ERC4626 token = ERC4626(getYieldToken(_index));
         uint256 calc_amount = _calcTokenValue(_index, _amount, false);
 
-        burn(msg.sender, id, calc_amount);
+        burn(msg.sender, id, calc_amount, 0);
         tranche_balances[_tranche] -= calc_amount;
         if (!_tranche) require(utilisation() <= utilisationThreshold);
         token_balances[_index] -= _amount;

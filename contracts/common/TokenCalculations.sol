@@ -35,6 +35,12 @@ interface ITokenLogic {
         uint256 amount,
         bool toUnderlying
     ) external view returns (uint256);
+
+    function applyFactor(
+        uint256 a,
+        uint256 factor,
+        bool base
+    ) external pure returns (uint256);
 }
 
 library TokenCalculations {
@@ -85,7 +91,7 @@ library TokenCalculations {
             return IGERC1155(gerc1155).totalSupplyBase(tokenId);
         } else if (tokenId == SENIOR) {
             // If senior, apply the factor
-            uint256 f = factor(gerc1155, tokenId, 0);
+            uint256 f = factor(gerc1155, SENIOR, 0);
             return
                 f > 0
                     ? applyFactor(
@@ -108,14 +114,15 @@ library TokenCalculations {
         uint256 tokenId,
         uint256 assets
     ) public view returns (uint256) {
-        if (IGERC1155(gerc1155).totalSupplyBase(tokenId) == 0) {
+        uint256 totalSupplyBase = IGERC1155(gerc1155).totalSupplyBase(tokenId);
+        if (totalSupplyBase == 0) {
             return tokenId == SENIOR ? INIT_BASE_SENIOR : INIT_BASE_JUNIOR;
         }
         if (assets == 0) {
             assets = IGERC1155(gerc1155).getTrancheBalance(tokenId);
         }
         if (assets > 0) {
-            return totalSupplyOf(gerc1155, tokenId).mul(BASE).div(assets);
+            return (totalSupplyBase * BASE) / assets;
         } else {
             return 0;
         }
@@ -129,7 +136,7 @@ library TokenCalculations {
         uint256 a,
         uint256 factor,
         bool base
-    ) internal pure returns (uint256 resultant) {
+    ) public pure returns (uint256 resultant) {
         uint256 _BASE = BASE;
         uint256 diff;
         if (base) {

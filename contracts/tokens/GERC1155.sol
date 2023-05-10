@@ -15,7 +15,6 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
     //  of the tranches: True => Senior Tranche, False => Junior Tranche
     mapping(uint256 => uint256) public trancheBalances;
     mapping(uint256 => uint256) private _totalSupply;
-    mapping(uint256 => uint256) public tokenBase;
 
     ITokenLogic public tokenLogic;
 
@@ -31,19 +30,16 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
     /// @param account The address to mint tokens to
     /// @param id The token id to mint
     /// @param amount The amount to be minted
+    /// @param factor The factor to be applied to the amount
     function mint(
         address account,
         uint256 id,
-        uint256 amount
+        uint256 amount,
+        uint256 factor
     ) internal {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
-        uint256 factoredAmount = tokenLogic.convertAmount(
-            address(this),
-            id,
-            amount,
-            true
-        );
+        uint256 factoredAmount = tokenLogic.applyFactor(amount, factor, true);
         // Update the tranche supply
         _beforeTokenTransfer(
             address(0),
@@ -59,19 +55,16 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
     /// @param account Account to burn tokens from
     /// @param id Token ID
     /// @param amount Amount to burn
+    /// @param factor The factor to be applied to the amount
     function burn(
         address account,
         uint256 id,
-        uint256 amount
+        uint256 amount,
+        uint256 factor
     ) internal {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
-        uint256 factoredAmount = tokenLogic.convertAmount(
-            address(this),
-            id,
-            amount,
-            true
-        );
+        uint256 factoredAmount = tokenLogic.applyFactor(amount, factor, true);
         _beforeTokenTransfer(
             account,
             address(0),
@@ -137,7 +130,7 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         override
         returns (uint256)
     {
-        return tokenBase[id];
+        return _totalSupply[id];
     }
 
     /// @notice Returns the USD balance of tranche token

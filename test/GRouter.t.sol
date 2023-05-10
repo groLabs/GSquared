@@ -6,7 +6,7 @@ import "./Base.GSquared.t.sol";
 contract RouterTest is Test, BaseSetup {
     using stdStorage for StdStorage;
 
-    function testDepositWithdraw() public {
+    function testDepositWithdrawMulti() public {
         vm.startPrank(alice);
 
         setStorage(alice, DAI.balanceOf.selector, address(DAI), 100E20);
@@ -28,6 +28,7 @@ contract RouterTest is Test, BaseSetup {
 
         aliceDaiBalance = DAI.balanceOf(alice);
         uint256 alicePWRDBalance = gTranche.balanceOfWithFactor(alice, 1);
+        console2.log(gTranche.getTrancheBalance(1));
         gRouter.withdraw(10E18, 0, true, 0);
 
         assertGt(DAI.balanceOf(alice), aliceDaiBalance);
