@@ -10,7 +10,7 @@ import {GERC1155} from "./tokens/GERC1155.sol";
 import {Errors} from "./common/Errors.sol";
 import {FixedTokensCurve} from "./utils/FixedTokensCurve.sol";
 import {ITokenLogic} from "./common/TokenCalculations.sol";
-
+import {console2} from "../lib/forge-std/src/console2.sol";
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \
 //  \ \  \___|\ \  \|\  \ \  \|\  \
@@ -158,6 +158,7 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
         bool _tranche,
         address _recipient
     ) external override returns (uint256 trancheAmount, uint256 calcAmount) {
+        console2.log("DEPOSIT!");
         ERC4626 token = getYieldToken(_index);
         token.transferFrom(msg.sender, address(this), _amount);
 
@@ -298,10 +299,11 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
             int256 profit,
             int256 loss
         ) = _pnlDistribution();
-
+        console2.log("Here");
         factor = _tranche
             ? _calcFactor(_tranche ? SENIOR : JUNIOR, _totalValue[1])
             : _calcFactor(_tranche ? SENIOR : JUNIOR, _totalValue[0]);
+        console2.log("Here1");
         if (_withdraw) {
             calcAmount = _tranche
                 ? _amount

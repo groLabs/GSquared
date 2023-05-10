@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPLv3
 pragma solidity 0.8.10;
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import {IGERC1155} from "../interfaces/IGERC1155.sol";
 
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \
@@ -12,37 +13,26 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 interface ITokenLogic {
     function balanceOfForId(
+        address gerc1155,
         address account,
-        uint256 tokenId,
-        uint256 totalSupplyBase,
-        uint256 trancheBalance,
-        uint256 balanceOfBase
+        uint256 tokenId
     ) external view returns (uint256);
 
-    function totalSupplyOf(
-        uint256 tokenId,
-        uint256 totalSupplyBase,
-        uint256 trancheBalance
-    ) external view returns (uint256);
+    function totalSupplyOf(address gerc1155, uint256 tokenId)
+        external
+        view
+        returns (uint256);
 
     function factor(
+        address gerc1155,
         uint256 tokenId,
-        uint256 totalSupplyBase,
-        uint256 trancheBalance,
         uint256 assets
     ) external view returns (uint256);
 
-    function applyFactor(
-        uint256 amount,
-        uint256 factor,
-        bool isFactor
-    ) external pure returns (uint256);
-
     function convertAmount(
+        address gerc1155,
         uint256 tokenId,
         uint256 amount,
-        uint256 totalSupplyBase,
-        uint256 trancheBalance,
         bool toUnderlying
     ) external view returns (uint256);
 }
@@ -58,22 +48,24 @@ library TokenCalculations {
     /// @notice Balance of account for a specific token with applied factor in case of senior tranche
     /// @param account Account address
     /// @param tokenId Token ID
-    /// @param totalSupplyBase Total supply base
-    /// @param trancheBalance Tranche balance
-    /// @param balanceOfBase Balance of account for a specific token without applied factor
     function balanceOfForId(
+        address gerc1155,
         address account,
-        uint256 tokenId,
-        uint256 totalSupplyBase,
-        uint256 trancheBalance,
-        uint256 balanceOfBase
+        uint256 tokenId
     ) external view returns (uint256) {
         if (tokenId == JUNIOR) {
-            return balanceOfBase;
+            return IGERC1155(gerc1155).balanceOfBase(account, tokenId);
         } else if (tokenId == SENIOR) {
             // If senior, apply the factor
-            uint256 f = factor(tokenId, totalSupplyBase, trancheBalance, 0);
-            return f > 0 ? applyFactor(balanceOfBase, f, false) : 0;
+            uint256 f = factor(gerc1155, tokenId, 0);
+            return
+                f > 0
+                    ? applyFactor(
+                        IGERC1155(gerc1155).balanceOfBase(account, tokenId),
+                        f,
+                        false
+                    )
+                    : 0;
         } else {
             revert("Invalid tokenId");
         }
@@ -82,19 +74,20 @@ library TokenCalculations {
     /// @notice Calculate total supply. In case of senior, apply the factor,
     /// in case junior, return the base(raw _totalSupply)
     /// @param tokenId Token ID
-    /// @param totalSupplyBase Total supply base
-    /// @param trancheBalance Tranche balance
-    function totalSupplyOf(
-        uint256 tokenId,
-        uint256 totalSupplyBase,
-        uint256 trancheBalance
-    ) public view returns (uint256) {
+    function totalSupplyOf(address gerc1155, uint256 tokenId)
+        public
+        view
+        returns (uint256)
+    {
         if (tokenId == JUNIOR) {
-            return totalSupplyBase;
+            return IGERC1155(gerc1155).totalSupplyBase(tokenId);
         } else if (tokenId == SENIOR) {
             // If senior, apply the factor
-            uint256 f = factor(tokenId, totalSupplyBase, trancheBalance, 0);
-            return f > 0 ? applyFactor(totalSupplyBase, f, false) : 0;
+            uint256 f = factor(gerc1155, tokenId, 0);
+            return
+                f > 0
+                    ? applyFactor(IGERC1155(gerc1155).totalSupplyBase(tokenId), f, false)
+                    : 0;
         } else {
             revert("Invalid tokenId");
         }
@@ -103,26 +96,19 @@ library TokenCalculations {
     /// @notice Calculate tranche factor
     /// @param tokenId Token ID
     /// @param assets Total assets. Pass 0 to calculate from the current tranche balance
-    /// @param totalSupplyBase Total supply base
-    /// @param trancheBalance Tranche balance
-    /// @param assets Total assets in case you want to calc factor with regards to assets
     function factor(
+        address gerc1155,
         uint256 tokenId,
-        uint256 totalSupplyBase,
-        uint256 trancheBalance,
         uint256 assets
     ) public view returns (uint256) {
-        if (totalSupplyBase == 0) {
+        if (IGERC1155(gerc1155).totalSupplyBase(tokenId) == 0) {
             return tokenId == SENIOR ? INIT_BASE_SENIOR : INIT_BASE_JUNIOR;
         }
         if (assets == 0) {
-            assets = trancheBalance;
+            assets = IGERC1155(gerc1155).getTrancheBalance(tokenId);
         }
         if (assets > 0) {
-            return
-                totalSupplyOf(tokenId, totalSupplyBase, trancheBalance)
-                    .mul(BASE)
-                    .div(assets);
+            return totalSupplyOf(gerc1155, tokenId).mul(BASE).div(assets);
         } else {
             return 0;
         }
@@ -154,17 +140,14 @@ library TokenCalculations {
     /// @notice Convert amount to underlying or tokens
     /// @param tokenId Token ID
     /// @param amount Amount to convert
-    /// @param totalSupplyBase Total supply base
-    /// @param trancheBalance Tranche balance
     /// @param toUnderlying true to convert to underlying, false to convert to tokens
     function convertAmount(
+        address gerc1155,
         uint256 tokenId,
         uint256 amount,
-        uint256 totalSupplyBase,
-        uint256 trancheBalance,
         bool toUnderlying
     ) external view returns (uint256) {
-        uint256 f = factor(tokenId, totalSupplyBase, trancheBalance, 0);
+        uint256 f = factor(gerc1155, tokenId, 0);
         return f > 0 ? applyFactor(amount, f, toUnderlying) : 0;
     }
 }

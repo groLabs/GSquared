@@ -4,6 +4,7 @@ import {ERC1155} from "../solmate/src/tokens/ERC1155.sol";
 import {IGERC1155} from "../interfaces/IGERC1155.sol";
 import "../common/Constants.sol";
 import {ITokenLogic} from "../common/TokenCalculations.sol";
+import {console2} from "../../lib/forge-std/src/console2.sol";
 
 /// @title Gro extension of ERC1155
 /// @notice Token definition contract
@@ -39,10 +40,9 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
         uint256 factoredAmount = tokenLogic.convertAmount(
+            address(this),
             id,
             amount,
-            totalSupplyBase(id),
-            trancheBalances[id],
             true
         );
         // Update the tranche supply
@@ -68,10 +68,9 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         require(account != address(0), "mint: 0x");
         require(amount > 0, "Amount is zero.");
         uint256 factoredAmount = tokenLogic.convertAmount(
+            address(this),
             id,
             amount,
-            totalSupplyBase(id),
-            trancheBalances[id],
             true
         );
         _beforeTokenTransfer(
@@ -100,10 +99,9 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
     ) public {
         uint256 factoredAmount = id == SENIOR
             ? tokenLogic.convertAmount(
+                address(this),
                 id,
                 amount,
-                totalSupplyBase(id),
-                trancheBalances[id],
                 true
             )
             : amount;
@@ -136,9 +134,8 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
     function totalSupply(uint256 id) public view override returns (uint256) {
         return
             tokenLogic.totalSupplyOf(
-                id,
-                totalSupplyBase(id),
-                trancheBalances[id]
+                address(this),
+                id
             );
     }
 
@@ -175,11 +172,9 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
     {
         return
             tokenLogic.balanceOfForId(
+                address(this),
                 account,
-                id,
-                totalSupplyBase(id),
-                trancheBalances[id],
-                balanceOfBase(account, id)
+                id
             );
     }
 
@@ -203,11 +198,14 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         view
         returns (uint256)
     {
+        console2.log("calcFactor id", id);
+        console2.log("calcFactor _totalAssets", _totalAssets);
+        console2.log("calcFactor totalsupplybase", totalSupplyBase(id));
+        console2.log("factor", tokenLogic.factor(address(this), id, 0));
         return
             tokenLogic.factor(
+                address(this),
                 id,
-                totalSupplyBase(id),
-                trancheBalances[id],
                 _totalAssets
             );
     }
@@ -226,10 +224,9 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         } else {
             return
                 tokenLogic.convertAmount(
+                    address(this),
                     id,
                     _base,
-                    totalSupplyBase(id),
-                    trancheBalances[id],
                     false
                 );
         }
@@ -237,7 +234,7 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
 
     function factor(uint256 id) public view override returns (uint256) {
         return
-            tokenLogic.factor(id, totalSupplyBase(id), trancheBalances[id], 0);
+            tokenLogic.factor(address(this), id, 0);
     }
 
     /*///////////////////////////////////////////////////////////////
