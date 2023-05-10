@@ -298,8 +298,8 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
             int256 loss
         ) = _pnlDistribution();
         factor = _tranche
-            ? _calcFactor(_tranche ? SENIOR : JUNIOR, _totalValue[1])
-            : _calcFactor(_tranche ? SENIOR : JUNIOR, _totalValue[0]);
+            ? factorWithAssets(_tranche ? SENIOR : JUNIOR, _totalValue[1])
+            : factorWithAssets(_tranche ? SENIOR : JUNIOR, _totalValue[0]);
         if (_withdraw) {
             calcAmount = _tranche
                 ? _amount
@@ -450,6 +450,116 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
             tokenValues[i] = yieldTokenValues[i];
         }
         totalValue = oracle.getTotalValue(tokenValues);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                    GERC1155 logic implementation
+                    that depends on PnL distribution
+                    and assets
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Price should always be 10**18 for Senior
+    /// @param id Token ID
+    function getPricePerShare(uint256 id)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        uint256 _base = BASE;
+        if (id == SENIOR) {
+            return _base;
+        } else {
+            (
+                uint256[NO_OF_TRANCHES] memory _trancheValues,
+                ,
+
+            ) = pnlDistribution();
+            return
+                tokenLogic.convertAmount(
+                    address(this),
+                    id,
+                    _base,
+                    _trancheValues[id],
+                    false
+                );
+        }
+    }
+
+    /// @notice Amount of token the user owns with factor applied
+    /// @param account Address of the user
+    /// @param id Token ID
+    function balanceOfWithFactor(address account, uint256 id)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        (uint256[NO_OF_TRANCHES] memory _trancheValues, , ) = pnlDistribution();
+        return
+            tokenLogic.balanceOfForId(
+                address(this),
+                account,
+                id,
+                _trancheValues[id]
+            );
+    }
+
+    /// @notice Total supply of token with factor applied
+    /// @param id Token ID
+    function totalSupply(uint256 id) public view override returns (uint256) {
+        (uint256[NO_OF_TRANCHES] memory _trancheValues, , ) = pnlDistribution();
+        return tokenLogic.totalSupplyOf(address(this), id, _trancheValues[id]);
+    }
+
+    /// @notice Transfer tokens from one address to another with factor taken into account
+    /// @param from The address to transfer from
+    /// @param to The address to transfer to
+    /// @param id The token id to transfer
+    /// @param amount The amount to be transferred
+    function transferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount
+    ) external {
+        (uint256[NO_OF_TRANCHES] memory _trancheValues, , ) = pnlDistribution();
+        uint256 factoredAmount = id == SENIOR
+            ? tokenLogic.convertAmount(
+                address(this),
+                id,
+                amount,
+                _trancheValues[id],
+                true
+            )
+            : amount;
+        _beforeTokenTransfer(
+            from,
+            to,
+            _asSingletonArray(id),
+            _asSingletonArray(factoredAmount)
+        );
+        safeTransferFrom(from, to, id, factoredAmount, "");
+    }
+
+    /// @notice Calculate factor with respect to total assets after PNL applied
+    /// @param id Token ID
+    function factor(uint256 id) public view override returns (uint256) {
+        (uint256[NO_OF_TRANCHES] memory _trancheValues, , ) = pnlDistribution();
+        return tokenLogic.factor(address(this), id, _trancheValues[id]);
+    }
+
+    /// @notice Calculate factor with respect to total assets without PNL applied. Assume `assets` passed after PNL
+    /// distribution
+    /// @param id Token ID
+    /// @param assets Total assets after PNL distribution
+    function factorWithAssets(uint256 id, uint256 assets)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        return tokenLogic.factor(address(this), id, assets);
     }
 
     /*//////////////////////////////////////////////////////////////

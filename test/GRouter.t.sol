@@ -28,7 +28,6 @@ contract RouterTest is Test, BaseSetup {
 
         aliceDaiBalance = DAI.balanceOf(alice);
         uint256 alicePWRDBalance = gTranche.balanceOfWithFactor(alice, 1);
-        console2.log(gTranche.getTrancheBalance(1));
         gRouter.withdraw(10E18, 0, true, 0);
 
         assertGt(DAI.balanceOf(alice), aliceDaiBalance);

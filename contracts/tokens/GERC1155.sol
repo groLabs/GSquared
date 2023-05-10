@@ -7,7 +7,7 @@ import {ITokenLogic} from "../common/TokenCalculations.sol";
 
 /// @title Gro extension of ERC1155
 /// @notice Token definition contract
-contract GERC1155 is ERC1155, IGERC1155, Constants {
+abstract contract GERC1155 is ERC1155, IGERC1155, Constants {
     /*///////////////////////////////////////////////////////////////
                        Storage values
     //////////////////////////////////////////////////////////////*/
@@ -75,33 +75,6 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
     }
 
     /*///////////////////////////////////////////////////////////////
-                       Transfer Logic
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Transfer tokens from one address to another with factor taken into account
-    /// @param from The address to transfer from
-    /// @param to The address to transfer to
-    /// @param id The token id to transfer
-    /// @param amount The amount to be transferred
-    function transferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount
-    ) public {
-        uint256 factoredAmount = id == SENIOR
-            ? tokenLogic.convertAmount(address(this), id, amount, true)
-            : amount;
-        _beforeTokenTransfer(
-            from,
-            to,
-            _asSingletonArray(id),
-            _asSingletonArray(factoredAmount)
-        );
-        safeTransferFrom(from, to, id, factoredAmount, "");
-    }
-
-    /*///////////////////////////////////////////////////////////////
                        Public views
     //////////////////////////////////////////////////////////////*/
 
@@ -116,12 +89,6 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         return "";
     }
 
-    /// @notice Total supply of token with factor applied
-    /// @param id Token ID
-    function totalSupply(uint256 id) public view override returns (uint256) {
-        return tokenLogic.totalSupplyOf(address(this), id);
-    }
-
     /// @notice Total amount of tokens in with a given id without applied factor
     /// @param id Token ID
     function totalSupplyBase(uint256 id)
@@ -131,29 +98,6 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         returns (uint256)
     {
         return _totalSupply[id];
-    }
-
-    /// @notice Returns the USD balance of tranche token
-    /// @param id Token ID
-    function getTrancheBalance(uint256 id)
-        public
-        view
-        virtual
-        returns (uint256)
-    {
-        return trancheBalances[id];
-    }
-
-    /// @notice Amount of token the user owns with factor applied
-    /// @param account Address of the user
-    /// @param id Token ID
-    function balanceOfWithFactor(address account, uint256 id)
-        public
-        view
-        override
-        returns (uint256)
-    {
-        return tokenLogic.balanceOfForId(address(this), account, id);
     }
 
     /// @notice Amount of token the user owns without factor applied
@@ -166,37 +110,6 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         returns (uint256)
     {
         return balanceOf[account][id];
-    }
-
-    /// @notice Calculate factor with respect to total assets passed in function argument
-    /// @param id Token ID
-    /// @param _totalAssets Total assets of the tranche
-    function _calcFactor(uint256 id, uint256 _totalAssets)
-        internal
-        view
-        returns (uint256)
-    {
-        return tokenLogic.factor(address(this), id, _totalAssets);
-    }
-
-    /// @notice Price should always be 10**18 for Senior
-    /// @param id Token ID
-    function getPricePerShare(uint256 id)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        uint256 _base = BASE;
-        if (id == SENIOR) {
-            return _base;
-        } else {
-            return tokenLogic.convertAmount(address(this), id, _base, false);
-        }
-    }
-
-    function factor(uint256 id) public view override returns (uint256) {
-        return tokenLogic.factor(address(this), id, 0);
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -227,7 +140,7 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
     }
 
     function _asSingletonArray(uint256 element)
-        private
+        internal
         pure
         returns (uint256[] memory)
     {

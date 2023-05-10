@@ -8,8 +8,6 @@ interface IGERC1155 {
 
     function totalSupply(uint256 id) external view returns (uint256);
 
-    function getTrancheBalance(uint256 id) external view returns (uint256);
-
     function balanceOfWithFactor(address account, uint256 id)
         external
         view
@@ -21,4 +19,9 @@ interface IGERC1155 {
         returns (uint256);
 
     function factor(uint256 id) external view returns (uint256);
+
+    function factorWithAssets(uint256 id, uint256 assets)
+        external
+        view
+        returns (uint256);
 }

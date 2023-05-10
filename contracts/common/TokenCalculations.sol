@@ -15,13 +15,15 @@ interface ITokenLogic {
     function balanceOfForId(
         address gerc1155,
         address account,
-        uint256 tokenId
+        uint256 tokenId,
+        uint256 assets
     ) external view returns (uint256);
 
-    function totalSupplyOf(address gerc1155, uint256 tokenId)
-        external
-        view
-        returns (uint256);
+    function totalSupplyOf(
+        address gerc1155,
+        uint256 tokenId,
+        uint256 assets
+    ) external view returns (uint256);
 
     function factor(
         address gerc1155,
@@ -33,6 +35,7 @@ interface ITokenLogic {
         address gerc1155,
         uint256 tokenId,
         uint256 amount,
+        uint256 assets,
         bool toUnderlying
     ) external view returns (uint256);
 
@@ -55,16 +58,18 @@ library TokenCalculations {
     /// @param gerc1155 GERC1155 contract address
     /// @param account Account address
     /// @param tokenId Token ID
+    /// @param assets Number of assets in tranche
     function balanceOfForId(
         address gerc1155,
         address account,
-        uint256 tokenId
+        uint256 tokenId,
+        uint256 assets
     ) external view returns (uint256) {
         if (tokenId == JUNIOR) {
             return IGERC1155(gerc1155).balanceOfBase(account, tokenId);
         } else if (tokenId == SENIOR) {
             // If senior, apply the factor
-            uint256 f = factor(gerc1155, tokenId, 0);
+            uint256 f = factor(gerc1155, tokenId, assets);
             return
                 f > 0
                     ? applyFactor(
@@ -82,16 +87,17 @@ library TokenCalculations {
     /// in case junior, return the base(raw _totalSupply)
     /// @param gerc1155 GERC1155 contract address
     /// @param tokenId Token ID
-    function totalSupplyOf(address gerc1155, uint256 tokenId)
-        public
-        view
-        returns (uint256)
-    {
+    /// @param assets Amount of assets in tranche
+    function totalSupplyOf(
+        address gerc1155,
+        uint256 tokenId,
+        uint256 assets
+    ) public view returns (uint256) {
         if (tokenId == JUNIOR) {
             return IGERC1155(gerc1155).totalSupplyBase(tokenId);
         } else if (tokenId == SENIOR) {
             // If senior, apply the factor
-            uint256 f = factor(gerc1155, SENIOR, 0);
+            uint256 f = factor(gerc1155, SENIOR, assets);
             return
                 f > 0
                     ? applyFactor(
@@ -108,7 +114,7 @@ library TokenCalculations {
     /// @notice Calculate tranche factor
     /// @param gerc1155 GERC1155 contract address
     /// @param tokenId Token ID
-    /// @param assets Total assets. Pass 0 to calculate from the current tranche balance
+    /// @param assets Total assets in tranche
     function factor(
         address gerc1155,
         uint256 tokenId,
@@ -118,14 +124,10 @@ library TokenCalculations {
         if (totalSupplyBase == 0) {
             return tokenId == SENIOR ? INIT_BASE_SENIOR : INIT_BASE_JUNIOR;
         }
-        if (assets == 0) {
-            assets = IGERC1155(gerc1155).getTrancheBalance(tokenId);
-        }
         if (assets > 0) {
             return (totalSupplyBase * BASE) / assets;
-        } else {
-            return 0;
         }
+        return 0;
     }
 
     /// @notice Apply tranche factor
@@ -155,14 +157,16 @@ library TokenCalculations {
     /// @param gerc1155 GERC1155 contract address
     /// @param tokenId Token ID
     /// @param amount Amount to convert
+    /// @param assets Amount of assets in tranche
     /// @param toUnderlying true to convert to underlying, false to convert to tokens
     function convertAmount(
         address gerc1155,
         uint256 tokenId,
         uint256 amount,
+        uint256 assets,
         bool toUnderlying
     ) external view returns (uint256) {
-        uint256 f = factor(gerc1155, tokenId, 0);
+        uint256 f = factor(gerc1155, tokenId, assets);
         return f > 0 ? applyFactor(amount, f, toUnderlying) : 0;
     }
 }
