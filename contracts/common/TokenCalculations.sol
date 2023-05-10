@@ -46,6 +46,7 @@ library TokenCalculations {
     uint256 public constant INIT_BASE_SENIOR = 10e18;
 
     /// @notice Balance of account for a specific token with applied factor in case of senior tranche
+    /// @param gerc1155 GERC1155 contract address
     /// @param account Account address
     /// @param tokenId Token ID
     function balanceOfForId(
@@ -73,6 +74,7 @@ library TokenCalculations {
 
     /// @notice Calculate total supply. In case of senior, apply the factor,
     /// in case junior, return the base(raw _totalSupply)
+    /// @param gerc1155 GERC1155 contract address
     /// @param tokenId Token ID
     function totalSupplyOf(address gerc1155, uint256 tokenId)
         public
@@ -98,6 +100,7 @@ library TokenCalculations {
     }
 
     /// @notice Calculate tranche factor
+    /// @param gerc1155 GERC1155 contract address
     /// @param tokenId Token ID
     /// @param assets Total assets. Pass 0 to calculate from the current tranche balance
     function factor(
@@ -142,6 +145,7 @@ library TokenCalculations {
     }
 
     /// @notice Convert amount to underlying or tokens
+    /// @param gerc1155 GERC1155 contract address
     /// @param tokenId Token ID
     /// @param amount Amount to convert
     /// @param toUnderlying true to convert to underlying, false to convert to tokens

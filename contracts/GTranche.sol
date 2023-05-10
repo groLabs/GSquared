@@ -467,7 +467,7 @@ contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
         uint256 _amount,
         uint256 _factor,
         uint256 _total
-    ) internal view returns (uint256 amount) {
+    ) internal pure returns (uint256 amount) {
         if (_factor == 0) revert Errors.NoAssets();
         amount = (_amount * DEFAULT_FACTOR) / _factor;
         if (amount > _total) return _total;
