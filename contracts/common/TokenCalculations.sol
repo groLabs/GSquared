@@ -41,8 +41,8 @@ library TokenCalculations {
     using SafeMath for uint256;
     uint8 public constant JUNIOR = 0;
     uint8 public constant SENIOR = 1;
-    uint256 public constant BASE = 10**18;
-    uint256 public constant INIT_BASE_JUNIOR = 5000000000000000;
+    uint256 public constant BASE = 1e18;
+    uint256 public constant INIT_BASE_JUNIOR = 5e15;
     uint256 public constant INIT_BASE_SENIOR = 10e18;
 
     /// @notice Balance of account for a specific token with applied factor in case of senior tranche
