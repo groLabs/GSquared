@@ -86,7 +86,11 @@ library TokenCalculations {
             uint256 f = factor(gerc1155, tokenId, 0);
             return
                 f > 0
-                    ? applyFactor(IGERC1155(gerc1155).totalSupplyBase(tokenId), f, false)
+                    ? applyFactor(
+                        IGERC1155(gerc1155).totalSupplyBase(tokenId),
+                        f,
+                        false
+                    )
                     : 0;
         } else {
             revert("Invalid tokenId");

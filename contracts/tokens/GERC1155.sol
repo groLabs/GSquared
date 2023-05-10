@@ -4,7 +4,6 @@ import {ERC1155} from "../solmate/src/tokens/ERC1155.sol";
 import {IGERC1155} from "../interfaces/IGERC1155.sol";
 import "../common/Constants.sol";
 import {ITokenLogic} from "../common/TokenCalculations.sol";
-import {console2} from "../../lib/forge-std/src/console2.sol";
 
 /// @title Gro extension of ERC1155
 /// @notice Token definition contract
@@ -98,12 +97,7 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         uint256 amount
     ) public {
         uint256 factoredAmount = id == SENIOR
-            ? tokenLogic.convertAmount(
-                address(this),
-                id,
-                amount,
-                true
-            )
+            ? tokenLogic.convertAmount(address(this), id, amount, true)
             : amount;
         _beforeTokenTransfer(
             from,
@@ -132,11 +126,7 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
     /// @notice Total supply of token with factor applied
     /// @param id Token ID
     function totalSupply(uint256 id) public view override returns (uint256) {
-        return
-            tokenLogic.totalSupplyOf(
-                address(this),
-                id
-            );
+        return tokenLogic.totalSupplyOf(address(this), id);
     }
 
     /// @notice Total amount of tokens in with a given id without applied factor
@@ -170,12 +160,7 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         override
         returns (uint256)
     {
-        return
-            tokenLogic.balanceOfForId(
-                address(this),
-                account,
-                id
-            );
+        return tokenLogic.balanceOfForId(address(this), account, id);
     }
 
     /// @notice Amount of token the user owns without factor applied
@@ -198,16 +183,7 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         view
         returns (uint256)
     {
-        console2.log("calcFactor id", id);
-        console2.log("calcFactor _totalAssets", _totalAssets);
-        console2.log("calcFactor totalsupplybase", totalSupplyBase(id));
-        console2.log("factor", tokenLogic.factor(address(this), id, 0));
-        return
-            tokenLogic.factor(
-                address(this),
-                id,
-                _totalAssets
-            );
+        return tokenLogic.factor(address(this), id, _totalAssets);
     }
 
     /// @notice Price should always be 10**18 for Senior
@@ -222,19 +198,12 @@ contract GERC1155 is ERC1155, IGERC1155, Constants {
         if (id == SENIOR) {
             return _base;
         } else {
-            return
-                tokenLogic.convertAmount(
-                    address(this),
-                    id,
-                    _base,
-                    false
-                );
+            return tokenLogic.convertAmount(address(this), id, _base, false);
         }
     }
 
     function factor(uint256 id) public view override returns (uint256) {
-        return
-            tokenLogic.factor(address(this), id, 0);
+        return tokenLogic.factor(address(this), id, 0);
     }
 
     /*///////////////////////////////////////////////////////////////
