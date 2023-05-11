@@ -48,17 +48,39 @@ contract TrancheTest is Test, BaseSetup {
         setStorage(alice, DAI.balanceOf.selector, address(DAI), 100E20);
 
         DAI.approve(address(gRouter), MAX_UINT);
+        // Get initial USD balances and total supply
         uint256 initialSenior = gTranche.trancheBalances(1);
         uint256 initialJunior = gTranche.trancheBalances(0);
-        gRouter.deposit(100E18, 0, false, 0);
-        gRouter.deposit(50E18, 0, true, 0);
+
+        uint256 initialJuniorSupply = gTranche.totalSupply(0);
+        uint256 initialSeniorSupply = gTranche.totalSupply(1);
+
+        uint256 juniorDeposit = 100E18;
+        uint256 seniorDeposit = 50E18;
+
+        gRouter.deposit(juniorDeposit, 0, false, 0);
+        gRouter.deposit(seniorDeposit, 0, true, 0);
         uint256 finalSenior = gTranche.trancheBalances(1);
         uint256 finalJunior = gTranche.trancheBalances(0);
-        assertApproxEqRel(initialJunior + 100E18, finalJunior, 1E15);
-        assertApproxEqRel(initialSenior + 50E18, finalSenior, 1E15);
+        assertApproxEqRel(initialJunior + juniorDeposit, finalJunior, 1E15);
+        assertApproxEqRel(initialSenior + seniorDeposit, finalSenior, 1E15);
 
-        gRouter.deposit(100E18, 0, false, 0);
-        gRouter.deposit(50E18, 0, true, 0);
+        // Make sure total supply reflects reality after first deposit
+        uint256 juniorFactor = gTranche.factor(0);
+        // Apply factor to deposited junior amount
+        uint256 juniorConvertedFromAssets = (juniorFactor * juniorDeposit) /
+            1e18;
+        assertApproxEqRel(
+            initialJuniorSupply + juniorConvertedFromAssets,
+            gTranche.totalSupply(0),
+            1e17
+        );
+        // Not applying factor to Senior as it will be most likely be 1 : 1 relationship
+        assertApproxEqRel(
+            initialSeniorSupply + seniorDeposit,
+            gTranche.totalSupply(1),
+            1e15
+        );
         vm.stopPrank();
     }
 
@@ -82,6 +104,9 @@ contract TrancheTest is Test, BaseSetup {
         uint256 initialSenior = gTranche.trancheBalances(1);
         uint256 initialJunior = gTranche.trancheBalances(0);
 
+        uint256 initialJuniorSupply = gTranche.totalSupply(0);
+        uint256 initialSeniorSupply = gTranche.totalSupply(1);
+
         uint256 withdrawJunior = (100E18 * 1E18) / gTranche.getPricePerShare(0);
         uint256 withdrawSenior = 4000E18;
 
@@ -91,6 +116,18 @@ contract TrancheTest is Test, BaseSetup {
         uint256 finalSenior = gTranche.trancheBalances(1);
         uint256 finalJunior = gTranche.trancheBalances(0);
 
+        // Make sure total supply reflects reality after withdrawal
+        // No need to apply factor here for neither token
+        assertApproxEqRel(
+            initialJuniorSupply - withdrawJunior,
+            gTranche.totalSupply(0),
+            1E15
+        );
+        assertApproxEqRel(
+            initialSeniorSupply - withdrawSenior,
+            gTranche.totalSupply(1),
+            1E15
+        );
         vm.stopPrank();
     }
 
