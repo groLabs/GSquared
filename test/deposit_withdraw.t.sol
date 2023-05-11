@@ -88,7 +88,12 @@ contract TrancheTest is Test, BaseSetup {
     function testDeposit3PoolToken() public {
         uint256 threePoolPrice = curveOracle.getVirtualPrice();
         vm.startPrank(alice);
-        setStorage(alice, THREE_POOL_TOKEN.balanceOf.selector, address(THREE_POOL_TOKEN), 100E20);
+        setStorage(
+            alice,
+            THREE_POOL_TOKEN.balanceOf.selector,
+            address(THREE_POOL_TOKEN),
+            100E20
+        );
 
         THREE_POOL_TOKEN.approve(address(gRouter), MAX_UINT);
         // Get initial USD balances and total supply
@@ -107,14 +112,22 @@ contract TrancheTest is Test, BaseSetup {
         gRouter.deposit(seniorDeposit, 3, true, 0);
         uint256 finalSenior = gTranche.trancheBalances(1);
         uint256 finalJunior = gTranche.trancheBalances(0);
-        assertApproxEqRel(initialJunior + juniorDepositDenomUSD, finalJunior, 1E15);
-        assertApproxEqRel(initialSenior + seniorDepositDenomUSD, finalSenior, 1E15);
+        assertApproxEqRel(
+            initialJunior + juniorDepositDenomUSD,
+            finalJunior,
+            1E15
+        );
+        assertApproxEqRel(
+            initialSenior + seniorDepositDenomUSD,
+            finalSenior,
+            1E15
+        );
 
         // Make sure total supply reflects reality after first deposit
         uint256 juniorFactor = gTranche.factor(0);
         // Apply factor to deposited junior amount
-        uint256 juniorConvertedFromAssets = (juniorFactor * juniorDepositDenomUSD) /
-            1e18;
+        uint256 juniorConvertedFromAssets = (juniorFactor *
+            juniorDepositDenomUSD) / 1e18;
         assertApproxEqRel(
             initialJuniorSupply + juniorConvertedFromAssets,
             gTranche.totalSupply(0),
@@ -178,7 +191,12 @@ contract TrancheTest is Test, BaseSetup {
 
     function testWithdrawal3PoolToken() public {
         vm.startPrank(alice);
-        setStorage(alice, THREE_POOL_TOKEN.balanceOf.selector, address(THREE_POOL_TOKEN), 15000E20);
+        setStorage(
+            alice,
+            THREE_POOL_TOKEN.balanceOf.selector,
+            address(THREE_POOL_TOKEN),
+            15000E20
+        );
 
         THREE_POOL_TOKEN.approve(address(gRouter), MAX_UINT);
 
