@@ -84,6 +84,51 @@ contract TrancheTest is Test, BaseSetup {
         vm.stopPrank();
     }
 
+    // Same deposit case but user deposits 3pool LP token
+    function testDeposit3PoolToken() public {
+        uint256 threePoolPrice = curveOracle.getVirtualPrice();
+        vm.startPrank(alice);
+        setStorage(alice, THREE_POOL_TOKEN.balanceOf.selector, address(THREE_POOL_TOKEN), 100E20);
+
+        THREE_POOL_TOKEN.approve(address(gRouter), MAX_UINT);
+        // Get initial USD balances and total supply
+        uint256 initialSenior = gTranche.trancheBalances(1);
+        uint256 initialJunior = gTranche.trancheBalances(0);
+
+        uint256 initialJuniorSupply = gTranche.totalSupply(0);
+        uint256 initialSeniorSupply = gTranche.totalSupply(1);
+
+        uint256 juniorDeposit = 100E18;
+        uint256 seniorDeposit = 50E18;
+        uint256 juniorDepositDenomUSD = (juniorDeposit * threePoolPrice) / 1e18;
+        uint256 seniorDepositDenomUSD = (seniorDeposit * threePoolPrice) / 1e18;
+
+        gRouter.deposit(juniorDeposit, 3, false, 0);
+        gRouter.deposit(seniorDeposit, 3, true, 0);
+        uint256 finalSenior = gTranche.trancheBalances(1);
+        uint256 finalJunior = gTranche.trancheBalances(0);
+        assertApproxEqRel(initialJunior + juniorDepositDenomUSD, finalJunior, 1E15);
+        assertApproxEqRel(initialSenior + seniorDepositDenomUSD, finalSenior, 1E15);
+
+        // Make sure total supply reflects reality after first deposit
+        uint256 juniorFactor = gTranche.factor(0);
+        // Apply factor to deposited junior amount
+        uint256 juniorConvertedFromAssets = (juniorFactor * juniorDepositDenomUSD) /
+            1e18;
+        assertApproxEqRel(
+            initialJuniorSupply + juniorConvertedFromAssets,
+            gTranche.totalSupply(0),
+            1e17
+        );
+        // Not applying factor to Senior as it will be most likely be 1 : 1 relationship
+        assertApproxEqRel(
+            initialSeniorSupply + seniorDepositDenomUSD,
+            gTranche.totalSupply(1),
+            1e15
+        );
+        vm.stopPrank();
+    }
+
     function testWithdrawalSimple() public {
         vm.startPrank(alice);
         setStorage(alice, DAI.balanceOf.selector, address(DAI), 15000E20);
@@ -122,6 +167,52 @@ contract TrancheTest is Test, BaseSetup {
             initialJuniorSupply - withdrawJunior,
             gTranche.totalSupply(0),
             1E15
+        );
+        assertApproxEqRel(
+            initialSeniorSupply - withdrawSenior,
+            gTranche.totalSupply(1),
+            1E15
+        );
+        vm.stopPrank();
+    }
+
+    function testWithdrawal3PoolToken() public {
+        vm.startPrank(alice);
+        setStorage(alice, THREE_POOL_TOKEN.balanceOf.selector, address(THREE_POOL_TOKEN), 15000E20);
+
+        THREE_POOL_TOKEN.approve(address(gRouter), MAX_UINT);
+
+        gRouter.deposit(10000E18, 3, false, 0);
+        gRouter.deposit(5000E18, 3, true, 0);
+        vm.stopPrank();
+
+        vm.startPrank(BASED_ADDRESS);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        gTranche.setApprovalForAll(address(gRouter), true);
+
+        uint256 initialSenior = gTranche.trancheBalances(1);
+        uint256 initialJunior = gTranche.trancheBalances(0);
+
+        uint256 initialJuniorSupply = gTranche.totalSupply(0);
+        uint256 initialSeniorSupply = gTranche.totalSupply(1);
+
+        uint256 withdrawJunior = (100E18 * 1E18) / gTranche.getPricePerShare(0);
+        uint256 withdrawSenior = 4000E18;
+
+        gRouter.withdraw(withdrawSenior, 0, true, 0);
+        gRouter.withdraw(withdrawJunior, 0, false, 0);
+
+        uint256 finalSenior = gTranche.trancheBalances(1);
+        uint256 finalJunior = gTranche.trancheBalances(0);
+
+        // Make sure total supply reflects reality after withdrawal
+        // No need to apply factor here for neither token
+        assertApproxEqRel(
+            initialJuniorSupply - withdrawJunior,
+            gTranche.totalSupply(0),
+            1E10
         );
         assertApproxEqRel(
             initialSeniorSupply - withdrawSenior,
