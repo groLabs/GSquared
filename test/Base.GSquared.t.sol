@@ -1,14 +1,12 @@
 import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
+import "forge-std/interfaces/IERC20.sol";
 import "./utils/utils.sol";
 import "../contracts/GRouter.sol";
 import "../contracts/GVault.sol";
 import "../contracts/GTranche.sol";
-import "../contracts/GMigration.sol";
 import "../contracts/oracles/CurveOracle.sol";
 import "../contracts/oracles/RouterOracle.sol";
-import "../contracts/tokens/JuniorTranche.sol";
-import "../contracts/tokens/SeniorTranche.sol";
 import "../contracts/pnl/PnLFixedRate.sol";
 import "../contracts/strategy/stop-loss/StopLossLogic.sol";
 import "../contracts/strategy/keeper/GStrategyGuard.sol";
@@ -16,6 +14,8 @@ import "../contracts/strategy/keeper/GStrategyResolver.sol";
 import "../contracts/mocks/MockStrategy.sol";
 import "../contracts/strategy/ConvexStrategy.sol";
 import "../contracts/solmate/src/utils/SafeTransferLib.sol";
+import "../contracts/solmate/src/utils/CREATE3.sol";
+import {TokenCalculations} from "../contracts/common/TokenCalculations.sol";
 
 interface IConvexRewards {
     function rewardRate() external view returns (uint256);
@@ -65,8 +65,6 @@ contract BaseSetup is Test {
     GRouter gRouter;
     RouterOracle routerOracle;
     PnLFixedRate pnl;
-    JuniorTranche GVT;
-    SeniorTranche PWRD;
 
     Utils internal utils;
 
@@ -98,32 +96,27 @@ contract BaseSetup is Test {
         CHAINLINK_AGG_ADDRESSES[2] = address(
             0x3E7d1eAB13ad0104d2750B8863b489D65364e32D
         );
-
+        vm.deal(BASED_ADDRESS, 100000e18);
+        bytes32 salt = bytes32(uint256(block.number));
+        address tokenLogic = arbitraryCreate(
+            salt,
+            type(TokenCalculations).creationCode,
+            1e18
+        );
         vm.startPrank(BASED_ADDRESS);
-
-        GVT = new JuniorTranche("GVT", "GVT");
-        PWRD = new SeniorTranche("PWRD", "PWRD");
         curveOracle = new CurveOracle();
         gVault = new GVault(THREE_POOL_TOKEN);
         strategy = new MockStrategy(address(gVault));
         gVault.addStrategy(address(strategy), 10000);
-
-        TRANCHE_TOKENS[0] = address(GVT);
-        TRANCHE_TOKENS[1] = address(PWRD);
         YIELD_VAULTS.push(address(gVault));
 
         gTranche = new GTranche(
             YIELD_VAULTS,
-            TRANCHE_TOKENS,
             IOracle(curveOracle),
-            GMigration(ZERO)
+            ITokenLogic(tokenLogic)
         );
 
         pnl = new PnLFixedRate(address(gTranche));
-        GVT.setController(address(gTranche));
-        GVT.addToWhitelist(address(gTranche));
-        PWRD.setController(address(gTranche));
-        PWRD.addToWhitelist(address(gTranche));
 
         gTranche.setPnL(pnl);
         routerOracle = new RouterOracle(CHAINLINK_AGG_ADDRESSES);
@@ -135,6 +128,14 @@ contract BaseSetup is Test {
             ERC20(THREE_POOL_TOKEN)
         );
         vm.stopPrank();
+    }
+
+    function arbitraryCreate(
+        bytes32 salt,
+        bytes memory creationCode,
+        uint256 ethValue
+    ) public returns (address) {
+        return CREATE3.deploy(salt, creationCode, ethValue);
     }
 
     function findStorage(
@@ -168,8 +169,7 @@ contract BaseSetup is Test {
     function prepUser(address _user) internal {
         vm.startPrank(_user);
         DAI.approve(address(gRouter), MAX_UINT);
-        GVT.approve(address(gRouter), MAX_UINT);
-        PWRD.approve(address(gRouter), MAX_UINT);
+        gTranche.setApprovalForAll(address(gRouter), true);
         setStorage(
             _user,
             DAI.balanceOf.selector,
@@ -183,8 +183,6 @@ contract BaseSetup is Test {
         vm.startPrank(_user);
         DAI.approve(address(THREE_POOL), MAX_UINT);
         THREE_POOL_TOKEN.approve(address(gVault), MAX_UINT);
-        GVT.approve(address(gTranche), MAX_UINT);
-        PWRD.approve(address(gTranche), MAX_UINT);
         ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
         setStorage(
             _user,
@@ -464,12 +462,12 @@ contract BaseSetup is Test {
         uint256 JuniorTrancheAssets;
 
         for (uint256 l; l < k; l++) {
-            JuniorTrancheAssets = gTranche.trancheBalances(false);
+            JuniorTrancheAssets = gTranche.trancheBalances(0);
             vm.startPrank(user);
             if (l + 1 == k) {
                 seniorAmountWithdrawn += _withdraw(
                     true,
-                    PWRD.balanceOf(user),
+                    gTranche.balanceOfWithFactor(user, 1),
                     address(user)
                 );
             } else {
@@ -480,16 +478,16 @@ contract BaseSetup is Test {
                 );
             }
             assertApproxEqAbs(
-                gTranche.trancheBalances(false),
+                gTranche.trancheBalances(0),
                 JuniorTrancheAssets,
                 1E6
             );
 
-            SeniorTrancheAssets = gTranche.trancheBalances(true);
+            SeniorTrancheAssets = gTranche.trancheBalances(1);
             if (l + 1 == k) {
                 juniorAmountWithdrawn += _withdraw(
                     false,
-                    GVT.balanceOf(user),
+                    gTranche.balanceOfWithFactor(user, 0),
                     address(user)
                 );
             } else {
@@ -501,7 +499,7 @@ contract BaseSetup is Test {
             }
             vm.stopPrank();
             assertApproxEqAbs(
-                gTranche.trancheBalances(true),
+                gTranche.trancheBalances(1),
                 SeniorTrancheAssets,
                 1E6
             );
@@ -512,11 +510,11 @@ contract BaseSetup is Test {
         public
         returns (uint256 withdrawnSenior, uint256 withdrawnJunior)
     {
-        uint256 userSeniorAssets = PWRD.balanceOf(user);
-        uint256 userJuniorAssets = GVT.balanceOf(user);
+        uint256 userSeniorAssets = gTranche.balanceOfWithFactor(user, 1);
+        uint256 userJuniorAssets = gTranche.balanceOfWithFactor(user, 0);
 
-        uint256 initialSeniorTrancheAssets = gTranche.trancheBalances(true);
-        uint256 initialJuniorTrancheAssets = gTranche.trancheBalances(false);
+        uint256 initialSeniorTrancheAssets = gTranche.trancheBalances(1);
+        uint256 initialJuniorTrancheAssets = gTranche.trancheBalances(0);
 
         (withdrawnSenior, withdrawnJunior) = userWithdrawCheck(
             user,
@@ -526,12 +524,12 @@ contract BaseSetup is Test {
         );
 
         assertApproxEqAbs(
-            gTranche.trancheBalances(false),
+            gTranche.trancheBalances(0),
             delta(initialJuniorTrancheAssets, withdrawnJunior),
             1E6
         );
         assertApproxEqAbs(
-            gTranche.trancheBalances(true),
+            gTranche.trancheBalances(1),
             delta(initialSeniorTrancheAssets, withdrawnSenior),
             1E6
         );

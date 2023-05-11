@@ -6,7 +6,6 @@ import {Owned} from "../solmate/src/auth/Owned.sol";
 import "../common/Constants.sol";
 
 contract MockGToken is ERC20, Owned, Constants {
-    uint256 public constant BASE = DEFAULT_DECIMALS_FACTOR;
     uint256 public utilisationthreshold = 5000;
 
     constructor(string memory _name, string memory _symbol)

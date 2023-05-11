@@ -51,13 +51,10 @@ contract FixedTokensCurve {
                         CONSTANTS & IMMUTABLES
     //////////////////////////////////////////////////////////////*/
 
-    uint256 internal constant DEFAULT_DECIMALS = 10_000;
     uint256 internal constant DEFAULT_FACTOR = 1_000_000_000_000_000_000;
 
     // Tranches
     uint256 public constant NO_OF_TRANCHES = 2;
-    bool internal constant JUNIOR_TRANCHE_ID = false;
-    bool internal constant SENIOR_TRANCHE_ID = true;
 
     // Yield tokens - 1 address + 1 decimal per token
     uint256 public constant NO_OF_TOKENS = 1;
@@ -65,18 +62,12 @@ contract FixedTokensCurve {
     address internal immutable FIRST_TOKEN;
     uint256 internal immutable FIRST_TOKEN_DECIMALS;
 
-    address internal immutable JUNIOR_TRANCHE;
-    address internal immutable SENIOR_TRANCHE;
-
     /*//////////////////////////////////////////////////////////////
                     STORAGE VARIABLES & TYPES
     //////////////////////////////////////////////////////////////*/
 
     // Accounting for total amount of yield tokens in the contract
     uint256[NO_OF_TOKENS] public tokenBalances;
-    // Accounting for the total "value" (as defined in the oracle/relation module)
-    //  of the tranches: True => Senior Tranche, False => Junior Tranche
-    mapping(bool => uint256) public trancheBalances;
 
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
@@ -91,12 +82,9 @@ contract FixedTokensCurve {
                             CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address[] memory _yieldTokens, address[2] memory _trancheTokens)
-    {
+    constructor(address[] memory _yieldTokens) {
         FIRST_TOKEN = _yieldTokens[0];
         FIRST_TOKEN_DECIMALS = 10**ERC4626(_yieldTokens[0]).decimals();
-        JUNIOR_TRANCHE = _trancheTokens[0];
-        SENIOR_TRANCHE = _trancheTokens[1];
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -131,18 +119,6 @@ contract FixedTokensCurve {
             revert Errors.IndexTooHigh();
         }
         return FIRST_TOKEN_DECIMALS;
-    }
-
-    /// @notice Get the underlying tranche token by id (bool)
-    /// @param _tranche boolean representation of tranche token
-    /// @return trancheToken senior or junior tranche
-    function getTrancheToken(bool _tranche)
-        public
-        view
-        returns (IGToken trancheToken)
-    {
-        if (_tranche) return IGToken(SENIOR_TRANCHE);
-        return IGToken(JUNIOR_TRANCHE);
     }
 
     /// @notice Get values of all underlying yield tokens

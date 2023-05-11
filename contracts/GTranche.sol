@@ -6,10 +6,10 @@ import {IGTranche} from "./interfaces/IGTranche.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
 import {IPnL} from "./interfaces/IPnL.sol";
 import {ERC4626} from "./tokens/ERC4626.sol";
+import {GERC1155} from "./tokens/GERC1155.sol";
 import {Errors} from "./common/Errors.sol";
 import {FixedTokensCurve} from "./utils/FixedTokensCurve.sol";
-import {GMigration} from "./GMigration.sol";
-import {IGToken} from "./interfaces/IGToken.sol";
+import {ITokenLogic} from "./common/TokenCalculations.sol";
 
 //  ________  ________  ________
 //  |\   ____\|\   __  \|\   __  \
@@ -57,15 +57,14 @@ import {IGToken} from "./interfaces/IGToken.sol";
 ///                4626 compatible tokens, effectively handling front-running of gains/losses.
 ///                Its important that the underlying EIP-4626 cannot be price manipulated, as this
 ///                would break the pnl functionality of this contract.
-contract GTranche is IGTranche, FixedTokensCurve, Owned {
+contract GTranche is IGTranche, GERC1155, FixedTokensCurve, Owned {
     /*//////////////////////////////////////////////////////////////
                         CONSTANTS & IMMUTABLES
     //////////////////////////////////////////////////////////////*/
 
     // Module defining relations between underlying assets
     IOracle public immutable oracle;
-    // Migration contract
-    GMigration private immutable gMigration;
+
     uint256 public constant minDeposit = 1e18;
 
     /*//////////////////////////////////////////////////////////////
@@ -76,9 +75,6 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
     uint256 public utilisationThreshold = 10000;
     IPnL public pnl;
 
-    // migration state
-    bool public hasMigratedFromOldTranche;
-    bool public hasMigrated;
     address newGTranche;
 
     /*//////////////////////////////////////////////////////////////
@@ -107,24 +103,15 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
     event LogNewUtilisationThreshold(uint256 newThreshold);
     event LogNewPnL(int256 profit, int256 loss);
 
-    event LogMigration(
-        uint256 JuniorTrancheBalance,
-        uint256 SeniorTrancheBalance,
-        uint256[] YieldTokenBalances
-    );
-
     event LogSetNewPnLLogic(address pnl);
-    event LogMigrationPrepared(address newGTranche);
-    event LogMigrationFinished(address newGTranche);
 
     constructor(
         address[] memory _yieldTokens,
-        address[2] memory _trancheTokens,
         IOracle _oracle,
-        GMigration _gMigration
-    ) FixedTokensCurve(_yieldTokens, _trancheTokens) Owned(msg.sender) {
+        ITokenLogic tokenLogic
+    ) FixedTokensCurve(_yieldTokens) Owned(msg.sender) GERC1155(tokenLogic) {
+        require(address(tokenLogic) != address(0), "!Zero address");
         oracle = _oracle;
-        gMigration = _gMigration;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -174,8 +161,6 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
         ERC4626 token = getYieldToken(_index);
         token.transferFrom(msg.sender, address(this), _amount);
 
-        IGToken trancheToken = getTrancheToken(_tranche);
-
         uint256 factor;
         uint256 trancheUtilisation;
 
@@ -195,7 +180,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
         }
 
         tokenBalances[_index] += _amount;
-        trancheToken.mint(_recipient, factor, calcAmount);
+        mint(_recipient, _tranche ? SENIOR : JUNIOR, calcAmount, factor);
         emit LogNewDeposit(
             msg.sender,
             _recipient,
@@ -229,14 +214,15 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
         override
         returns (uint256 yieldTokenAmounts, uint256 calcAmount)
     {
-        IGToken trancheToken = getTrancheToken(_tranche);
-
-        if (_amount > trancheToken.balanceOf(msg.sender)) {
+        if (
+            _amount >
+            balanceOfWithFactor(msg.sender, _tranche ? SENIOR : JUNIOR)
+        ) {
             revert Errors.NotEnoughBalance();
         }
         ERC4626 token = getYieldToken(_index);
 
-        uint256 factor; // = _calcFactor(_tranche);
+        uint256 factor;
         uint256 trancheUtilisation;
 
         // update value of current tranches - this prevents front-running of losses
@@ -253,8 +239,7 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
 
         yieldTokenAmounts = _calcTokenAmount(_index, calcAmount, false);
         tokenBalances[_index] -= yieldTokenAmounts;
-
-        trancheToken.burn(msg.sender, factor, calcAmount);
+        burn(_recipient, _tranche ? SENIOR : JUNIOR, calcAmount, factor);
         token.transfer(_recipient, yieldTokenAmounts);
 
         emit LogNewWithdrawal(
@@ -312,10 +297,9 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
             int256 profit,
             int256 loss
         ) = _pnlDistribution();
-
         factor = _tranche
-            ? _calcFactor(_tranche, _totalValue[1])
-            : _calcFactor(_tranche, _totalValue[0]);
+            ? factorWithAssets(_tranche ? SENIOR : JUNIOR, _totalValue[1])
+            : factorWithAssets(_tranche ? SENIOR : JUNIOR, _totalValue[0]);
         if (_withdraw) {
             calcAmount = _tranche
                 ? _amount
@@ -327,8 +311,8 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
             if (_tranche) _totalValue[1] += calcAmount;
             else _totalValue[0] += calcAmount;
         }
-        trancheBalances[SENIOR_TRANCHE_ID] = _totalValue[1];
-        trancheBalances[JUNIOR_TRANCHE_ID] = _totalValue[0];
+        trancheBalances[SENIOR] = _totalValue[1];
+        trancheBalances[JUNIOR] = _totalValue[0];
 
         if (_totalValue[1] == 0) trancheUtilisation = 0;
         else
@@ -352,8 +336,8 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
     {
         int256[NO_OF_TRANCHES] memory _trancheBalances;
         int256 totalValue = int256(_calcUnifiedValue());
-        _trancheBalances[0] = int256(trancheBalances[JUNIOR_TRANCHE_ID]);
-        _trancheBalances[1] = int256(trancheBalances[SENIOR_TRANCHE_ID]);
+        _trancheBalances[0] = int256(trancheBalances[JUNIOR]);
+        _trancheBalances[1] = int256(trancheBalances[SENIOR]);
         int256 lastTotal = _trancheBalances[0] + _trancheBalances[1];
         if (lastTotal > totalValue) {
             unchecked {
@@ -391,8 +375,8 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
     {
         int256[NO_OF_TRANCHES] memory _trancheBalances;
         int256 totalValue = int256(_calcUnifiedValue());
-        _trancheBalances[0] = int256(trancheBalances[JUNIOR_TRANCHE_ID]);
-        _trancheBalances[1] = int256(trancheBalances[SENIOR_TRANCHE_ID]);
+        _trancheBalances[0] = int256(trancheBalances[JUNIOR]);
+        _trancheBalances[1] = int256(trancheBalances[SENIOR]);
         int256 lastTotal = _trancheBalances[0] + _trancheBalances[1];
         if (lastTotal > totalValue) {
             unchecked {
@@ -469,132 +453,118 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
     }
 
     /*//////////////////////////////////////////////////////////////
-                        Migration LOGIC
+                    GERC1155 logic implementation
+                    that depends on PnL distribution
+                    and assets
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Migrates funds from the old gro protocol
-    /// @dev Can only be run once and is and intermediary step to move assets
-    ///     from gro-protocol to GSquared. This function is ultimately going to
-    ///     be removed from newer iterations of this smart contract as it serves
-    ///     no purpose for new tranches.
-    function migrateFromOldTranche() external onlyOwner {
-        if (hasMigratedFromOldTranche) {
-            revert Errors.AlreadyMigrated();
+    /// @notice Price should always be 10**18 for Senior
+    /// @param id Token ID
+    function getPricePerShare(uint256 id)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        uint256 _base = BASE;
+        if (id == SENIOR) {
+            return _base;
+        } else {
+            (
+                uint256[NO_OF_TRANCHES] memory _trancheValues,
+                ,
+
+            ) = pnlDistribution();
+            return
+                tokenLogic.convertAmount(
+                    address(this),
+                    id,
+                    _base,
+                    _trancheValues[id],
+                    false
+                );
         }
-
-        // only one token in the initial version of the GTranche
-        uint256 token_index = NO_OF_TOKENS - 1;
-        ERC4626 token = getYieldToken(token_index);
-
-        uint256[] memory yieldTokenShares = new uint256[](NO_OF_TOKENS);
-        uint256 _shares = token.balanceOf(address(gMigration));
-        yieldTokenShares[token_index] = _shares;
-        uint256 seniorDollarAmount = gMigration.seniorTrancheDollarAmount();
-
-        // calculate yield token shares for seniorDollarAmount
-        uint256 seniorShares = _calcTokenAmount(0, seniorDollarAmount, true);
-        // get the amount of shares per tranche
-        uint256 juniorShares = _shares - seniorShares;
-
-        // calculate $ value of each tranche
-        uint256 juniorValue = _calcTokenValue(0, juniorShares, true);
-        uint256 seniorValue = _calcTokenValue(0, seniorShares, true);
-
-        // update tranche $ balances
-        trancheBalances[SENIOR_TRANCHE_ID] += seniorValue;
-        trancheBalances[JUNIOR_TRANCHE_ID] += juniorValue;
-
-        // update yield token balances
-        tokenBalances[0] += _shares;
-        hasMigratedFromOldTranche = true;
-
-        token.transferFrom(address(gMigration), address(this), _shares);
-
-        updateDistribution(0, 0, true, false);
-
-        emit LogMigration(juniorValue, seniorValue, yieldTokenShares);
     }
 
-    /// @notice Set the target for the migration
-    /// @dev This should be kept behind a timelock as the address could be any EOA
-    ///    which could drain funds. This function should ultimately be removed
-    /// @param _newGTranche address of new GTranche
-    function prepareMigration(address _newGTranche) external onlyOwner {
-        newGTranche = _newGTranche;
-        emit LogMigrationPrepared(_newGTranche);
+    /// @notice Amount of token the user owns with factor applied
+    /// @param account Address of the user
+    /// @param id Token ID
+    function balanceOfWithFactor(address account, uint256 id)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        (uint256[NO_OF_TRANCHES] memory _trancheValues, , ) = pnlDistribution();
+        return
+            tokenLogic.balanceOfForId(
+                address(this),
+                account,
+                id,
+                _trancheValues[id]
+            );
     }
 
-    /// @notice Transfer funds and update Tranches values
-    /// @dev Updates the state of the tranche post migration.
-    ///     This function should ultimately be removed
-    function finalizeMigration() external override {
-        if (msg.sender != newGTranche) revert Errors.MsgSenderNotTranche();
-        if (hasMigrated) {
-            revert Errors.AlreadyMigrated();
-        }
-        ERC4626 token;
-        for (uint256 index; index < NO_OF_TOKENS; index++) {
-            token = getYieldToken(index);
-            token.transfer(msg.sender, token.balanceOf(address(this)));
-            tokenBalances[index] = token.balanceOf(address(this));
-        }
-        updateDistribution(0, 0, true, false);
-        emit LogMigrationFinished(msg.sender);
+    /// @notice Total supply of token with factor applied
+    /// @param id Token ID
+    function totalSupply(uint256 id) public view override returns (uint256) {
+        (uint256[NO_OF_TRANCHES] memory _trancheValues, , ) = pnlDistribution();
+        return tokenLogic.totalSupplyOf(address(this), id, _trancheValues[id]);
     }
 
-    /// @notice Migrate assets from old GTranche to new GTranche
-    /// @dev Assumes same mapping of yield tokens but you can have more at increased indexes
-    ///     in the new tranche. This function should be behind a timelock.
-    /// @param _oldGTranche address of the old GTranche
-    function migrate(address _oldGTranche) external onlyOwner {
-        GTranche oldTranche = GTranche(_oldGTranche);
-        uint256 oldSeniorTrancheBalance = oldTranche.trancheBalances(true);
-        uint256 oldJuniorTrancheBalance = oldTranche.trancheBalances(false);
-
-        trancheBalances[SENIOR_TRANCHE_ID] += oldSeniorTrancheBalance;
-        trancheBalances[JUNIOR_TRANCHE_ID] += oldJuniorTrancheBalance;
-
-        uint256[] memory yieldTokenBalances = new uint256[](
-            oldTranche.NO_OF_TOKENS()
+    /// @notice Transfer tokens from one address to another with factor taken into account
+    /// @param from The address to transfer from
+    /// @param to The address to transfer to
+    /// @param id The token id to transfer
+    /// @param amount The amount to be transferred
+    function transferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount
+    ) external {
+        (uint256[NO_OF_TRANCHES] memory _trancheValues, , ) = pnlDistribution();
+        uint256 factoredAmount = id == SENIOR
+            ? tokenLogic.convertAmount(
+                address(this),
+                id,
+                amount,
+                _trancheValues[id],
+                true
+            )
+            : amount;
+        _beforeTokenTransfer(
+            from,
+            to,
+            _asSingletonArray(id),
+            _asSingletonArray(factoredAmount)
         );
+        safeTransferFrom(from, to, id, factoredAmount, "");
+    }
 
-        oldTranche.finalizeMigration();
+    /// @notice Calculate factor with respect to total assets after PNL applied
+    /// @param id Token ID
+    function factor(uint256 id) public view override returns (uint256) {
+        (uint256[NO_OF_TRANCHES] memory _trancheValues, , ) = pnlDistribution();
+        return tokenLogic.factor(address(this), id, _trancheValues[id]);
+    }
 
-        uint256 oldBalance;
-        uint256 currentBalance;
-        for (uint256 index = 0; index < NO_OF_TOKENS; index++) {
-            ERC4626 token = getYieldToken(index);
-            oldBalance = tokenBalances[index];
-            currentBalance = token.balanceOf(address(this));
-            tokenBalances[index] = currentBalance;
-            yieldTokenBalances[index] = currentBalance - oldBalance;
-        }
-
-        updateDistribution(0, 0, true, false);
-        hasMigrated = true;
-
-        emit LogMigration(
-            trancheBalances[JUNIOR_TRANCHE_ID],
-            trancheBalances[SENIOR_TRANCHE_ID],
-            yieldTokenBalances
-        );
+    /// @notice Calculate factor with respect to total assets without PNL applied. Assume `assets` passed after PNL
+    /// distribution
+    /// @param id Token ID
+    /// @param assets Total assets after PNL distribution
+    function factorWithAssets(uint256 id, uint256 assets)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        return tokenLogic.factor(address(this), id, assets);
     }
 
     /*//////////////////////////////////////////////////////////////
                         Legacy logic (GTokens)
     //////////////////////////////////////////////////////////////*/
-
-    // Current BASE of legacy GVT (Junior tranche token)
-    uint256 internal constant JUNIOR_INIT_BASE = 5000000000000000;
-
-    /// @notice This function exists to support the older versions of the GToken
-    ///     return value of underlying token based on caller
-    function gTokenTotalAssets() external view returns (uint256) {
-        (uint256[NO_OF_TRANCHES] memory _totalValue, , ) = pnlDistribution();
-        if (msg.sender == JUNIOR_TRANCHE) return _totalValue[0];
-        else if (msg.sender == SENIOR_TRANCHE) return _totalValue[1];
-        else return _totalValue[0] + _totalValue[1];
-    }
 
     /// @notice calculate the number of tokens for the given amount
     /// @param _tranche junior or senior tranche
@@ -606,34 +576,10 @@ contract GTranche is IGTranche, FixedTokensCurve, Owned {
         uint256 _amount,
         uint256 _factor,
         uint256 _total
-    ) internal view returns (uint256 amount) {
+    ) internal pure returns (uint256 amount) {
         if (_factor == 0) revert Errors.NoAssets();
         amount = (_amount * DEFAULT_FACTOR) / _factor;
         if (amount > _total) return _total;
         return amount;
-    }
-
-    /// @notice calculate the tranches factor
-    /// @param _tranche junior or senior tranche
-    /// @param _totalAssets total value in tranche
-    /// @return factor factor to be applied to tranche
-    /// @dev The factor is used to either determine the value of the tranche
-    ///     or the number of tokens to be issued for a given amount
-    function _calcFactor(bool _tranche, uint256 _totalAssets)
-        internal
-        view
-        returns (uint256 factor)
-    {
-        IGToken trancheToken = getTrancheToken(_tranche);
-        uint256 init_base = _tranche ? DEFAULT_FACTOR : JUNIOR_INIT_BASE;
-        uint256 supply = trancheToken.totalSupplyBase();
-
-        if (supply == 0) {
-            return init_base;
-        }
-
-        if (_totalAssets > 0) {
-            return (supply * DEFAULT_FACTOR) / _totalAssets;
-        }
     }
 }

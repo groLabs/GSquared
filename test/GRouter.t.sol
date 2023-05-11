@@ -6,11 +6,11 @@ import "./Base.GSquared.t.sol";
 contract RouterTest is Test, BaseSetup {
     using stdStorage for StdStorage;
 
-    function testDepositWithdraw() public {
+    function testDepositWithdrawMulti() public {
         vm.startPrank(alice);
 
         setStorage(alice, DAI.balanceOf.selector, address(DAI), 100E20);
-
+        gTranche.setApprovalForAll(address(gRouter), true);
         uint256 aliceDaiBalance = DAI.balanceOf(alice);
 
         DAI.approve(address(gRouter), MAX_UINT);
@@ -18,37 +18,34 @@ contract RouterTest is Test, BaseSetup {
         gRouter.deposit(100E18, 0, false, 0);
 
         assertLt(DAI.balanceOf(alice), aliceDaiBalance);
-        assertGt(GVT.balanceOf(alice), 0);
+        assertGt(gTranche.balanceOfWithFactor(alice, 0), 0);
 
         aliceDaiBalance = DAI.balanceOf(alice);
         gRouter.deposit(50E18, 0, true, 0);
 
         assertLt(DAI.balanceOf(alice), aliceDaiBalance);
-        assertGt(PWRD.balanceOf(alice), 0);
-
-        GVT.approve(address(gRouter), MAX_UINT);
-        PWRD.approve(address(gRouter), MAX_UINT);
+        assertGt(gTranche.balanceOfWithFactor(alice, 1), 0);
 
         aliceDaiBalance = DAI.balanceOf(alice);
-        uint256 alicePWRDBalance = PWRD.balanceOf(alice);
+        uint256 alicePWRDBalance = gTranche.balanceOfWithFactor(alice, 1);
         gRouter.withdraw(10E18, 0, true, 0);
 
         assertGt(DAI.balanceOf(alice), aliceDaiBalance);
-        assertLt(PWRD.balanceOf(alice), alicePWRDBalance);
+        assertLt(gTranche.balanceOfWithFactor(alice, 1), alicePWRDBalance);
 
         aliceDaiBalance = DAI.balanceOf(alice);
-        uint256 aliceGVTBalance = GVT.balanceOf(alice);
+        uint256 aliceGVTBalance = gTranche.balanceOfWithFactor(alice, 0);
         gRouter.withdraw(10E16, 0, false, 0);
 
         assertGt(DAI.balanceOf(alice), aliceDaiBalance);
-        assertLt(GVT.balanceOf(alice), aliceGVTBalance);
+        assertLt(gTranche.balanceOfWithFactor(alice, 0), aliceGVTBalance);
 
         vm.stopPrank();
     }
 
     function testDepositWithdrawLegacy() public {
         vm.startPrank(alice);
-
+        gTranche.setApprovalForAll(address(gRouter), true);
         setStorage(alice, DAI.balanceOf.selector, address(DAI), 100E20);
 
         uint256 aliceDaiBalance = DAI.balanceOf(alice);
@@ -58,30 +55,27 @@ contract RouterTest is Test, BaseSetup {
         gRouter.depositGvt([uint256(100E18), 0, 0], 0, ZERO);
 
         assertLt(DAI.balanceOf(alice), aliceDaiBalance);
-        assertGt(GVT.balanceOf(alice), 0);
+        assertGt(gTranche.balanceOfWithFactor(alice, 0), 0);
 
         aliceDaiBalance = DAI.balanceOf(alice);
         gRouter.depositPwrd([uint256(50E18), 0, 0], 0, ZERO);
 
         assertLt(DAI.balanceOf(alice), aliceDaiBalance);
-        assertGt(PWRD.balanceOf(alice), 0);
-
-        GVT.approve(address(gRouter), MAX_UINT);
-        PWRD.approve(address(gRouter), MAX_UINT);
+        assertGt(gTranche.balanceOfWithFactor(alice, 1), 0);
 
         aliceDaiBalance = DAI.balanceOf(alice);
-        uint256 alicePWRDBalance = PWRD.balanceOf(alice);
+        uint256 alicePWRDBalance = gTranche.balanceOfWithFactor(alice, 1);
         gRouter.withdrawByStablecoin(true, 0, alicePWRDBalance, 0);
 
         assertGt(DAI.balanceOf(alice), aliceDaiBalance);
-        assertLt(PWRD.balanceOf(alice), alicePWRDBalance);
+        assertLt(gTranche.balanceOfWithFactor(alice, 1), alicePWRDBalance);
 
         aliceDaiBalance = DAI.balanceOf(alice);
-        uint256 aliceGVTBalance = GVT.balanceOf(alice);
+        uint256 aliceGVTBalance = gTranche.balanceOfWithFactor(alice, 0);
         gRouter.withdrawByStablecoin(false, 0, aliceGVTBalance, 0);
 
         assertGt(DAI.balanceOf(alice), aliceDaiBalance);
-        assertLt(GVT.balanceOf(alice), aliceGVTBalance);
+        assertLt(gTranche.balanceOfWithFactor(alice, 0), aliceGVTBalance);
 
         vm.stopPrank();
     }

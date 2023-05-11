@@ -8,6 +8,7 @@ import {IGRouter} from "./interfaces/IGRouter.sol";
 import {ICurve3Pool} from "./interfaces/ICurve3Pool.sol";
 import {RouterOracle} from "./oracles/RouterOracle.sol";
 import {AllowedPermit} from "./tokens/AllowedPermit.sol";
+import {ERC1155TokenReceiver} from "./solmate/src/tokens/ERC1155.sol";
 import {ERC4626} from "./tokens/ERC4626.sol";
 import {Errors} from "./common/Errors.sol";
 import {GVault} from "./GVault.sol";
@@ -28,7 +29,7 @@ import {GTranche} from "./GTranche.sol";
 /// DAI, USDC and USDT into Gro Protocol
 /// @dev The legacy deposit and withdrawal flows are for old integrations and
 /// should be avoided for new integrations as they are less gas efficient.
-contract GRouter is IGRouter {
+contract GRouter is IGRouter, ERC1155TokenReceiver {
     using SafeTransferLib for ERC20;
     using FixedPointMathLib for uint256;
     /*//////////////////////////////////////////////////////////////
@@ -54,6 +55,22 @@ contract GRouter is IGRouter {
         bool tranche,
         uint256 trancheAmount,
         uint256 calcAmount
+    );
+
+    event Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes data
+    );
+
+    event BatchReceived(
+        address operator,
+        address from,
+        uint256[] ids,
+        uint256[] values,
+        bytes data
     );
 
     event LogLegacyDeposit(
@@ -107,16 +124,6 @@ contract GRouter is IGRouter {
         );
         ERC20(routerOracle.getToken(2)).safeApprove(
             address(_threePool),
-            type(uint256).max
-        );
-
-        // Approve GTokens for Tranche
-        ERC20(address(tranche.getTrancheToken(false))).safeApprove(
-            address(_GTranche),
-            type(uint256).max
-        );
-        ERC20(address(tranche.getTrancheToken(true))).safeApprove(
-            address(_GTranche),
             type(uint256).max
         );
     }
@@ -444,11 +451,13 @@ contract GRouter is IGRouter {
         bool _tranche,
         uint256 _minAmount
     ) internal returns (uint256 amount) {
-        ERC20(address(tranche.getTrancheToken(_tranche))).safeTransferFrom(
+        tranche.transferFrom(
             msg.sender,
             address(this),
+            _tranche ? 1 : 0,
             _amount
         );
+
         // withdraw from tranche
         // index is zero for ETH mainnet as there is just one yield token
         // returns usd value of withdrawal
@@ -488,5 +497,27 @@ contract GRouter is IGRouter {
         stableToken.safeTransfer(msg.sender, amount);
 
         emit LogWithdrawal(msg.sender, _amount, _token_index, _tranche, amount);
+    }
+
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external override returns (bytes4) {
+        emit Received(operator, from, id, value, data);
+        return this.onERC1155Received.selector;
+    }
+
+    function onERC1155BatchReceived(
+        address operator,
+        address from,
+        uint256[] calldata ids,
+        uint256[] calldata values,
+        bytes calldata data
+    ) external override returns (bytes4) {
+        emit BatchReceived(operator, from, ids, values, data);
+        return this.onERC1155BatchReceived.selector;
     }
 }

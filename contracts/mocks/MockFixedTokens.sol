@@ -2,10 +2,8 @@
 pragma solidity 0.8.10;
 
 import "../tokens/ERC4626.sol";
-import "../tokens/GToken.sol";
 
 contract MockFixedTokens {
-    uint256 constant DEFAULT_DECIMALS = 10_000;
     uint256 constant DEFAULT_FACTOR = 1_000_000_000_000_000_000;
     bool constant JUNIOR_TRANCHE_ID = false;
     bool constant SENIOR_TRANCHE_ID = true;
@@ -47,15 +45,6 @@ contract MockFixedTokens {
     {
         require(_index < NO_OF_TOKENS);
         return FIRST_TOKEN_DECIMALS;
-    }
-
-    function getTrancheToken(bool _tranche)
-        public
-        view
-        returns (GToken trancheToken)
-    {
-        if (_tranche) return GToken(SENIOR_TRANCHE);
-        return GToken(JUNIOR_TRANCHE);
     }
 
     function getYieldTokenValues()
