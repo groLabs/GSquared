@@ -2,6 +2,7 @@ import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 import "forge-std/interfaces/IERC20.sol";
 import "./utils/utils.sol";
+import "../contracts/interfaces/IPnL.sol";
 import "../contracts/GRouter.sol";
 import "../contracts/GVault.sol";
 import "../contracts/GTranche.sol";

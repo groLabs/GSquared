@@ -3,21 +3,10 @@ pragma solidity ^0.8.0;
 
 import "./Base.GSquared.t.sol";
 import "../contracts/utils/StrategyQueue.sol";
-import "../contracts/pnl/PnL.sol";
 
-contract PnLTest is Test, BaseSetup {
+contract PnLFixedRateTest is Test, BaseSetup {
     using stdStorage for StdStorage;
     uint256 constant YEAR_IN_SECONDS = 31556952;
-
-    PnL profitAndLoss;
-
-    function setUp() public virtual override {
-        BaseSetup.setUp();
-        vm.startPrank(BASED_ADDRESS);
-        profitAndLoss = new PnL(address(gTranche));
-        gTranche.setPnL(profitAndLoss);
-        vm.stopPrank();
-    }
 
     function testCanDepositBelowUtilisation(
         uint128 _amount,
@@ -362,7 +351,7 @@ contract PnLTest is Test, BaseSetup {
     function test_senior_tranche_should_get_fixed_rate_return(
         uint128 _amount,
         uint128 _depositSenior
-    ) private {
+    ) public {
         vm.assume(_amount < 1E26);
         vm.assume(_amount > 1E20);
         vm.assume(_depositSenior > 1E20);
@@ -394,7 +383,7 @@ contract PnLTest is Test, BaseSetup {
     function test_senior_tranche_should_get_fixed_rate_return_changes_junior_depth(
         uint128 _amount,
         uint128 _depositSenior
-    ) private {
+    ) public {
         vm.assume(_amount < 1E26);
         vm.assume(_amount > 1E20);
         vm.assume(_depositSenior > 1E20);
@@ -452,7 +441,7 @@ contract PnLTest is Test, BaseSetup {
     function test_senior_tranche_should_get_fixed_rate_return_changes_in_senior_depth(
         uint128 _amount,
         uint128 _depositSenior
-    ) private {
+    ) public {
         vm.assume(_amount < 1E26);
         vm.assume(_amount > 1E20);
         vm.assume(_depositSenior > 1E20);
@@ -504,129 +493,129 @@ contract PnLTest is Test, BaseSetup {
             1E6
         );
     }
-    //
-    //    function test_senior_tranche_should_get_fixed_rate_return_new_rate_1_year(
-    //        uint256 _amount,
-    //        uint256 _depositSenior
-    //    ) public {
-    //        vm.assume(_amount < 1E26);
-    //        vm.assume(_amount > 1E20);
-    //        vm.assume(_depositSenior > 1E20);
-    //        uint256 amount = uint256(_amount);
-    //        uint256 depositSenior = uint256(_depositSenior);
-    //        uint256 shares = depositIntoVault(address(alice), amount);
-    //        if (depositSenior > shares / 2) depositSenior = shares / 2;
-    //
-    //        vm.startPrank(alice);
-    //        ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
-    //        gTranche.deposit(shares / 2, 0, false, alice);
-    //        gTranche.deposit(depositSenior, 0, true, alice);
-    //        vm.stopPrank();
-    //        (uint256[2] memory initialAssets, , ) = gTranche.pnlDistribution();
-    //
-    //        vm.startPrank(BASED_ADDRESS);
-    //        pnl.setRate(300);
-    //        vm.stopPrank();
-    //
-    //        // one year should give 2% of senior from junior to senior before interaction
-    //        vm.warp(block.timestamp + YEAR_IN_SECONDS);
-    //        (uint256[2] memory postChangeAssets, , ) = gTranche.pnlDistribution();
-    //
-    //        assertApproxEqAbs(
-    //            (postChangeAssets[1] * 10000) / initialAssets[1],
-    //            10200,
-    //            1
-    //        );
-    //        assertEq(
-    //            initialAssets[0] - (postChangeAssets[1] - initialAssets[1]),
-    //            postChangeAssets[0]
-    //        );
-    //
-    //        (uint256[2] memory preWithdrawalAssets, , ) = gTranche
-    //            .pnlDistribution();
-    //        vm.startPrank(alice);
-    //        (, uint256 withdrawnAssetValue) = gTranche.withdraw(
-    //            gTranche.balanceOfWithFactor(alice, 1) / 2,
-    //            0,
-    //            true,
-    //            alice
-    //        );
-    //        vm.stopPrank();
-    //
-    //        // post interaction should now give 3% yield
-    //        vm.warp(block.timestamp + YEAR_IN_SECONDS);
-    //        (uint256[2] memory finalAssets, , ) = gTranche.pnlDistribution();
-    //        assertApproxEqAbs(
-    //            (finalAssets[1] * 10000) /
-    //                (preWithdrawalAssets[1] - withdrawnAssetValue),
-    //            10300,
-    //            1
-    //        );
-    //        assertApproxEqAbs(
-    //            preWithdrawalAssets[0] -
-    //                (finalAssets[1] -
-    //                    (preWithdrawalAssets[1] - withdrawnAssetValue)),
-    //            finalAssets[0],
-    //            1E6
-    //        );
-    //    }
-    //
-    //    function test_senior_tranche_should_get_fixed_rate_return_new_rate_6_months(
-    //        uint256 _amount,
-    //        uint256 _depositSenior
-    //    ) public {
-    //        vm.assume(_amount < 1E26);
-    //        vm.assume(_amount > 1E20);
-    //        vm.assume(_depositSenior > 1E20);
-    //        uint256 amount = uint256(_amount);
-    //        uint256 depositSenior = uint256(_depositSenior);
-    //        uint256 shares = depositIntoVault(address(alice), amount);
-    //        if (depositSenior > shares / 2) depositSenior = shares / 2;
-    //
-    //        vm.startPrank(alice);
-    //        ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
-    //        gTranche.deposit(shares / 2, 0, false, alice);
-    //        gTranche.deposit(depositSenior, 0, true, alice);
-    //        vm.stopPrank();
-    //        (uint256[2] memory initialAssets, , ) = gTranche.pnlDistribution();
-    //
-    //        vm.startPrank(BASED_ADDRESS);
-    //        pnl.setRate(400);
-    //        vm.stopPrank();
-    //
-    //        // one year should give 2% of senior from junior to senior before interaction
-    //        vm.warp(block.timestamp + YEAR_IN_SECONDS / 2);
-    //
-    //        (uint256[2] memory preWithdrawalAssets, , ) = gTranche
-    //            .pnlDistribution();
-    //        vm.startPrank(alice);
-    //        (, uint256 withdrawnAssetValue) = gTranche.withdraw(
-    //            gTranche.balanceOfWithFactor(alice, 1) / 2,
-    //            0,
-    //            true,
-    //            alice
-    //        );
-    //        vm.stopPrank();
-    //        (uint256[2] memory postWithdrawalAssets, , ) = gTranche
-    //            .pnlDistribution();
-    //
-    //        // post interaction should now give 3% yield
-    //        vm.warp(block.timestamp + YEAR_IN_SECONDS / 2);
-    //        (uint256[2] memory finalAssets, , ) = gTranche.pnlDistribution();
-    //        assertApproxEqAbs(
-    //            ((finalAssets[1] * 10000) / postWithdrawalAssets[1]) +
-    //                ((preWithdrawalAssets[1] * 10000) / initialAssets[1]),
-    //            10200 + 10100,
-    //            2
-    //        );
-    //        assertApproxEqAbs(
-    //            initialAssets[0] -
-    //                (finalAssets[1] -
-    //                    postWithdrawalAssets[1] +
-    //                    preWithdrawalAssets[1] -
-    //                    initialAssets[1]),
-    //            finalAssets[0],
-    //            1E6
-    //        );
-    //    }
+
+    function test_senior_tranche_should_get_fixed_rate_return_new_rate_1_year(
+        uint256 _amount,
+        uint256 _depositSenior
+    ) public {
+        vm.assume(_amount < 1E26);
+        vm.assume(_amount > 1E20);
+        vm.assume(_depositSenior > 1E20);
+        uint256 amount = uint256(_amount);
+        uint256 depositSenior = uint256(_depositSenior);
+        uint256 shares = depositIntoVault(address(alice), amount);
+        if (depositSenior > shares / 2) depositSenior = shares / 2;
+
+        vm.startPrank(alice);
+        ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
+        gTranche.deposit(shares / 2, 0, false, alice);
+        gTranche.deposit(depositSenior, 0, true, alice);
+        vm.stopPrank();
+        (uint256[2] memory initialAssets, , ) = gTranche.pnlDistribution();
+
+        vm.startPrank(BASED_ADDRESS);
+        pnl.setRate(300);
+        vm.stopPrank();
+
+        // one year should give 2% of senior from junior to senior before interaction
+        vm.warp(block.timestamp + YEAR_IN_SECONDS);
+        (uint256[2] memory postChangeAssets, , ) = gTranche.pnlDistribution();
+
+        assertApproxEqAbs(
+            (postChangeAssets[1] * 10000) / initialAssets[1],
+            10200,
+            1
+        );
+        assertEq(
+            initialAssets[0] - (postChangeAssets[1] - initialAssets[1]),
+            postChangeAssets[0]
+        );
+
+        (uint256[2] memory preWithdrawalAssets, , ) = gTranche
+            .pnlDistribution();
+        vm.startPrank(alice);
+        (, uint256 withdrawnAssetValue) = gTranche.withdraw(
+            gTranche.balanceOfWithFactor(alice, 1) / 2,
+            0,
+            true,
+            alice
+        );
+        vm.stopPrank();
+
+        // post interaction should now give 3% yield
+        vm.warp(block.timestamp + YEAR_IN_SECONDS);
+        (uint256[2] memory finalAssets, , ) = gTranche.pnlDistribution();
+        assertApproxEqAbs(
+            (finalAssets[1] * 10000) /
+                (preWithdrawalAssets[1] - withdrawnAssetValue),
+            10300,
+            1
+        );
+        assertApproxEqAbs(
+            preWithdrawalAssets[0] -
+                (finalAssets[1] -
+                    (preWithdrawalAssets[1] - withdrawnAssetValue)),
+            finalAssets[0],
+            1E6
+        );
+    }
+
+    function test_senior_tranche_should_get_fixed_rate_return_new_rate_6_months(
+        uint256 _amount,
+        uint256 _depositSenior
+    ) public {
+        vm.assume(_amount < 1E26);
+        vm.assume(_amount > 1E20);
+        vm.assume(_depositSenior > 1E20);
+        uint256 amount = uint256(_amount);
+        uint256 depositSenior = uint256(_depositSenior);
+        uint256 shares = depositIntoVault(address(alice), amount);
+        if (depositSenior > shares / 2) depositSenior = shares / 2;
+
+        vm.startPrank(alice);
+        ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
+        gTranche.deposit(shares / 2, 0, false, alice);
+        gTranche.deposit(depositSenior, 0, true, alice);
+        vm.stopPrank();
+        (uint256[2] memory initialAssets, , ) = gTranche.pnlDistribution();
+
+        vm.startPrank(BASED_ADDRESS);
+        pnl.setRate(400);
+        vm.stopPrank();
+
+        // one year should give 2% of senior from junior to senior before interaction
+        vm.warp(block.timestamp + YEAR_IN_SECONDS / 2);
+
+        (uint256[2] memory preWithdrawalAssets, , ) = gTranche
+            .pnlDistribution();
+        vm.startPrank(alice);
+        (, uint256 withdrawnAssetValue) = gTranche.withdraw(
+            gTranche.balanceOfWithFactor(alice, 1) / 2,
+            0,
+            true,
+            alice
+        );
+        vm.stopPrank();
+        (uint256[2] memory postWithdrawalAssets, , ) = gTranche
+            .pnlDistribution();
+
+        // post interaction should now give 3% yield
+        vm.warp(block.timestamp + YEAR_IN_SECONDS / 2);
+        (uint256[2] memory finalAssets, , ) = gTranche.pnlDistribution();
+        assertApproxEqAbs(
+            ((finalAssets[1] * 10000) / postWithdrawalAssets[1]) +
+                ((preWithdrawalAssets[1] * 10000) / initialAssets[1]),
+            10200 + 10100,
+            2
+        );
+        assertApproxEqAbs(
+            initialAssets[0] -
+                (finalAssets[1] -
+                    postWithdrawalAssets[1] +
+                    preWithdrawalAssets[1] -
+                    initialAssets[1]),
+            finalAssets[0],
+            1E6
+        );
+    }
 }
