@@ -1,6 +1,19 @@
-## Installation and Testing
+# Installation and Testing
 
-### Installation
+# Foundry and Forge
+Forge is a prefferable way to run tests for GSquared.
+
+Block `16025905` is selected to run integrations tests on.
+
+To run Solidity Forge tests:
+```bash
+forge build
+forge test --fork-url https://RPC_NODE_URL -vvv --fork-block-number 16025905
+```
+
+# Brownie setup(deprecated)
+
+## Installation
 
 It is **strongly recommended** to use a virtual environment with this project.
 
@@ -68,11 +81,4 @@ Unit tests can run on a regular hardhat node whereas integration tests require a
 To run tests:
 ```bash
 brownie test --network hardhat-fork
-```
-
-To run Solidity Forge tests:
-```bash
-forge build
-
-forge test --fork-url https://RPC_NODE_URL -vvv
 ```
