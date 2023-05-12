@@ -357,10 +357,9 @@ contract PnLTest is Test, BaseSetup {
         assertGt(finalAssets[1], initialAssets[1]);
     }
 
-    function testSeniorTrancheShouldGetFixedRateReturn(
-        uint128 _amount,
-        uint128 _depositSenior
-    ) private {
+    function testLossDistributionCurve(uint256 _amount, uint256 _depositSenior)
+        public
+    {
         vm.assume(_amount < 1E26);
         vm.assume(_amount > 1E20);
         vm.assume(_depositSenior > 1E20);
@@ -375,132 +374,46 @@ contract PnLTest is Test, BaseSetup {
         gTranche.deposit(depositSenior, 0, true, alice);
         vm.stopPrank();
         (uint256[2] memory initialAssets, , ) = gTranche.pnlDistribution();
+        // Incur loss
+        setStorage(
+            BASED_ADDRESS,
+            GVault.totalAssets.selector,
+            address(gVault),
+            gVault.totalAssets() / 2
+        );
+        vm.startPrank(BASED_ADDRESS);
+        strategy.runHarvest();
+        vm.stopPrank();
 
+        vm.warp(block.timestamp + 10000);
+        (uint256[2] memory finalAssets, , ) = gTranche.pnlDistribution();
+        // Make sure that junior tranche soaked up the loss and senior is not affected
+        assertGt(initialAssets[0], finalAssets[0]);
+        assertApproxEqAbs(finalAssets[1], initialAssets[1], 1e14);
+    }
+
+    function testSeniorTrancheGetsNothingInCaseNoProfit(
+        uint128 _amount,
+        uint128 _depositSenior
+    ) public {
+        vm.assume(_amount < 1E26);
+        vm.assume(_amount > 1E20);
+        vm.assume(_depositSenior > 1E20);
+        uint256 amount = uint256(_amount);
+        uint256 depositSenior = uint256(_depositSenior);
+        uint256 shares = depositIntoVault(address(alice), amount);
+        if (depositSenior > shares / 2) depositSenior = shares / 2;
+
+        vm.startPrank(alice);
+        ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
+        gTranche.deposit(shares / 2, 0, false, alice);
+        gTranche.deposit(depositSenior, 0, true, alice);
+        vm.stopPrank();
+        (uint256[2] memory initialAssets, , ) = gTranche.pnlDistribution();
+        // In case with common PnL module, senior gets no fixed rate as with case of PnLFixedRate
         vm.warp(block.timestamp + YEAR_IN_SECONDS);
         (uint256[2] memory finalAssets, , ) = gTranche.pnlDistribution();
-        assertApproxEqAbs(
-            (finalAssets[1] * 10000) / initialAssets[1],
-            10200,
-            1
-        );
-        assertEq(
-            initialAssets[0] - (finalAssets[1] - initialAssets[1]),
-            finalAssets[0]
-        );
-    }
-
-    function testSeniorTrancheShouldGetFixedRateReturnChangesJuniorDepth(
-        uint128 _amount,
-        uint128 _depositSenior
-    ) private {
-        vm.assume(_amount < 1E26);
-        vm.assume(_amount > 1E20);
-        vm.assume(_depositSenior > 1E20);
-        uint256 amount = uint256(_amount);
-        uint256 depositSenior = uint256(_depositSenior);
-        uint256 shares = depositIntoVault(address(alice), amount);
-        if (depositSenior > shares / 4) depositSenior = shares / 4;
-
-        vm.startPrank(alice);
-        ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
-        gTranche.deposit(shares / 2 + 1, 0, false, alice);
-        gTranche.deposit(depositSenior, 0, true, alice);
-
-        (uint256[2] memory initialAssets, , ) = gTranche.pnlDistribution();
-
-        vm.warp(block.timestamp + YEAR_IN_SECONDS / 2);
-
-        (uint256[2] memory preWithdrawalAssets, , ) = gTranche
-            .pnlDistribution();
-        uint256 withdraw = ((shares / 4 - depositSenior) *
-            ICurve3Pool(THREE_POOL).get_virtual_price()) /
-            gTranche.getPricePerShare(0);
-        if (withdraw == 0) withdraw = 1;
-        (, uint256 withdrawnAssetValue) = gTranche.withdraw(
-            withdraw,
-            0,
-            false,
-            alice
-        );
-
-        (uint256[2] memory postWithdrawalAssets, , ) = gTranche
-            .pnlDistribution();
-
-        vm.warp(block.timestamp + YEAR_IN_SECONDS / 2);
-
-        vm.stopPrank();
-        (uint256[2] memory finalAssets, , ) = gTranche.pnlDistribution();
-        assertApproxEqAbs(
-            (finalAssets[1] * 10000) /
-                postWithdrawalAssets[1] +
-                (preWithdrawalAssets[1] * 10000) /
-                initialAssets[1],
-            10100 * 2,
-            1 * 2
-        );
-        assertApproxEqAbs(
-            initialAssets[0] -
-                (finalAssets[1] - initialAssets[1]) -
-                withdrawnAssetValue,
-            finalAssets[0],
-            1E6
-        );
-    }
-
-    function testSeniorTrancheShouldGetFixedRateReturnChangesInSeniorDepth(
-        uint128 _amount,
-        uint128 _depositSenior
-    ) private {
-        vm.assume(_amount < 1E26);
-        vm.assume(_amount > 1E20);
-        vm.assume(_depositSenior > 1E20);
-        uint256 amount = uint256(_amount);
-        uint256 depositSenior = uint256(_depositSenior);
-        uint256 shares = depositIntoVault(address(alice), amount);
-        if (depositSenior > shares / 4) depositSenior = shares / 4;
-
-        vm.startPrank(alice);
-        ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
-        gTranche.deposit(shares / 2 + 1, 0, false, alice);
-        gTranche.deposit(depositSenior, 0, true, alice);
-
-        (uint256[2] memory initialAssets, , ) = gTranche.pnlDistribution();
-
-        vm.warp(block.timestamp + YEAR_IN_SECONDS / 2);
-
-        (uint256[2] memory preWithdrawalAssets, , ) = gTranche
-            .pnlDistribution();
-        uint256 withdraw = depositSenior / 2;
-        if (withdraw == 0) withdraw = 1;
-        (, uint256 withdrawnAssetValue) = gTranche.withdraw(
-            withdraw,
-            0,
-            true,
-            alice
-        );
-
-        (uint256[2] memory postWithdrawalAssets, , ) = gTranche
-            .pnlDistribution();
-
-        vm.warp(block.timestamp + YEAR_IN_SECONDS / 2);
-
-        vm.stopPrank();
-        (uint256[2] memory finalAssets, , ) = gTranche.pnlDistribution();
-
-        assertApproxEqAbs(
-            (finalAssets[1] * 10000) /
-                postWithdrawalAssets[1] +
-                (preWithdrawalAssets[1] * 10000) /
-                initialAssets[1],
-            10100 * 2,
-            1 * 2
-        );
-        assertApproxEqAbs(
-            initialAssets[0] -
-                (finalAssets[1] - (initialAssets[1] - withdrawnAssetValue)),
-            finalAssets[0],
-            1E6
-        );
+        assertEq(0, finalAssets[1] - initialAssets[1]);
     }
 
     function testsShouldBePossibleToResetJuniorDebt() public {
