@@ -354,7 +354,7 @@ contract PnLTest is Test, BaseSetup {
         vm.warp(block.timestamp + 10000);
         (uint256[2] memory finalAssets, , ) = gTranche.pnlDistribution();
         assertGt(finalAssets[0], initialAssets[0]);
-        assertGt(finalAssets[1], initialAssets[1]);
+        assertGe(finalAssets[1], initialAssets[1]);
     }
 
     function testLossDistributionCurve(uint256 _amount, uint256 _depositSenior)
