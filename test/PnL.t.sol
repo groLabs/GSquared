@@ -446,4 +446,49 @@ contract PnLTest is Test, BaseSetup {
         // Make sure junior loss is 0 after reset
         assertEq(profitAndLoss.juniorLoss(), 0);
     }
+
+    function testsJuniorDebtPartiallyRepaid(uint128 _amount) public {
+        vm.assume(_amount < 1E26);
+        vm.assume(_amount > 1E20);
+        uint256 amount = uint256(_amount);
+        uint256 shares = depositIntoVault(address(alice), amount);
+        uint256 seniorDeposit = shares / 2;
+        uint256 juniorDeposit = shares / 2;
+        vm.startPrank(alice);
+        ERC20(address(gVault)).approve(address(gTranche), MAX_UINT);
+        gTranche.deposit(seniorDeposit, 0, false, alice);
+        gTranche.deposit(juniorDeposit, 0, true, alice);
+        vm.stopPrank();
+        uint256 initialAssets = gVault.totalAssets();
+        // Incur loss when withdrawing Senior + assets in vault decreased
+        setStorage(
+            BASED_ADDRESS,
+            GVault.totalAssets.selector,
+            address(gVault),
+            initialAssets / 2
+        );
+        vm.startPrank(alice);
+        gTranche.withdraw(seniorDeposit / 2, 0, true, alice);
+        vm.stopPrank();
+        // Make sure junior loss appeared
+        int256 initJuniorLoss = profitAndLoss.juniorLoss();
+        assertGt(initJuniorLoss, 0);
+
+        // Incur profit by returning initial amount of assets
+        setStorage(
+            BASED_ADDRESS,
+            GVault.totalAssets.selector,
+            address(gVault),
+            initialAssets
+        );
+        // Snapshot profit after assets are returned
+        (, int256 profit, ) = gTranche.pnlDistribution();
+        vm.startPrank(alice);
+        gTranche.withdraw(seniorDeposit / 2, 0, true, alice);
+        vm.stopPrank();
+
+        // Now make sure that junior debt was partially repaid
+        assertLt(profitAndLoss.juniorLoss(), initJuniorLoss);
+        assertEq(profitAndLoss.juniorLoss(), initJuniorLoss - int256(profit));
+    }
 }
