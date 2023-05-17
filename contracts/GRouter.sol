@@ -6,7 +6,6 @@ import {FixedPointMathLib} from "./solmate/src/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "./solmate/src/utils/SafeTransferLib.sol";
 import {IGRouter} from "./interfaces/IGRouter.sol";
 import {ICurve3Pool} from "./interfaces/ICurve3Pool.sol";
-import {RouterOracle} from "./oracles/RouterOracle.sol";
 import {AllowedPermit} from "./tokens/AllowedPermit.sol";
 import {ERC1155TokenReceiver} from "./solmate/src/tokens/ERC1155.sol";
 import {ERC4626} from "./tokens/ERC4626.sol";
@@ -36,11 +35,15 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
                         CONSTANTS & IMMUTABLES
     //////////////////////////////////////////////////////////////*/
 
+    address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    address public constant THREE_CRV =
+        0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
     uint8 public constant N_COINS = 3; // number of underlying tokens in curve pool
 
     GTranche public immutable tranche;
     GVault public immutable vaultToken;
-    RouterOracle public immutable routerOracle;
     ICurve3Pool public immutable threePool;
     ERC20 public immutable threeCrv;
 
@@ -96,13 +99,11 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
     constructor(
         GTranche _GTranche,
         GVault _vaultToken,
-        RouterOracle _routerOracle,
         ICurve3Pool _threePool,
         ERC20 _threeCrv
     ) {
         tranche = _GTranche;
         vaultToken = _vaultToken;
-        routerOracle = _routerOracle;
         threePool = _threePool;
         threeCrv = _threeCrv;
 
@@ -114,18 +115,9 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
             type(uint256).max
         );
         // Approve Stables for 3pool
-        ERC20(routerOracle.getToken(0)).safeApprove(
-            address(_threePool),
-            type(uint256).max
-        );
-        ERC20(routerOracle.getToken(1)).safeApprove(
-            address(_threePool),
-            type(uint256).max
-        );
-        ERC20(routerOracle.getToken(2)).safeApprove(
-            address(_threePool),
-            type(uint256).max
-        );
+        ERC20(getToken(0)).safeApprove(address(_threePool), type(uint256).max);
+        ERC20(getToken(1)).safeApprove(address(_threePool), type(uint256).max);
+        ERC20(getToken(2)).safeApprove(address(_threePool), type(uint256).max);
     }
 
     /// @notice Helper Function to get correct input for curve 'add_liquidity' function
@@ -199,7 +191,7 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
         if (_amount == 0) {
             revert Errors.AmountIsZero();
         }
-        ERC20 token = ERC20(routerOracle.getToken(_token_index));
+        ERC20 token = ERC20(getToken(_token_index));
         token.permit(msg.sender, address(this), _amount, deadline, v, r, s);
         amount = depositIntoTrancheForCaller(
             _amount,
@@ -236,9 +228,7 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
         if (_amount == 0) {
             revert Errors.AmountIsZero();
         }
-        AllowedPermit token = AllowedPermit(
-            routerOracle.getToken(_token_index)
-        );
+        AllowedPermit token = AllowedPermit(getToken(_token_index));
         token.permit(msg.sender, address(this), nonce, deadline, true, v, r, s);
         amount = depositIntoTrancheForCaller(
             _amount,
@@ -344,7 +334,7 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
         uint256 _minAmount
     ) internal returns (uint256 amount) {
         // pull token from user assume pre-approved
-        ERC20(routerOracle.getToken(_token_index)).safeTransferFrom(
+        ERC20(getToken(_token_index)).safeTransferFrom(
             msg.sender,
             address(this),
             _amount
@@ -404,7 +394,7 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
                 continue;
             }
             // pull token from user assume pre-approved
-            ERC20(routerOracle.getToken(index)).safeTransferFrom(
+            ERC20(getToken(index)).safeTransferFrom(
                 msg.sender,
                 address(this),
                 inAmounts[index]
@@ -475,7 +465,7 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
             address(this)
         );
 
-        ERC20 stableToken = ERC20(routerOracle.getToken(_token_index));
+        ERC20 stableToken = ERC20(getToken(_token_index));
         if (_token_index < 3) {
             // remove liquidity from 3crv to get desired stable from curve
             threePool.remove_liquidity_one_coin(
@@ -497,6 +487,18 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
         stableToken.safeTransfer(msg.sender, amount);
 
         emit LogWithdrawal(msg.sender, _amount, _token_index, _tranche, amount);
+    }
+
+    function getToken(uint256 _index) public pure returns (address) {
+        if (_index == 0) {
+            return DAI;
+        } else if (_index == 1) {
+            return USDC;
+        } else if (_index == 2) {
+            return USDT;
+        } else {
+            return THREE_CRV;
+        }
     }
 
     function onERC1155Received(

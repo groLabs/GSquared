@@ -15,6 +15,4 @@ interface ICurve3Pool {
         int128 i,
         uint256 min_amount
     ) external;
-
-    function balanceOf(address account) external view returns (uint256);
 }
