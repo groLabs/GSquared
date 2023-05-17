@@ -72,8 +72,8 @@ contract BaseUnitFixture is Test {
             type(TokenCalculations).creationCode,
             1e18
         );
-        MockThreePoolCurve threePoolCurve = new MockThreePoolCurve();
-        MockERC20 threeCurveToken = new Mock3CRV();
+        threePoolCurve = new MockThreePoolCurve();
+        threeCurveToken = new Mock3CRV();
         threePoolCurve.setThreeCrv(address(threeCurveToken));
         dai = new MockDAI();
         usdc = new MockUSDC();
@@ -98,5 +98,54 @@ contract BaseUnitFixture is Test {
             ERC20(threeCurveToken),
             [address(dai), address(usdc), address(usdt)]
         );
+    }
+
+    function setStorage(
+        address _user,
+        bytes4 _selector,
+        address _contract,
+        uint256 value
+    ) public {
+        uint256 slot = stdstore
+            .target(_contract)
+            .sig(_selector)
+            .with_key(_user)
+            .find();
+        vm.store(_contract, bytes32(slot), bytes32(value));
+    }
+
+    function depositIntoVault(address _user) internal returns (uint256 shares) {
+        uint256 balance = genThreeCrv(_user);
+        vm.startPrank(_user);
+        threeCurveToken.approve(address(gVault), balance);
+        shares = gVault.deposit(balance, _user);
+        vm.stopPrank();
+    }
+
+    function genThreeCrv(address _user) public returns (uint256) {
+        vm.startPrank(_user);
+        dai.approve(address(threePoolCurve), type(uint256).max);
+        usdc.approve(address(threePoolCurve), type(uint256).max);
+        if (
+            ERC20(address(usdt)).allowance(_user, address(threePoolCurve)) > 0
+        ) {
+            ERC20(address(usdt)).safeApprove(address(threePoolCurve), 0);
+        }
+        ERC20(address(usdt)).safeApprove(
+            address(threePoolCurve),
+            type(uint256).max
+        );
+        dai.faucet();
+        usdc.faucet();
+        usdt.faucet();
+        uint256[3] memory amounts = [
+            dai.balanceOf(_user),
+            usdc.balanceOf(_user),
+            usdt.balanceOf(_user)
+        ];
+        threePoolCurve.add_liquidity(amounts, 0);
+
+        vm.stopPrank();
+        return threeCurveToken.balanceOf(_user);
     }
 }
