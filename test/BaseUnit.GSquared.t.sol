@@ -2,13 +2,13 @@ import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 import "forge-std/interfaces/IERC20.sol";
 import "./utils/utils.sol";
-import "../contracts/interfaces/IPnL.sol";
 import "../contracts/interfaces/IOracle.sol";
 import "../contracts/GRouter.sol";
 import "../contracts/GVault.sol";
 import "../contracts/GTranche.sol";
 import "../contracts/pnl/PnLFixedRate.sol";
 import "../contracts/mocks/MockERC20.sol";
+import "../contracts/mocks/Mock3CRV.sol";
 import "../contracts/mocks/MockDAI.sol";
 import "../contracts/mocks/MockUSDC.sol";
 import "../contracts/mocks/MockUSDT.sol";
@@ -17,17 +17,8 @@ import "../contracts/mocks/MockStrategy.sol";
 import "../contracts/mocks/MockCurveOracle.sol";
 import "../contracts/mocks/MockThreePoolCurve.sol";
 import "../contracts/solmate/src/utils/SafeTransferLib.sol";
-import "../contracts/solmate/src/utils/CREATE3.sol";
 import {TokenCalculations} from "../contracts/common/TokenCalculations.sol";
 import "../contracts/solmate/src/utils/CREATE3.sol";
-
-contract Mock3CRV is MockERC20 {
-    constructor() ERC20("3crv", "3crv", 6) {}
-
-    function faucet() external override {
-        _mint(msg.sender, 10000e18);
-    }
-}
 
 contract BaseUnitFixture is Test {
     using stdStorage for StdStorage;
@@ -83,9 +74,10 @@ contract BaseUnitFixture is Test {
         );
         MockThreePoolCurve threePoolCurve = new MockThreePoolCurve();
         MockERC20 threeCurveToken = new Mock3CRV();
-        MockERC20 dai = new MockDAI();
-        MockERC20 usdc = new MockUSDC();
-        MockERC20 usdt = new MockUSDT();
+        threePoolCurve.setThreeCrv(address(threeCurveToken));
+        dai = new MockDAI();
+        usdc = new MockUSDC();
+        usdt = new MockUSDT();
         curveOracle = new MockCurveOracle();
         gVault = new GVault(threeCurveToken);
         strategy = new MockStrategy(address(gVault));
@@ -99,12 +91,12 @@ contract BaseUnitFixture is Test {
         );
         pnl = new PnLFixedRate(address(gTranche));
         gTranche.setPnL(pnl);
-        address[3] memory tokens = [address(dai), address(usdc), address(usdt)];
         gRouter = new GRouter(
             gTranche,
             gVault,
             MockThreePoolCurve(address(threePoolCurve)),
-            ERC20(threeCurveToken)
+            ERC20(threeCurveToken),
+            [address(dai), address(usdc), address(usdt)]
         );
     }
 }

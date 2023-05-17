@@ -34,12 +34,6 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
     /*//////////////////////////////////////////////////////////////
                         CONSTANTS & IMMUTABLES
     //////////////////////////////////////////////////////////////*/
-
-    address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
-    address public constant THREE_CRV =
-        0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490;
     uint8 public constant N_COINS = 3; // number of underlying tokens in curve pool
 
     GTranche public immutable tranche;
@@ -47,6 +41,7 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
     ICurve3Pool public immutable threePool;
     ERC20 public immutable threeCrv;
 
+    mapping(uint256 => address) public tokens;
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -100,7 +95,8 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
         GTranche _GTranche,
         GVault _vaultToken,
         ICurve3Pool _threePool,
-        ERC20 _threeCrv
+        ERC20 _threeCrv,
+        address[N_COINS] memory _tokens
     ) {
         tranche = _GTranche;
         vaultToken = _vaultToken;
@@ -114,10 +110,14 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
             address(_GTranche),
             type(uint256).max
         );
-        // Approve Stables for 3pool
-        ERC20(getToken(0)).safeApprove(address(_threePool), type(uint256).max);
-        ERC20(getToken(1)).safeApprove(address(_threePool), type(uint256).max);
-        ERC20(getToken(2)).safeApprove(address(_threePool), type(uint256).max);
+        // Approve Stables for 3pool and set tokens for Tranche
+        for (uint256 i = 0; i < N_COINS; ++i) {
+            tokens[i] = _tokens[i];
+            ERC20(_tokens[i]).safeApprove(
+                address(_threePool),
+                type(uint256).max
+            );
+        }
     }
 
     /// @notice Helper Function to get correct input for curve 'add_liquidity' function
@@ -489,16 +489,12 @@ contract GRouter is IGRouter, ERC1155TokenReceiver {
         emit LogWithdrawal(msg.sender, _amount, _token_index, _tranche, amount);
     }
 
-    function getToken(uint256 _index) public pure returns (address) {
-        if (_index == 0) {
-            return DAI;
-        } else if (_index == 1) {
-            return USDC;
-        } else if (_index == 2) {
-            return USDT;
-        } else {
-            return THREE_CRV;
+    function getToken(uint256 _index) public view returns (address) {
+        // Return 3crv for index >= 3
+        if (_index >= N_COINS) {
+            return address(threeCrv);
         }
+        return tokens[_index];
     }
 
     function onERC1155Received(

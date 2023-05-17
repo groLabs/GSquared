@@ -2,9 +2,14 @@
 pragma solidity 0.8.10;
 
 import "../interfaces/ICurve3Pool.sol";
+import "./Mock3CRV.sol";
 
 contract MockThreePoolCurve is ICurve3Pool {
-    mapping(address => uint256) public balances;
+    Mock3CRV public threeCrv;
+
+    function setThreeCrv(address _threeCrv) external {
+        threeCrv = Mock3CRV(_threeCrv);
+    }
 
     function get_virtual_price() external pure override returns (uint256) {
         return 1e18;
@@ -14,9 +19,11 @@ contract MockThreePoolCurve is ICurve3Pool {
         uint256[3] calldata _deposit_amounts,
         uint256 _min_mint_amount
     ) external {
+        uint256 balances;
         for (uint256 i = 0; i < _deposit_amounts.length; i++) {
-            balances[msg.sender] += _deposit_amounts[i];
+            balances += _deposit_amounts[i];
         }
+        threeCrv.mint(msg.sender, balances);
     }
 
     function remove_liquidity_one_coin(
@@ -24,6 +31,6 @@ contract MockThreePoolCurve is ICurve3Pool {
         int128 i,
         uint256 min_amount
     ) external {
-        balances[msg.sender] -= _token_amount;
+        threeCrv.burn(msg.sender, _token_amount);
     }
 }
