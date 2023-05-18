@@ -135,9 +135,10 @@ contract BaseUnitFixture is Test {
             address(threePoolCurve),
             type(uint256).max
         );
-        dai.faucet();
-        usdc.faucet();
-        usdt.faucet();
+        // TODO: Refactor those arbitrary numbers
+        dai.faucet(1E23);
+        usdc.faucet(1E11);
+        usdt.faucet(1E11);
         uint256[3] memory amounts = [
             dai.balanceOf(_user),
             usdc.balanceOf(_user),

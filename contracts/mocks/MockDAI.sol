@@ -6,9 +6,9 @@ import "./MockERC20.sol";
 contract MockDAI is MockERC20 {
     constructor() ERC20("DAI", "DAI", 18) {}
 
-    function faucet() external override {
+    function faucet(uint256 amount) external override {
         require(!claimed[msg.sender], "Already claimed");
         claimed[msg.sender] = true;
-        _mint(msg.sender, 1E23);
+        _mint(msg.sender, amount);
     }
 }
