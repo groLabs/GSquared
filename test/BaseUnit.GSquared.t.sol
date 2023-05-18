@@ -114,15 +114,22 @@ contract BaseUnitFixture is Test {
         vm.store(_contract, bytes32(slot), bytes32(value));
     }
 
-    function depositIntoVault(address _user) internal returns (uint256 shares) {
-        uint256 balance = genThreeCrv(_user);
+    /// @dev simulate a deposit into the vault and obtaining shares
+    function depositIntoVault(address _user, uint256 _amount)
+        internal
+        returns (uint256 shares)
+    {
+        uint256 balance = genThreeCrv(_user, _amount);
         vm.startPrank(_user);
         threeCurveToken.approve(address(gVault), balance);
         shares = gVault.deposit(balance, _user);
         vm.stopPrank();
     }
 
-    function genThreeCrv(address _user) public returns (uint256) {
+    function genThreeCrv(address _user, uint256 _amount)
+        public
+        returns (uint256)
+    {
         vm.startPrank(_user);
         dai.approve(address(threePoolCurve), type(uint256).max);
         usdc.approve(address(threePoolCurve), type(uint256).max);
@@ -135,15 +142,10 @@ contract BaseUnitFixture is Test {
             address(threePoolCurve),
             type(uint256).max
         );
-        // TODO: Refactor those arbitrary numbers
-        dai.faucet(1E23);
-        usdc.faucet(1E11);
-        usdt.faucet(1E11);
-        uint256[3] memory amounts = [
-            dai.balanceOf(_user),
-            usdc.balanceOf(_user),
-            usdt.balanceOf(_user)
-        ];
+        dai.faucet(type(uint256).max);
+        usdc.faucet(type(uint256).max);
+        usdt.faucet(type(uint256).max);
+        uint256[3] memory amounts = [_amount, _amount / 1e12, _amount / 1e12];
         threePoolCurve.add_liquidity(amounts, 0);
 
         vm.stopPrank();

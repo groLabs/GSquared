@@ -18,7 +18,7 @@ contract PnLFixedRateUnitTest is BaseUnitFixture {
         vm.assume(_depositSenior > 1E18);
         uint256 amount = uint256(_amount);
         uint256 depositSenior = uint256(_depositSenior);
-        uint256 shares = depositIntoVault(address(alice));
+        uint256 shares = depositIntoVault(address(alice), amount);
         if (depositSenior < shares / 3) depositSenior = shares / 3;
         if (depositSenior > (shares - shares / 4))
             depositSenior = shares - shares / 4;
@@ -42,7 +42,7 @@ contract PnLFixedRateUnitTest is BaseUnitFixture {
         vm.assume(_depositSenior > 1E20);
         uint256 amount = uint256(_amount);
         uint256 depositSenior = uint256(_depositSenior);
-        uint256 shares = depositIntoVault(address(alice));
+        uint256 shares = depositIntoVault(address(alice), amount);
         if (depositSenior > shares / 2) depositSenior = shares / 2;
 
         vm.startPrank(alice);
