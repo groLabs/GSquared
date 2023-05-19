@@ -2,12 +2,10 @@ import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 import "forge-std/interfaces/IERC20.sol";
 import "./utils/utils.sol";
-import "../contracts/interfaces/IPnL.sol";
 import "../contracts/GRouter.sol";
 import "../contracts/GVault.sol";
 import "../contracts/GTranche.sol";
 import "../contracts/oracles/CurveOracle.sol";
-import "../contracts/oracles/RouterOracle.sol";
 import "../contracts/pnl/PnLFixedRate.sol";
 import "../contracts/strategy/stop-loss/StopLossLogic.sol";
 import "../contracts/strategy/keeper/GStrategyGuard.sol";
@@ -64,7 +62,6 @@ contract BaseSetup is Test {
     MockStrategy strategy;
     CurveOracle curveOracle;
     GRouter gRouter;
-    RouterOracle routerOracle;
     PnLFixedRate pnl;
 
     Utils internal utils;
@@ -120,13 +117,12 @@ contract BaseSetup is Test {
         pnl = new PnLFixedRate(address(gTranche));
 
         gTranche.setPnL(pnl);
-        routerOracle = new RouterOracle(CHAINLINK_AGG_ADDRESSES);
         gRouter = new GRouter(
             gTranche,
             gVault,
-            routerOracle,
             ICurve3Pool(THREE_POOL),
-            ERC20(THREE_POOL_TOKEN)
+            ERC20(THREE_POOL_TOKEN),
+            [address(DAI), address(USDC), address(USDT)]
         );
         vm.stopPrank();
     }

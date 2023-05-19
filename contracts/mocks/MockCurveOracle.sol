@@ -5,12 +5,16 @@ import "../oracles/RelationModule.sol";
 import "../interfaces/ICurve3Pool.sol";
 
 contract MockCurveOracle is Relation {
-    uint256 constant vp = 1_000_000_000_000_000_000;
+    uint256 public price = 1e18;
 
     constructor() {}
 
-    function getVirtualPrice() public pure returns (uint256) {
-        return vp;
+    function setPrice(uint256 _price) external {
+        price = _price;
+    }
+
+    function getVirtualPrice() public view returns (uint256) {
+        return price;
     }
 
     function getSwappingPrice(
@@ -26,13 +30,13 @@ contract MockCurveOracle is Relation {
         uint256 _i,
         uint256 _amount,
         bool _deposit
-    ) external pure override returns (uint256) {
+    ) external view override returns (uint256) {
         return (_amount * getVirtualPrice()) / DEFAULT_FACTOR;
     }
 
     function getTotalValue(uint256[] memory _amounts)
         external
-        pure
+        view
         override
         returns (uint256)
     {

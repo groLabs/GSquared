@@ -6,9 +6,9 @@ import "./MockERC20.sol";
 contract MockUSDT is MockERC20 {
     constructor() ERC20("USDT", "USDT", 6) {}
 
-    function faucet() external override {
+    function faucet(uint256 amount) external override {
         require(!claimed[msg.sender], "Already claimed");
         claimed[msg.sender] = true;
-        _mint(msg.sender, 1E11);
+        _mint(msg.sender, amount);
     }
 }
