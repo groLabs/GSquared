@@ -40,7 +40,6 @@ contract RouterUnitTest is BaseUnitFixture {
         // Allow Router to use Alice's GERC1155 tokens
         gTranche.setApprovalForAll(address(gRouter), true);
 
-
         uint256 juniorFactor = gTranche.factor(0);
         // Make sure tranches are empty before Alice deposit
         assertEq(gTranche.trancheBalances(1), 0);
