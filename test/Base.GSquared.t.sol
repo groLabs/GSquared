@@ -48,7 +48,7 @@ contract BaseSetup is Test {
     address constant COFFEE_ADDRESS =
         address(0xc0ffEE4a95F15ff9973A17E563a8A8701D719890);
     address constant BASED_ADDRESS =
-        address(0xBA5EDF9dAd66D9D81341eEf8131160c439dbA91B);
+        address(0xBa5ED108abA290BBdFDD88A0F022E2357349566a);
     address constant ZERO = address(0x0000000000000000000000000000000000000000);
     uint256 constant MAX_UINT = type(uint256).max;
     uint256 constant MIN_DELAY = 259200;

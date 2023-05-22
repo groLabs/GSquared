@@ -19,10 +19,12 @@ CONVEX_OUSD = '0x73703f0493C08bA592AB1e321BEaD695AC5b39E3'
 OVAULT = '0xE75D77B1865Ae93c7eaa3040B038D7aA7BC02F70'
 VAULT = '0x1402c1cAa002354fC2C4a4cD2b4045A5b9625EF3'
 USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+USDT = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
 OUSD = '0x2a8e1e676ec238d8a992307b495b45b3feaa5e86'
-
 THREE_POOL_DEPOSIT_ZAP = '0xa79828df1850e8a3a3064576f380d90aecdd3359'
 THREE_POOL = '0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7'
+
 # Constants
 CHAIN_ID = 1
 AMOUNT_TO_SWAP = int(200_000e18)
@@ -56,13 +58,9 @@ def swap() -> None:
         address=web3.toChecksumAddress(OUSD),
         abi=get_abi("ERC20")
     )
-    ousd_flipper: Contract = web3.eth.contract(
-        address=web3.toChecksumAddress(OUSD_FLIPPER),
-        abi=get_abi("OUSDFlipper")
-    )
-    curve_zap: Contract = web3.eth.contract(
-        address=web3.toChecksumAddress(THREE_POOL_DEPOSIT_ZAP),
-        abi=get_abi("ThreePoolZap")
+    ousd_vault: Contract = web3.eth.contract(
+        address=web3.toChecksumAddress(OVAULT),
+        abi=get_abi("OVault")
     )
     three_pool: Contract = web3.eth.contract(
         address=web3.toChecksumAddress(THREE_POOL),
@@ -89,21 +87,30 @@ def swap() -> None:
     bundle.append({"signer": signer, "transaction": swap_threecurve_into_ousd_tx})
     options['nonce'] += 1
     # Redeem OUSD for USDC
-    # First approve OUSD to be spent by the flipper
+    # First approve OUSD to be spent by the vault
     # Check allowance first:
-    allowance = ousd_erc20.functions.allowance(signer.address, OUSD_FLIPPER).call()
+    allowance = ousd_erc20.functions.allowance(signer.address, ousd_vault.address).call()
     if allowance < AMOUNT_TO_SWAP:
         approve_ousd_tx = ousd_erc20.functions.approve(
-            ousd_flipper.address, int(MAX_UINT)
+            ousd_vault.address, int(MAX_UINT)
         ).buildTransaction(options)
         bundle.append({"signer": signer, "transaction": approve_ousd_tx})
         options['nonce'] += 1
-    # Then swap OUSD for USDC
-    swap_ousd_into_usdc_tx = ousd_flipper.functions.sellOusdForUsdc(
-        AMOUNT_TO_SWAP
-    ).buildTransaction(options)
+
+    # Then swap OUSD for stables
+    swap_ousd_into_usdc_tx = ousd_vault.functions.redeemAll(0).buildTransaction(options)
     bundle.append({"signer": signer, "transaction": swap_ousd_into_usdc_tx})
     options['nonce'] += 1
+
+    # Collect stablecoin balances, should be sorted by [DAI, USDC, USDT]:
+    balances = []
+    for token in [DAI, USDC, USDT]:
+        stable: Contract = web3.eth.contract(
+            address=web3.toChecksumAddress(token),
+            abi=get_abi("ERC20")
+        )
+        balances.append(stable.functions.balanceOf(signer.address).call())
+
     # Deposit USDC into 3crv pool
     # First approve USDC for 3 pool
     # Check allowance first:
@@ -114,12 +121,15 @@ def swap() -> None:
         ).buildTransaction(options)
         bundle.append({"signer": signer, "transaction": approve_usdc_tx})
         options['nonce'] += 1
+
     # Then deposit USDC into 3curve pool to obtain 3crv LP
     deposit_usdc_into_3crv_tx = three_pool.functions.add_liquidity(
         [0, AMOUNT_TO_SWAP, 0], 0
     ).buildTransaction(options)
     bundle.append({"signer": signer, "transaction": deposit_usdc_into_3crv_tx})
     options['nonce'] += 1
+
+    # TODO: strategy.runHarvest()
     # !! SECTION 2: Send bundle to Flashbots
     # keep trying to send bundle until it gets mined
     while True:

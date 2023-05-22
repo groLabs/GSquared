@@ -7,7 +7,7 @@ import "./interfaces/ICurve3Pool.sol";
 import "./interfaces/IOusdVault.sol";
 import "./solmate/src/utils/SafeTransferLib.sol";
 
-contract OUSDArb is Owned {
+contract ArbOusd is Owned {
     using SafeTransferLib for ERC20;
     /*//////////////////////////////////////////////////////////////
                                 Events
