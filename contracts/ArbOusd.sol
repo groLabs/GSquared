@@ -72,7 +72,12 @@ contract OUSDArb is Owned {
         // Require 3 curve token balance non-zero:
         require(threeCurveBal > 0, "!3CRV");
         // Swap the 3CRV for OUSD
-        OUSD_META.exchange(THREE_CURVE_META_INDEX, OUSD_META_INDEX, _amount, 0);
+        OUSD_META.exchange(
+            THREE_CURVE_META_INDEX,
+            OUSD_META_INDEX,
+            threeCurveBal,
+            0
+        );
 
         // Make sure we have non-zero OUSD balance
         require(OUSD.balanceOf(address(this)) >= 0, "!OUSD");
