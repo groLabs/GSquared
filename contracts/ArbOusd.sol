@@ -5,8 +5,10 @@ import {Owned} from "./solmate/src/auth/Owned.sol";
 import "./interfaces/ICurveMeta.sol";
 import "./interfaces/ICurve3Pool.sol";
 import "./interfaces/IOusdVault.sol";
+import "./solmate/src/utils/SafeTransferLib.sol";
 
 contract OUSDArb is Owned {
+    using SafeTransferLib for ERC20;
     /*//////////////////////////////////////////////////////////////
                                 Events
     //////////////////////////////////////////////////////////////*/
@@ -46,7 +48,7 @@ contract OUSDArb is Owned {
         // Approve all 3 tokens allowance to 3curve pool
         DAI.approve(address(THREE_POOL), type(uint256).max);
         USDC.approve(address(THREE_POOL), type(uint256).max);
-        USDT.approve(address(THREE_POOL), type(uint256).max);
+        USDT.safeApprove(address(THREE_POOL), type(uint256).max);
     }
 
     /// @notice This function is used to perform the arb
