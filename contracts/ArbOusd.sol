@@ -44,11 +44,12 @@ contract OUSDArb is Owned {
     int128 public constant OUSD_META_INDEX = 0;
 
     constructor() Owned(msg.sender) {
-        OUSD.approve(address(OUSD_META), type(uint256).max);
+        CRV_3POOL_TOKEN.approve(address(OUSD_META), type(uint256).max);
         // Approve all 3 tokens allowance to 3curve pool
         DAI.approve(address(THREE_POOL), type(uint256).max);
         USDC.approve(address(THREE_POOL), type(uint256).max);
         USDT.safeApprove(address(THREE_POOL), type(uint256).max);
+        OUSD.approve(address(OVAULT), type(uint256).max);
     }
 
     /// @notice This function is used to perform the arb
