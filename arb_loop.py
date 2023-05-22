@@ -22,11 +22,11 @@ USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
 OUSD = '0x2a8e1e676ec238d8a992307b495b45b3feaa5e86'
 
 THREE_POOL_DEPOSIT_ZAP = '0xa79828df1850e8a3a3064576f380d90aecdd3359'
-
+THREE_POOL = '0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7'
 # Constants
 CHAIN_ID = 1
 AMOUNT_TO_SWAP = int(200_000e18)
-
+MAX_UINT = 2 ** 256 - 100
 OUSD_META_INDEX = 0
 THREE_CURVE_INDEX = 1
 
@@ -64,13 +64,17 @@ def swap() -> None:
         address=web3.toChecksumAddress(THREE_POOL_DEPOSIT_ZAP),
         abi=get_abi("ThreePoolZap")
     )
+    three_pool: Contract = web3.eth.contract(
+        address=web3.toChecksumAddress(THREE_POOL),
+        abi=get_abi("ThreePool")
+    )
     flashbot(web3, signer)
     nonce = web3.eth.get_transaction_count(signer.address)
     options = {
         "gas": 100000,
-        "maxFeePerGas": Web3.toWei(200, "gwei"),
+        "maxFeePerGas": Web3.toWei(100, "gwei"),
         "maxPriorityFeePerGas": Web3.toWei(50, "gwei"),
-        "nonce": nonce,  # TODO: increase nonce on each tx
+        "nonce": nonce,
         "chainId": CHAIN_ID,
         "from": signer.address,
     }
@@ -83,35 +87,39 @@ def swap() -> None:
         THREE_CURVE_INDEX, OUSD_META_INDEX, int(AMOUNT_TO_SWAP), 0
     ).buildTransaction(options)
     bundle.append({"signer": signer, "transaction": swap_threecurve_into_ousd_tx})
+    options['nonce'] += 1
     # Redeem OUSD for USDC
     # First approve OUSD to be spent by the flipper
     # Check allowance first:
     allowance = ousd_erc20.functions.allowance(signer.address, OUSD_FLIPPER).call()
     if allowance < AMOUNT_TO_SWAP:
         approve_ousd_tx = ousd_erc20.functions.approve(
-            ousd_flipper.address, int(AMOUNT_TO_SWAP)
+            ousd_flipper.address, int(MAX_UINT)
         ).buildTransaction(options)
         bundle.append({"signer": signer, "transaction": approve_ousd_tx})
+        options['nonce'] += 1
     # Then swap OUSD for USDC
     swap_ousd_into_usdc_tx = ousd_flipper.functions.sellOusdForUsdc(
         AMOUNT_TO_SWAP
     ).buildTransaction(options)
     bundle.append({"signer": signer, "transaction": swap_ousd_into_usdc_tx})
+    options['nonce'] += 1
     # Deposit USDC into 3crv pool
-    # First approve USDC to be spent by the zap
+    # First approve USDC for 3 pool
     # Check allowance first:
-    usdc_allowance = usdc_erc20.functions.allowance(signer.address, curve_zap.address).call()
+    usdc_allowance = usdc_erc20.functions.allowance(signer.address, three_pool.address).call()
     if usdc_allowance < AMOUNT_TO_SWAP:
         approve_usdc_tx = usdc_erc20.functions.approve(
-            curve_zap.address, int(AMOUNT_TO_SWAP)
+            three_pool.address, int(MAX_UINT)
         ).buildTransaction(options)
         bundle.append({"signer": signer, "transaction": approve_usdc_tx})
-    # Then deposit USDC into OUSD metapool
-    deposit_usdc_into_3crv_tx = curve_zap.functions.add_liquidity(
-        curve_ousd_metapool.address, [0, 0, AMOUNT_TO_SWAP, 0], 0
+        options['nonce'] += 1
+    # Then deposit USDC into 3curve pool to obtain 3crv LP
+    deposit_usdc_into_3crv_tx = three_pool.functions.add_liquidity(
+        [0, AMOUNT_TO_SWAP, 0], 0
     ).buildTransaction(options)
     bundle.append({"signer": signer, "transaction": deposit_usdc_into_3crv_tx})
-
+    options['nonce'] += 1
     # !! SECTION 2: Send bundle to Flashbots
     # keep trying to send bundle until it gets mined
     while True:
