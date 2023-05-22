@@ -42,105 +42,20 @@ def get_abi(contract_name: str) -> Dict:
 # Ref: https://github.com/flashbots/web3-flashbots/blob/master/examples/simple.py
 def swap() -> None:
     load_dotenv()
-    signer: LocalAccount = Account.from_key(os.environ["ADMIN_KEY"])
-    web3 = Web3(HTTPProvider(os.environ["WEB3_ALCHEMY_PROJECT_ID"]))
-
-    # !! Section 0: Setup all the contracts we'll need
-    curve_ousd_metapool: Contract = web3.eth.contract(
-        address=web3.toChecksumAddress(OUSD_METAPOOL),
-        abi=get_abi("CurveMetapool")
-    )
-    usdc_erc20: Contract = web3.eth.contract(
-        address=web3.toChecksumAddress(USDC),
-        abi=get_abi("ERC20")
-    )
-    ousd_erc20: Contract = web3.eth.contract(
-        address=web3.toChecksumAddress(OUSD),
-        abi=get_abi("ERC20")
-    )
-    ousd_vault: Contract = web3.eth.contract(
-        address=web3.toChecksumAddress(OVAULT),
-        abi=get_abi("OVault")
-    )
-    three_pool: Contract = web3.eth.contract(
-        address=web3.toChecksumAddress(THREE_POOL),
-        abi=get_abi("ThreePool")
-    )
-    flashbot(web3, signer)
-    nonce = web3.eth.get_transaction_count(signer.address)
-    options = {
-        "gas": 100000,
-        "maxFeePerGas": Web3.toWei(100, "gwei"),
-        "maxPriorityFeePerGas": Web3.toWei(50, "gwei"),
-        "nonce": nonce,
-        "chainId": CHAIN_ID,
-        "from": signer.address,
-    }
-    # !! SECTION 1: Build bundle of transactions to execute
-
-    # Transactions in Flashbots are executed in order
-    bundle = []
-    # Build transaction to swap 3crv -> OUSD
-    swap_threecurve_into_ousd_tx = curve_ousd_metapool.functions.exchange(
-        THREE_CURVE_INDEX, OUSD_META_INDEX, int(AMOUNT_TO_SWAP), 0
-    ).buildTransaction(options)
-    bundle.append({"signer": signer, "transaction": swap_threecurve_into_ousd_tx})
-    options['nonce'] += 1
-    # Redeem OUSD for USDC
-    # First approve OUSD to be spent by the vault
-    # Check allowance first:
-    allowance = ousd_erc20.functions.allowance(signer.address, ousd_vault.address).call()
-    if allowance < AMOUNT_TO_SWAP:
-        approve_ousd_tx = ousd_erc20.functions.approve(
-            ousd_vault.address, int(MAX_UINT)
-        ).buildTransaction(options)
-        bundle.append({"signer": signer, "transaction": approve_ousd_tx})
-        options['nonce'] += 1
-
-    # Then swap OUSD for stables
-    swap_ousd_into_usdc_tx = ousd_vault.functions.redeemAll(0).buildTransaction(options)
-    bundle.append({"signer": signer, "transaction": swap_ousd_into_usdc_tx})
-    options['nonce'] += 1
-
-    # Collect stablecoin balances, should be sorted by [DAI, USDC, USDT]:
-    balances = []
-    for token in [DAI, USDC, USDT]:
-        stable: Contract = web3.eth.contract(
-            address=web3.toChecksumAddress(token),
-            abi=get_abi("ERC20")
-        )
-        balances.append(stable.functions.balanceOf(signer.address).call())
-
-    # Deposit USDC into 3crv pool
-    # First approve USDC for 3 pool
-    # Check allowance first:
-    usdc_allowance = usdc_erc20.functions.allowance(signer.address, three_pool.address).call()
-    if usdc_allowance < AMOUNT_TO_SWAP:
-        approve_usdc_tx = usdc_erc20.functions.approve(
-            three_pool.address, int(MAX_UINT)
-        ).buildTransaction(options)
-        bundle.append({"signer": signer, "transaction": approve_usdc_tx})
-        options['nonce'] += 1
-
-    # Then deposit USDC into 3curve pool to obtain 3crv LP
-    deposit_usdc_into_3crv_tx = three_pool.functions.add_liquidity(
-        [0, AMOUNT_TO_SWAP, 0], 0
-    ).buildTransaction(options)
-    bundle.append({"signer": signer, "transaction": deposit_usdc_into_3crv_tx})
-    options['nonce'] += 1
-
-    # TODO: strategy.runHarvest()
-    # !! SECTION 2: Send bundle to Flashbots
-    # keep trying to send bundle until it gets mined
-    while True:
-        block = web3.eth.block_number
-        print(f"Simulating on block {block}")
-        try:
-            web3.flashbots.simulate(bundle, block)
-            print("Simulation successful.")
-        except Exception as e:
-            print("Simulation error", e)
-            return
+    # signer: LocalAccount = Account.from_key(os.environ["ADMIN_KEY"])
+    # web3 = Web3(HTTPProvider(os.environ["WEB3_ALCHEMY_PROJECT_ID"]))
+    # # TODO: strategy.runHarvest()
+    # # !! SECTION 2: Send bundle to Flashbots
+    # # keep trying to send bundle until it gets mined
+    # while True:
+    #     block = web3.eth.block_number
+    #     print(f"Simulating on block {block}")
+    #     try:
+    #         web3.flashbots.simulate(bundle, block)
+    #         print("Simulation successful.")
+    #     except Exception as e:
+    #         print("Simulation error", e)
+    #         return
 
 
 if __name__ == "__main__":
