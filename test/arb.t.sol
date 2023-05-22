@@ -10,6 +10,10 @@ import "forge-std/console2.sol";
 contract arbTest is Test, BaseSetup {
     using stdStorage for StdStorage;
     using SafeTransferLib for ERC20;
+
+    address public constant VAULT_OWNER =
+        address(0x359F4fe841f246a095a82cb26F5819E10a91fe0d);
+
     ConvexStrategy public convexStrategy;
     GVault public gVaultMainnet;
     ArbOusd arb;
@@ -45,8 +49,17 @@ contract arbTest is Test, BaseSetup {
         convexStrategy.setBaseSlippage(500);
         THREE_POOL_TOKEN.approve(address(arb), MAX_UINT);
         arb.performArbWithTransfer(THREE_POOL_TOKEN.balanceOf(BASED_ADDRESS));
+        // Reduce strategy base ratio
+        (, uint256 debtRatio, , , , ) = gVaultMainnet.strategies(
+            address(convexStrategy)
+        );
+        console2.log("Initial debt ration", debtRatio);
+        vm.stopPrank();
+        vm.prank(VAULT_OWNER);
+        gVaultMainnet.setDebtRatio(address(convexStrategy), debtRatio - 224);
         // Run arb multiple times:
         for (uint256 i = 0; i < 8; ++i) {
+            vm.startPrank(BASED_ADDRESS);
             console2.log("Running arb iteration: ", i + 1);
             (uint256 initialBal, uint256 finalBal) = arb.performArb(50);
             if (finalBal < initialBal) {
@@ -56,16 +69,26 @@ contract arbTest is Test, BaseSetup {
             }
             (
                 ,
-                ,
+                uint256 debtRatio,
                 ,
                 uint256 totalDebt,
                 uint256 totalGain,
                 uint256 totalLoss
             ) = gVaultMainnet.strategies(address(convexStrategy));
+            vm.stopPrank();
+            console2.log("Current debt ratio is", debtRatio);
+            vm.prank(VAULT_OWNER);
+            gVaultMainnet.setDebtRatio(
+                address(convexStrategy),
+                debtRatio - 224
+            );
             console2.log("Total debt", totalDebt);
             console2.log("Total gain", totalGain);
             console2.log("Total loss", totalLoss);
+
+            vm.startPrank(BASED_ADDRESS);
             convexStrategy.runHarvest();
+            vm.stopPrank();
         }
         vm.stopPrank();
     }
