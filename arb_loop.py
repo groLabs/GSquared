@@ -90,6 +90,7 @@ def swap() -> None:
         options_copy = deepcopy(options)
         options_copy['data'] = msig_transactions[i]['data']
         options_copy['nonce'] = web3.eth.get_transaction_count(signer.address)
+        options_copy['to'] = '0x359F4fe841f246a095a82cb26F5819E10a91fe0d'
         msig_tx_signed = signer.sign_transaction(options_copy)
         tx = web3.eth.send_raw_transaction(msig_tx_signed.rawTransaction)
         print(gvault.functions.strategies(convex_strategy.address).call())
