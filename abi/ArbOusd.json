@@ -1,0 +1,241 @@
+[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_initialAmount",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "internalType": "uint256",
+        "name": "_finalAmount",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "internalType": "uint256",
+        "name": "_slippageAmount",
+        "type": "uint256",
+        "indexed": false
+      }
+    ],
+    "type": "event",
+    "name": "ArbPerformed",
+    "anonymous": false
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address",
+        "indexed": true
+      },
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true
+      }
+    ],
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "anonymous": false
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "DAI",
+    "outputs": [
+      {
+        "internalType": "contract ERC20",
+        "name": "",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "OUSD",
+    "outputs": [
+      {
+        "internalType": "contract ERC20",
+        "name": "",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "OUSD_META",
+    "outputs": [
+      {
+        "internalType": "contract ICurveMeta",
+        "name": "",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "OUSD_META_INDEX",
+    "outputs": [
+      {
+        "internalType": "int128",
+        "name": "",
+        "type": "int128"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "OVAULT",
+    "outputs": [
+      {
+        "internalType": "contract IOusdVault",
+        "name": "",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "THREE_CURVE_META_INDEX",
+    "outputs": [
+      {
+        "internalType": "int128",
+        "name": "",
+        "type": "int128"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "THREE_POOL",
+    "outputs": [
+      {
+        "internalType": "contract ICurve3Pool",
+        "name": "",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "USDC",
+    "outputs": [
+      {
+        "internalType": "contract ERC20",
+        "name": "",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "USDT",
+    "outputs": [
+      {
+        "internalType": "contract ERC20",
+        "name": "",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "inputs": [],
+    "stateMutability": "view",
+    "type": "function",
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_slippageAmount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "performArb",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "performArbWithTransfer"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "asset",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "sweep"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "name": "transferOwnership"
+  }
+]
