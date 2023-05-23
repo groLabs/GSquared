@@ -1,6 +1,7 @@
 import json
 import os
 from typing import Dict
+from uuid import uuid4
 
 from dotenv import load_dotenv
 from eth_account import Account
@@ -9,6 +10,7 @@ from flashbots import flashbot
 from web3 import HTTPProvider
 from web3 import Web3
 from web3.contract import Contract
+from web3.exceptions import TransactionNotFound
 
 # Addresses
 ADMIN = '0xBa5ED108abA290BBdFDD88A0F022E2357349566a'
@@ -100,6 +102,29 @@ def swap() -> None:
             except Exception as e:
                 print("Simulation error", e)
                 return
+            # send bundle targeting next block
+            print(f"Sending bundle targeting block {block + 1}")
+            replacement_uuid = str(uuid4())
+            print(f"replacementUuid {replacement_uuid}")
+            send_result = web3.flashbots.send_bundle(
+                bundle,
+                target_block_number=block + 1,
+                opts={"replacementUuid": replacement_uuid},
+            )
+            stats_v2 = web3.flashbots.get_bundle_stats_v2(
+                web3.toHex(send_result.bundle_hash()), block
+            )
+            print("bundle stats:", stats_v2)
+            send_result.wait()
+            try:
+                receipts = send_result.receipts()
+                print(f"Bundle was mined in block {receipts[0].blockNumber}\a")
+                break
+            except TransactionNotFound:
+                print(f"Bundle not found in block {block + 1}")
+                # essentially a no-op but it shows that the function works
+                cancel_res = web3.flashbots.cancel_bundles(replacement_uuid)
+                print(f"canceled {cancel_res}")
 
 
 if __name__ == "__main__":

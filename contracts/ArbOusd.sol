@@ -23,7 +23,6 @@ contract ArbOusd is Owned {
     //////////////////////////////////////////////////////////////*/
     ERC20 internal constant CRV_3POOL_TOKEN =
         ERC20(address(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490));
-
     ERC20 public constant DAI =
         ERC20(address(0x6B175474E89094C44Da98b954EedeAC495271d0F));
     ERC20 public constant USDC =
