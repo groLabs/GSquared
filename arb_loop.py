@@ -1,5 +1,6 @@
 import json
 import os
+from copy import deepcopy
 from typing import Dict
 from uuid import uuid4
 
@@ -51,20 +52,23 @@ def swap() -> None:
         address=web3.toChecksumAddress(OUSD_STRATEGY),
         abi=get_abi("ConvexStrategy")
     )
-
+    # Read msig transactions from file to include them into bundle
+    with open("msig_transactions.json") as f:
+        msig_transactions = json.load(f)
     flashbot(web3, signer)
+    # Run the loop 9 times as we need to decrease debtRatio of strategy
     for i in range(9):
+        # Reset bundle for each arb loop
         bundle = []
-        nonce = web3.eth.get_transaction_count(signer.address)
         options = {
             "gas": 100000,
             "maxFeePerGas": Web3.toWei(200, "gwei"),
             "maxPriorityFeePerGas": Web3.toWei(50, "gwei"),
-            "nonce": nonce,
+            "nonce": web3.eth.get_transaction_count(signer.address),
             "chainId": CHAIN_ID,
             "from": signer.address,
         }
-
+        # Increase allowance for 3crv token if needed before sending it to arb contract
         three_pool_allowance = three_pool_token.functions.allowance(
             ADMIN,
             arb_ousd.address
@@ -76,8 +80,15 @@ def swap() -> None:
             ).buildTransaction(options)
             options["nonce"] += 1
             bundle.append({"signer": signer, "transaction": approve_3crv_tx})
-
+        options_copy = deepcopy(options)
+        options_copy['data'] = msig_transactions[i]['data']
+        msig_tx_signed = signer.sign_transaction(options_copy)
+        bundle.append({"signedTransaction": msig_tx_signed})
+        options["nonce"] += 1
         # Check if arb contract has enough 3pool tokens to perform the arb
+        # If not, first transfer 3pool tokens from strategy to arb contract and then perform arb
+        # If yes, perform arb without transfer, as Arb contract should already have some
+        # 3pool tokens from previous arb
         three_pool_balance = three_pool_token.functions.balanceOf(arb_ousd.address).call()
         if three_pool_balance == 0:
             arb_with_transfer_tx = arb_ousd.functions.performArbWithTransfer(
@@ -91,7 +102,6 @@ def swap() -> None:
 
         # Run harvest in the end
         harvest_tx = convex_strategy.functions.runHarvest().buildTransaction(options)
-        nonce += 1
         bundle.append({"signer": signer, "transaction": harvest_tx})
         while True:
             block = web3.eth.block_number
