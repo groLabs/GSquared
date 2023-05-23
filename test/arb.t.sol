@@ -86,7 +86,6 @@ contract arbTest is Test, BaseSetup {
             convexStrategy.runHarvest();
             vm.stopPrank();
         }
-        vm.stopPrank();
 
         // Make sure strategy debtRatio is 0 now:
         (, uint256 debtRatioFinal, , , , ) = gVaultMainnet.strategies(

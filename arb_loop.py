@@ -82,8 +82,10 @@ def swap() -> None:
             bundle.append({"signer": signer, "transaction": approve_3crv_tx})
         options_copy = deepcopy(options)
         options_copy['data'] = msig_transactions[i]['data']
+        options_copy['nonce'] = web3.eth.get_transaction_count(signer.address)
         msig_tx_signed = signer.sign_transaction(options_copy)
-        bundle.append({"signedTransaction": msig_tx_signed})
+        # Execute transaction now without bundle:
+        bundle.append({"signed_transaction": msig_tx_signed.rawTransaction})
         options["nonce"] += 1
         # Check if arb contract has enough 3pool tokens to perform the arb
         # If not, first transfer 3pool tokens from strategy to arb contract and then perform arb
