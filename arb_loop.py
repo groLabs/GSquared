@@ -18,6 +18,7 @@ ADMIN = '0xBa5ED108abA290BBdFDD88A0F022E2357349566a'
 OUSD_ARB = '0x0000000000000000000000000000000000000000'  # TODO: Change once deployed
 THREE_POOL_TOKEN = '0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490'
 OUSD_STRATEGY = '0x73703f0493C08bA592AB1e321BEaD695AC5b39E3'
+GVAULT = '0x1402c1cAa002354fC2C4a4cD2b4045A5b9625EF3'
 
 # Constants
 CHAIN_ID = 1
@@ -37,7 +38,7 @@ def swap() -> None:
     load_dotenv()
 
     signer: LocalAccount = Account.from_key(os.environ["ADMIN_KEY"])
-    web3 = Web3(HTTPProvider(os.environ["WEB3_ALCHEMY_PROJECT_ID"]))
+    web3 = Web3(HTTPProvider("http://127.0.0.1:8545/"))
     arb_ousd: Contract = web3.eth.contract(
         address=web3.toChecksumAddress(OUSD_ARB),
         abi=get_abi("ArbOusd")
@@ -48,6 +49,11 @@ def swap() -> None:
         abi=get_abi("ERC20")
     )
 
+    gvault: Contract = web3.eth.contract(
+        address=web3.toChecksumAddress(GVAULT),
+        abi=get_abi("GVault")
+    )
+
     convex_strategy: Contract = web3.eth.contract(
         address=web3.toChecksumAddress(OUSD_STRATEGY),
         abi=get_abi("ConvexStrategy")
@@ -56,6 +62,7 @@ def swap() -> None:
     with open("msig_transactions.json") as f:
         msig_transactions = json.load(f)
     flashbot(web3, signer)
+    print(gvault.functions.strategies(convex_strategy.address).call())
     # Run the loop 9 times as we need to decrease debtRatio of strategy
     for i in range(9):
         # Reset bundle for each arb loop
@@ -65,7 +72,7 @@ def swap() -> None:
             "maxFeePerGas": Web3.toWei(200, "gwei"),
             "maxPriorityFeePerGas": Web3.toWei(50, "gwei"),
             "nonce": web3.eth.get_transaction_count(signer.address),
-            "chainId": CHAIN_ID,
+            "chainId": 31337,
             "from": signer.address,
         }
         # Increase allowance for 3crv token if needed before sending it to arb contract
@@ -84,8 +91,13 @@ def swap() -> None:
         options_copy['data'] = msig_transactions[i]['data']
         options_copy['nonce'] = web3.eth.get_transaction_count(signer.address)
         msig_tx_signed = signer.sign_transaction(options_copy)
+        tx = web3.eth.send_raw_transaction(msig_tx_signed.rawTransaction)
+        print(gvault.functions.strategies(convex_strategy.address).call())
+        receipt = web3.eth.wait_for_transaction_receipt(tx)
         # Execute transaction now without bundle:
         bundle.append({"signed_transaction": msig_tx_signed.rawTransaction})
+        # Make sure it's successful
+        assert receipt.status == 1
         options["nonce"] += 1
         # Check if arb contract has enough 3pool tokens to perform the arb
         # If not, first transfer 3pool tokens from strategy to arb contract and then perform arb
