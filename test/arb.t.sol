@@ -61,12 +61,7 @@ contract arbTest is Test, BaseSetup {
         for (uint256 i = 0; i < 8; ++i) {
             vm.startPrank(BASED_ADDRESS);
             console2.log("Running arb iteration: ", i + 1);
-            (uint256 initialBal, uint256 finalBal) = arb.performArb(50);
-            if (finalBal < initialBal) {
-                console2.log("Difference between 3crvs", initialBal - finalBal);
-            } else {
-                console2.log("Difference between 3crvs", finalBal - initialBal);
-            }
+            (uint256 initialBal, uint256 finalBal) = arb.performArb(120);
             (
                 ,
                 uint256 debtRatio,
@@ -78,9 +73,10 @@ contract arbTest is Test, BaseSetup {
             vm.stopPrank();
             console2.log("Current debt ratio is", debtRatio);
             vm.prank(VAULT_OWNER);
+            uint256 settingDebtRatio = debtRatio > 224 ? debtRatio - 224 : 0;
             gVaultMainnet.setDebtRatio(
                 address(convexStrategy),
-                debtRatio - 224
+                settingDebtRatio
             );
             console2.log("Total debt", totalDebt);
             console2.log("Total gain", totalGain);
@@ -91,5 +87,11 @@ contract arbTest is Test, BaseSetup {
             vm.stopPrank();
         }
         vm.stopPrank();
+
+        // Make sure strategy debtRatio is 0 now:
+        (, uint256 debtRatioFinal, , , , ) = gVaultMainnet.strategies(
+            address(convexStrategy)
+        );
+        assertEq(debtRatioFinal, 0);
     }
 }
