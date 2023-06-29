@@ -3,6 +3,7 @@ pragma solidity 0.8.10;
 
 import "../../interfaces/IStrategy.sol";
 import "../../interfaces/IGStrategyGuard.sol";
+import "../../GVault.sol";
 
 library GuardErrors {
     error NotOwner(); // 0x30cd7471
@@ -20,6 +21,25 @@ library GuardErrors {
 
 // gro protocol: https://github.com/groLabs/gro-strategies-brownie
 
+/// Convex rewards interface
+interface IRewards {
+    function balanceOf(address account) external view returns (uint256);
+
+    function earned(address account) external view returns (uint256);
+
+    function withdrawAndUnwrap(uint256 amount, bool claim)
+        external
+        returns (bool);
+
+    function withdrawAllAndUnwrap(bool claim) external;
+
+    function getReward() external returns (bool);
+
+    function extraRewards(uint256 id) external view returns (address);
+
+    function extraRewardsLength() external view returns (uint256);
+}
+
 /// @title Strategy guard
 /// @notice Contract that interacts with strategies, determining when harvest and stop loss should
 ///     be triggered. These actions dont need to be individually strategies specified as the time
@@ -28,6 +48,10 @@ library GuardErrors {
 ///     this should not block further execution of other strategies, simplifying the keeper setup
 ///     that will run these jobs.
 contract GStrategyGuard is IGStrategyGuard {
+    int128 internal constant CRV3_INDEX = 1;
+    // 3 million gas
+    uint256 internal GAS_AMOUNT_TO_RUN_HARVEST = 3_000_000;
+
     event LogOwnershipTransferred(
         address indexed previousOwner,
         address indexed newOwner
@@ -297,13 +321,49 @@ contract GStrategyGuard is IGStrategyGuard {
         }
     }
 
+    /// @notice Check if harvest needs to be executed for a strategy
+    /// @param strategy the target strategy
+    function _profitOrLossExceeded(IStrategy strategy)
+        internal
+        view
+        returns (bool)
+    {
+        bool canHarvest;
+        uint256 assets = strategy.estimatedTotalAssets();
+        GVault vault = GVault(strategy.vault());
+
+        (, , , uint256 totalDebt, , ) = vault.strategies(address(strategy));
+
+        uint256 debt = totalDebt;
+        (uint256 excessDebt, ) = vault.excessDebt(address(strategy));
+        uint256 profit;
+        if (assets > debt) {
+            profit = assets - debt;
+        } else {
+            excessDebt += debt - assets;
+        }
+        // If there is excess debt we should harvest anyway
+        if (excessDebt > 0) {
+            canHarvest = true;
+        }
+        profit += vault.creditAvailable(address(strategy));
+        // Check if profit exceeds the gas threshold
+        if (profit > tx.gasprice * GAS_AMOUNT_TO_RUN_HARVEST) {
+            canHarvest = true;
+        }
+        return canHarvest;
+    }
+
     /// @notice Check if any strategy needs to be harvested
     function canHarvest() external view returns (bool result) {
         uint256 strategiesLength = strategies.length;
         for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
             if (strategy == address(0)) continue;
-            if (IStrategy(strategy).canHarvest()) {
+            if (
+                IStrategy(strategy).canHarvest() &&
+                _profitOrLossExceeded(IStrategy(strategy))
+            ) {
                 if (strategyCheck[strategy].active) {
                     result = true;
                 }
