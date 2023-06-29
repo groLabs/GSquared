@@ -3,6 +3,8 @@ pragma solidity 0.8.10;
 
 import "../../interfaces/IStrategy.sol";
 import "../../interfaces/IGStrategyGuard.sol";
+import "../../interfaces/AggregatorV3Interface.sol";
+import "../../interfaces/ICurve3Pool.sol";
 import "../../GVault.sol";
 
 library GuardErrors {
@@ -52,7 +54,16 @@ contract GStrategyGuard is IGStrategyGuard {
         string reason,
         bytes lowLevelData
     );
-    // 3 million gas
+
+    uint256 public constant TARGET_DECIMALS = 18;
+    AggregatorV3Interface public constant CL_ETH_USD =
+        AggregatorV3Interface(
+            address(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419)
+        );
+    ICurve3Pool public constant THREE_CURVE_POOL =
+        ICurve3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
+
+    // 3 million gas to execute harvest
     uint256 public gasThreshold = 3_000_000;
     address public owner;
     mapping(address => bool) public keepers;
@@ -306,6 +317,17 @@ contract GStrategyGuard is IGStrategyGuard {
         }
     }
 
+    /// @notice Function that converts _amount of ETH to USD using CL ETH/USD pricefeed
+    /// @notice It also scales the price to 18 decimals as ETH/USD feed has non 18 decimals
+    /// @param _amount the amount of ETH to convert
+    function _convertETHToUSD(uint256 _amount) internal view returns (uint256) {
+        (, int256 ethPriceInUsd, , , ) = CL_ETH_USD.latestRoundData();
+        // Scale the price to 18 decimals
+        uint256 ethPriceInWei = uint256(ethPriceInUsd) *
+            10**(TARGET_DECIMALS - CL_ETH_USD.decimals());
+        return (_amount * ethPriceInWei) / 10**TARGET_DECIMALS;
+    }
+
     /// @notice Check if harvest needs to be executed for a strategy
     /// @param strategy the target strategy
     function _profitOrLossExceeded(IStrategy strategy)
@@ -333,7 +355,12 @@ contract GStrategyGuard is IGStrategyGuard {
         }
         profit += vault.creditAvailable(address(strategy));
         // Check if profit exceeds the gas threshold
-        if (profit > tx.gasprice * gasThreshold) {
+        uint256 gasUsedForHarvestInUsd = _convertETHToUSD(
+            tx.gasprice * gasThreshold
+        );
+        uint256 profitInUsd = (THREE_CURVE_POOL.get_virtual_price() * profit) /
+            10**TARGET_DECIMALS;
+        if (profitInUsd > gasUsedForHarvestInUsd) {
             canHarvest = true;
         }
         return canHarvest;

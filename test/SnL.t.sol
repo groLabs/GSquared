@@ -178,6 +178,44 @@ contract SnLTest is BaseSetup {
         vm.stopPrank();
     }
 
+    function testGuardShouldNotExecuteIfGasPriceTooHigh() public {
+        uint256 shares = genThreeCrv(1E24, alice);
+        vm.startPrank(alice);
+        THREE_POOL_TOKEN.transfer(address(fraxStrategy), HARVEST_MIN);
+        vm.stopPrank();
+
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+
+        vm.warp(block.timestamp + MIN_REPORT_DELAY);
+        // Set gas price to 100k gwei
+        vm.txGasPrice(100000e9);
+        // Strategy should return true but the guard won't let harvest happen because of gas price
+        assertTrue(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+    }
+
+    function testGuardShoudLetExecuteIfGasPriceIsHighButThereIsLoss() private {
+        uint256 initialAssets = gVault.totalAssets();
+        // Incur loss
+        setStorage(
+            alice,
+            GVault.totalAssets.selector,
+            address(gVault),
+            gVault.totalAssets() / 2
+        );
+        vm.startPrank(BASED_ADDRESS);
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+
+        vm.warp(block.timestamp + MIN_REPORT_DELAY);
+        // Set gas price to 100k gwei
+        vm.txGasPrice(100000e9);
+        // Strategy should return true but the guard won't let harvest happen because of gas price
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+    }
+
     function test_guard_should_execute_if_threshold_broken_and_return_true_if_credit_available()
         public
     {
