@@ -173,8 +173,8 @@ contract SnLTest is BaseSetup {
 
         guard.harvest();
 
-        assertTrue(!fraxStrategy.canHarvest());
-        assertTrue(!guard.canHarvest());
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
         vm.stopPrank();
     }
 

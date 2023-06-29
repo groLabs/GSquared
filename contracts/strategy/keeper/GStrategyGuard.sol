@@ -49,8 +49,7 @@ interface IRewards {
 ///     that will run these jobs.
 contract GStrategyGuard is IGStrategyGuard {
     int128 internal constant CRV3_INDEX = 1;
-    // 3 million gas
-    uint256 internal GAS_AMOUNT_TO_RUN_HARVEST = 3_000_000;
+
 
     event LogOwnershipTransferred(
         address indexed previousOwner,
@@ -75,7 +74,8 @@ contract GStrategyGuard is IGStrategyGuard {
         string reason,
         bytes lowLevelData
     );
-
+    // 3 million gas
+    uint256 public gasThreshold = 3_000_000;
     address public owner;
     mapping(address => bool) public keepers;
 
@@ -101,6 +101,13 @@ contract GStrategyGuard is IGStrategyGuard {
         address previousOwner = msg.sender;
         owner = _newOwner;
         emit LogOwnershipTransferred(previousOwner, _newOwner);
+    }
+
+    /// @notice set a new gas threshold for the contract to use when checking canHarvest
+    /// @param _newGasThreshold gas threshold to swap to
+    function setGasThreshold(uint256 _newGasThreshold) external {
+        if (msg.sender != owner) revert GuardErrors.NotOwner();
+        gasThreshold = _newGasThreshold;
     }
 
     /// @notice set a new keeper for the contract
@@ -348,7 +355,7 @@ contract GStrategyGuard is IGStrategyGuard {
         }
         profit += vault.creditAvailable(address(strategy));
         // Check if profit exceeds the gas threshold
-        if (profit > tx.gasprice * GAS_AMOUNT_TO_RUN_HARVEST) {
+        if (profit > tx.gasprice * gasThreshold) {
             canHarvest = true;
         }
         return canHarvest;
