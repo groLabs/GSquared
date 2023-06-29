@@ -21,25 +21,6 @@ library GuardErrors {
 
 // gro protocol: https://github.com/groLabs/gro-strategies-brownie
 
-/// Convex rewards interface
-interface IRewards {
-    function balanceOf(address account) external view returns (uint256);
-
-    function earned(address account) external view returns (uint256);
-
-    function withdrawAndUnwrap(uint256 amount, bool claim)
-        external
-        returns (bool);
-
-    function withdrawAllAndUnwrap(bool claim) external;
-
-    function getReward() external returns (bool);
-
-    function extraRewards(uint256 id) external view returns (address);
-
-    function extraRewardsLength() external view returns (uint256);
-}
-
 /// @title Strategy guard
 /// @notice Contract that interacts with strategies, determining when harvest and stop loss should
 ///     be triggered. These actions dont need to be individually strategies specified as the time
@@ -48,9 +29,6 @@ interface IRewards {
 ///     this should not block further execution of other strategies, simplifying the keeper setup
 ///     that will run these jobs.
 contract GStrategyGuard is IGStrategyGuard {
-    int128 internal constant CRV3_INDEX = 1;
-
-
     event LogOwnershipTransferred(
         address indexed previousOwner,
         address indexed newOwner
