@@ -8,7 +8,7 @@ import "../contracts/GTranche.sol";
 import "../contracts/oracles/CurveOracle.sol";
 import "../contracts/pnl/PnLFixedRate.sol";
 import "../contracts/strategy/stop-loss/StopLossLogic.sol";
-import "../contracts/strategy/keeper/GStrategyGuard.sol";
+import {GStrategyGuard} from "../contracts/strategy/keeper/GStrategyGuard.sol";
 import "../contracts/strategy/keeper/GStrategyResolver.sol";
 import "../contracts/mocks/MockStrategy.sol";
 import "../contracts/strategy/ConvexStrategy.sol";

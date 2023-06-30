@@ -3,6 +3,9 @@ pragma solidity 0.8.10;
 
 import "../../interfaces/IStrategy.sol";
 import "../../interfaces/IGStrategyGuard.sol";
+import "../../interfaces/AggregatorV3Interface.sol";
+import "../../interfaces/ICurve3Pool.sol";
+import "../../GVault.sol";
 
 library GuardErrors {
     error NotOwner(); // 0x30cd7471
@@ -52,6 +55,16 @@ contract GStrategyGuard is IGStrategyGuard {
         bytes lowLevelData
     );
 
+    uint256 public constant TARGET_DECIMALS = 18;
+    AggregatorV3Interface public constant CL_ETH_USD =
+        AggregatorV3Interface(
+            address(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419)
+        );
+    ICurve3Pool public constant THREE_CURVE_POOL =
+        ICurve3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
+
+    // 3 million gas to execute harvest
+    uint256 public gasThreshold = 3_000_000;
     address public owner;
     mapping(address => bool) public keepers;
 
@@ -77,6 +90,13 @@ contract GStrategyGuard is IGStrategyGuard {
         address previousOwner = msg.sender;
         owner = _newOwner;
         emit LogOwnershipTransferred(previousOwner, _newOwner);
+    }
+
+    /// @notice set a new gas threshold for the contract to use when checking canHarvest
+    /// @param _newGasThreshold gas threshold to swap to
+    function setGasThreshold(uint256 _newGasThreshold) external {
+        if (msg.sender != owner) revert GuardErrors.NotOwner();
+        gasThreshold = _newGasThreshold;
     }
 
     /// @notice set a new keeper for the contract
@@ -297,13 +317,65 @@ contract GStrategyGuard is IGStrategyGuard {
         }
     }
 
+    /// @notice Function that converts _amount of ETH to USD using CL ETH/USD pricefeed
+    /// @notice It also scales the price to 18 decimals as ETH/USD feed has non 18 decimals
+    /// @param _amount the amount of ETH to convert
+    function _convertETHToUSD(uint256 _amount) internal view returns (uint256) {
+        (, int256 ethPriceInUsd, , , ) = CL_ETH_USD.latestRoundData();
+        // Scale the price to 18 decimals
+        uint256 ethPriceInWei = uint256(ethPriceInUsd) *
+            10**(TARGET_DECIMALS - CL_ETH_USD.decimals());
+        return (_amount * ethPriceInWei) / 10**TARGET_DECIMALS;
+    }
+
+    /// @notice Check if harvest needs to be executed for a strategy
+    /// @param strategy the target strategy
+    function _profitOrLossExceeded(IStrategy strategy)
+        internal
+        view
+        returns (bool)
+    {
+        bool canHarvest;
+        uint256 assets = strategy.estimatedTotalAssets();
+        GVault vault = GVault(strategy.vault());
+
+        (, , , uint256 totalDebt, , ) = vault.strategies(address(strategy));
+
+        uint256 debt = totalDebt;
+        (uint256 excessDebt, ) = vault.excessDebt(address(strategy));
+        uint256 profit;
+        if (assets > debt) {
+            profit = assets - debt;
+        } else {
+            excessDebt += debt - assets;
+        }
+        // If there is excess debt we should harvest anyway
+        if (excessDebt > 0) {
+            canHarvest = true;
+        }
+        profit += vault.creditAvailable(address(strategy));
+        // Check if profit exceeds the gas threshold
+        uint256 gasUsedForHarvestInUsd = _convertETHToUSD(
+            tx.gasprice * gasThreshold
+        );
+        uint256 profitInUsd = (THREE_CURVE_POOL.get_virtual_price() * profit) /
+            10**TARGET_DECIMALS;
+        if (profitInUsd > gasUsedForHarvestInUsd) {
+            canHarvest = true;
+        }
+        return canHarvest;
+    }
+
     /// @notice Check if any strategy needs to be harvested
     function canHarvest() external view returns (bool result) {
         uint256 strategiesLength = strategies.length;
         for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
             if (strategy == address(0)) continue;
-            if (IStrategy(strategy).canHarvest()) {
+            if (
+                IStrategy(strategy).canHarvest() &&
+                _profitOrLossExceeded(IStrategy(strategy))
+            ) {
                 if (strategyCheck[strategy].active) {
                     result = true;
                 }

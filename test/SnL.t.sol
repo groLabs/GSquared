@@ -173,9 +173,45 @@ contract SnLTest is BaseSetup {
 
         guard.harvest();
 
-        assertTrue(!fraxStrategy.canHarvest());
-        assertTrue(!guard.canHarvest());
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
         vm.stopPrank();
+    }
+
+    function testGuardShouldNotExecuteIfGasPriceTooHigh() public {
+        uint256 shares = genThreeCrv(1E24, alice);
+        vm.startPrank(alice);
+        THREE_POOL_TOKEN.transfer(address(fraxStrategy), HARVEST_MIN);
+        vm.stopPrank();
+
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+
+        vm.warp(block.timestamp + MIN_REPORT_DELAY);
+        // Set gas price to a lot of gwei
+        vm.txGasPrice(100000100000100000e9);
+        // Strategy should return true but the guard won't let harvest happen because of gas price
+        assertTrue(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+    }
+
+    function testGuardShoudLetExecuteIfGasPriceIsHighButThereIsLoss() public {
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+        // Give lots of frax to alice
+        genStable(10000000000e18, frax, alice);
+
+        // Swap frax to 3crv to incur loss on strategy
+        vm.startPrank(alice);
+        IERC20(frax).approve(frax_lp, type(uint256).max);
+        uint256 amount = ICurveMeta(frax_lp).exchange(0, 1, 10000000000e18, 0);
+        vm.stopPrank();
+
+        // Set gas price to over 90000 gwei
+        vm.txGasPrice(100000100000100000e9);
+        // Should be able to execute if there is loss even if gas price is high, because there is a big loss
+        assertTrue(fraxStrategy.canHarvest());
+        assertTrue(guard.canHarvest());
     }
 
     function test_guard_should_execute_if_threshold_broken_and_return_true_if_credit_available()
