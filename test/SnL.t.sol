@@ -188,32 +188,30 @@ contract SnLTest is BaseSetup {
         assertFalse(guard.canHarvest());
 
         vm.warp(block.timestamp + MIN_REPORT_DELAY);
-        // Set gas price to 100k gwei
-        vm.txGasPrice(100000e9);
+        // Set gas price to a lot of gwei
+        vm.txGasPrice(100000100000100000e9);
         // Strategy should return true but the guard won't let harvest happen because of gas price
         assertTrue(fraxStrategy.canHarvest());
         assertFalse(guard.canHarvest());
     }
 
-    function testGuardShoudLetExecuteIfGasPriceIsHighButThereIsLoss() private {
-        uint256 initialAssets = gVault.totalAssets();
-        // Incur loss
-        setStorage(
-            alice,
-            GVault.totalAssets.selector,
-            address(gVault),
-            gVault.totalAssets() / 2
-        );
-        vm.startPrank(BASED_ADDRESS);
+    function testGuardShoudLetExecuteIfGasPriceIsHighButThereIsLoss() public {
         assertFalse(fraxStrategy.canHarvest());
         assertFalse(guard.canHarvest());
+        // Give lots of frax to alice
+        genStable(10000000000e18, frax, alice);
 
-        vm.warp(block.timestamp + MIN_REPORT_DELAY);
-        // Set gas price to 100k gwei
-        vm.txGasPrice(100000e9);
-        // Strategy should return true but the guard won't let harvest happen because of gas price
-        assertFalse(fraxStrategy.canHarvest());
-        assertFalse(guard.canHarvest());
+        // Swap frax to 3crv to incur loss on strategy
+        vm.startPrank(alice);
+        IERC20(frax).approve(frax_lp, type(uint256).max);
+        uint256 amount = ICurveMeta(frax_lp).exchange(0, 1, 10000000000e18, 0);
+        vm.stopPrank();
+
+        // Set gas price to over 90000 gwei
+        vm.txGasPrice(100000100000100000e9);
+        // Should be able to execute if there is loss even if gas price is high, because there is a big loss
+        assertTrue(fraxStrategy.canHarvest());
+        assertTrue(guard.canHarvest());
     }
 
     function test_guard_should_execute_if_threshold_broken_and_return_true_if_credit_available()
