@@ -225,7 +225,6 @@ contract SnLTest is BaseSetup {
 
         assertTrue(fraxStrategy.canHarvest());
         assertTrue(guard.canHarvest());
-
         guard.harvest();
         assertTrue(!fraxStrategy.canHarvest());
         // credit available for other strategies
