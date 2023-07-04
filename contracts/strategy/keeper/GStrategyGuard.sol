@@ -392,25 +392,7 @@ contract GStrategyGuard is IGStrategyGuard {
             if (strategy == address(0)) continue;
             if (IStrategy(strategy).canHarvest()) {
                 if (strategyCheck[strategy].active) {
-                    try IStrategy(strategy).runHarvest() {} catch Error(
-                        string memory _reason
-                    ) {
-                        strategyCheck[strategy].active = false;
-                        bytes memory lowLevelData;
-                        emit LogStrategyHarvestFailure(
-                            strategy,
-                            _reason,
-                            lowLevelData
-                        );
-                    } catch (bytes memory _lowLevelData) {
-                        strategyCheck[strategy].active = false;
-                        string memory reason;
-                        emit LogStrategyHarvestFailure(
-                            strategy,
-                            reason,
-                            _lowLevelData
-                        );
-                    }
+                    IStrategy(strategy).runHarvest();
                     return;
                 }
             }
