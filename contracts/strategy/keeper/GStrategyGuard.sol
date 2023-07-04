@@ -438,9 +438,7 @@ contract GStrategyGuard is IGStrategyGuard {
             if (
                 !strategyCheck[strategy].canHarvestWithLoss &&
                 strategyCheck[strategy].lossStartBlock > 0
-            ) {
-                continue;
-            }
+            ) continue;
             if (
                 IStrategy(strategy).canHarvest() &&
                 _profitOrLossExceeded(IStrategy(strategy))

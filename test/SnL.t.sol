@@ -219,15 +219,16 @@ contract SnLTest is BaseSetup {
     }
 
     function testGuardShouldMarkStrategyLockedLossPersists() public {
+        uint256 amountToSwap = 10000000000e18;
         assertFalse(fraxStrategy.canHarvest());
         assertFalse(guard.canHarvest());
         // Give lots of frax to alice
-        genStable(10000000000e18, frax, alice);
+        genStable(amountToSwap, frax, alice);
 
         // Swap frax to 3crv to incur loss on strategy
         vm.startPrank(alice);
         IERC20(frax).approve(frax_lp, type(uint256).max);
-        uint256 amount = ICurveMeta(frax_lp).exchange(0, 1, 10000000000e18, 0);
+        uint256 amount = ICurveMeta(frax_lp).exchange(0, 1, amountToSwap, 0);
         vm.stopPrank();
 
         vm.prank(BASED_ADDRESS);
@@ -270,6 +271,51 @@ contract SnLTest is BaseSetup {
         );
         assertFalse(canHarvestWithLoss);
         assertEq(lossStartBlock, 0);
+    }
+
+    function testGuardShouldMarkStrategyLockedLossVanishes() public {
+        uint256 amountToSwap = 10000000000e18;
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+        // Give lots of frax to alice
+        genStable(amountToSwap, frax, alice);
+
+        // Swap frax to 3crv to incur loss on strategy
+        vm.startPrank(alice);
+        IERC20(frax).approve(frax_lp, type(uint256).max);
+        THREE_POOL_TOKEN.approve(frax_lp, type(uint256).max);
+        uint256 amount = ICurveMeta(frax_lp).exchange(0, 1, amountToSwap, 0);
+        vm.stopPrank();
+
+        vm.prank(BASED_ADDRESS);
+        guard.harvest();
+        (, bool canHarvestWithLoss, uint256 lossStartBlock, , ) = guard
+            .strategyCheck(address(fraxStrategy));
+        // Make sure strategy marked as locked
+        assertFalse(canHarvestWithLoss);
+        assertGt(lossStartBlock, 0);
+        assertFalse(guard.canHarvest());
+
+        // Check that strategy cannot be unlocked
+        (bool canUnlock, ) = guard.canUnlockStrategy();
+        assertFalse(canUnlock);
+        // Now, remove the loss
+        vm.prank(alice);
+        ICurveMeta(frax_lp).exchange(1, 0, amount, 0);
+
+        vm.prank(BASED_ADDRESS);
+        guard.resetLossStartBlock(address(fraxStrategy));
+        // Make sure strategy is unlocked now as loss is gone and values are set to defaults
+        (, canHarvestWithLoss, lossStartBlock, , ) = guard.strategyCheck(
+            address(fraxStrategy)
+        );
+        assertFalse(canHarvestWithLoss);
+        assertEq(lossStartBlock, 0);
+
+        // Make sure we can harvest now:
+        vm.warp(block.timestamp + 604800 + 1);
+        assertTrue(guard.canHarvest());
+        assertTrue(fraxStrategy.canHarvest());
     }
 
     function test_guard_should_execute_if_threshold_broken_and_return_true_if_credit_available()
