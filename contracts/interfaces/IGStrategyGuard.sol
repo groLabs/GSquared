@@ -25,4 +25,10 @@ interface IGStrategyGuard {
 
     /// @notice run strategy harvest
     function harvest() external;
+
+    /// @notice Check if any strategy with loss can be unlocked
+    function canUnlockLoss()
+        external
+        view
+        returns (bool canExec, bytes memory execPayload);
 }

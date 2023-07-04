@@ -56,6 +56,7 @@ contract GStrategyGuard is IGStrategyGuard {
     );
 
     uint256 public constant TARGET_DECIMALS = 18;
+    uint256 public constant LOSS_BLOCK_THRESHOLD = 25;
     AggregatorV3Interface public constant CL_ETH_USD =
         AggregatorV3Interface(
             address(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419)
@@ -70,6 +71,8 @@ contract GStrategyGuard is IGStrategyGuard {
 
     struct strategyData {
         bool active; // Is the strategy active
+        bool canHarvestWithLoss;  // Flag to indicate if the strategy can harvest with loss
+        uint256 lossStartBlock;  // First block when loss occured
         uint64 timeLimit;
         uint64 primerTimestamp; // The time at which the health threshold was broken
     }
@@ -246,6 +249,43 @@ contract GStrategyGuard is IGStrategyGuard {
         }
     }
 
+    /// @notice Check if any strategy with loss can be unlocked
+    /// @return canExec true if a strategy can be unlocked
+    /// @return execPayload payload to execute
+    function canUnlockLoss()
+        external
+        view
+        returns (bool canExec, bytes memory execPayload)
+    {
+        uint256 strategiesLength = strategies.length;
+
+        for (uint256 i; i < strategiesLength; ++i) {
+            address strategy = strategies[i];
+            uint256 excessDebt = _getExcessDebt(IStrategy(strategy));
+            if (
+                excessDebt > 0 &&
+                strategyCheck[strategy].canHarvestWithLoss == false &&
+                strategyCheck[strategy].lossStartBlock != 0 &&
+                strategyCheck[strategy].lossStartBlock + LOSS_BLOCK_THRESHOLD <
+                block.number
+            ) {
+                execPayload = abi.encodeWithSelector(this.unlockLoss.selector, (strategy));
+                canExec = true;
+                break;
+            } else if (
+                excessDebt == 0 && strategyCheck[strategy].lossStartBlock != 0
+            ) {
+
+                execPayload = abi.encodeWithSelector(
+                    this.resetLossStartBlock.selector,
+                    (strategy)
+                );
+                canExec = true;
+                break;
+            }
+        }
+    }
+
     /// @notice Update the stop loss primer by setting a stop loss start time for a strategy
     function setStopLossPrimer() external {
         if (!keepers[msg.sender]) revert GuardErrors.NotKeeper();
@@ -366,6 +406,22 @@ contract GStrategyGuard is IGStrategyGuard {
         return canHarvest;
     }
 
+    /// @notice Calculate the excess debt for a strategy
+    /// @param strategy - the target strategy
+    function _getExcessDebt(IStrategy strategy)
+        internal
+        view
+        returns (uint256)
+    {
+        GVault vault = GVault(strategy.vault());
+        (, , , uint256 totalDebt, , ) = vault.strategies(address(strategy));
+        uint256 assets = strategy.estimatedTotalAssets();
+        uint256 debt = totalDebt;
+        (uint256 excessDebt, ) = vault.excessDebt(address(strategy));
+        excessDebt += debt - assets;
+        return excessDebt;
+    }
+
     /// @notice Check if any strategy needs to be harvested
     function canHarvest() external view returns (bool result) {
         uint256 strategiesLength = strategies.length;
@@ -383,6 +439,28 @@ contract GStrategyGuard is IGStrategyGuard {
         }
     }
 
+    /// @notice Unlock canHarvestWithLoss for strategy
+    /// @param strategy the target strategy
+    function unlockLoss(address strategy) external {
+        if (!keepers[msg.sender]) revert GuardErrors.NotKeeper();
+        strategyCheck[strategy].canHarvestWithLoss = true;
+    }
+
+    /// @notice Reset lossStartBlock for strategy plus resets canHarvestWithLoss
+    /// @param strategy the target strategy
+    function resetLossStartBlock(address strategy) external {
+        if (!keepers[msg.sender]) revert GuardErrors.NotKeeper();
+        _resetLossStartBlock(strategy);
+    }
+
+    /// @notice Reset lossStartBlock for strategy plus resets canHarvestWithLoss
+    /// @param strategy the target strategy
+    function _resetLossStartBlock(address strategy) private {
+        strategyCheck[strategy].lossStartBlock = 0;
+        // Set canHarvestWithLoss to false as well
+        strategyCheck[strategy].canHarvestWithLoss = false;
+    }
+
     /// @notice Execute strategy harvest
     function harvest() external {
         if (!keepers[msg.sender]) revert GuardErrors.NotKeeper();
@@ -392,7 +470,19 @@ contract GStrategyGuard is IGStrategyGuard {
             if (strategy == address(0)) continue;
             if (IStrategy(strategy).canHarvest()) {
                 if (strategyCheck[strategy].active) {
+                    // Record the start block of the loss and don't allow to run with canHarvestWithLoss unless
+                    // It's explicitly allowed
+                    if (
+                        _getExcessDebt(IStrategy(strategy)) > 0 &&
+                        !strategyCheck[strategy].canHarvestWithLoss &&
+                        strategyCheck[strategy].lossStartBlock == 0
+                    ) {
+                        strategyCheck[strategy].lossStartBlock = block.number;
+                        return;
+                    }
                     IStrategy(strategy).runHarvest();
+                    // Reset loss related storage variables so next time we can do checks again
+                    _resetLossStartBlock(strategy);
                     return;
                 }
             }

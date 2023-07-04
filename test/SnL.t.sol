@@ -369,16 +369,16 @@ contract SnLTest is BaseSetup {
         uint64 primerTimestamp; // The time at which the health threshold was broken
 
         assertTrue(!fraxStrategy.canStopLoss());
-        (, , primerTimestamp) = guard.strategyCheck(address(fraxStrategy));
+        (, , , , primerTimestamp) = guard.strategyCheck(address(fraxStrategy));
         assertGt(primerTimestamp, 0);
         assertTrue(guard.canEndStopLoss());
 
         vm.startPrank(BASED_ADDRESS);
         guard.endStopLossPrimer();
 
-        (, , primerTimestamp) = guard.strategyCheck(address(fraxStrategy));
+        (, , , , primerTimestamp) = guard.strategyCheck(address(fraxStrategy));
         assertEq(primerTimestamp, 0);
-        (, , primerTimestamp) = guard.strategyCheck(address(mimStrategy));
+        (, , , , primerTimestamp) = guard.strategyCheck(address(mimStrategy));
         assertGt(primerTimestamp, 0);
         assertTrue(guard.canEndStopLoss());
         vm.stopPrank();
@@ -443,7 +443,7 @@ contract SnLTest is BaseSetup {
         );
         uint64 primerTimestamp;
         bool active;
-        (active, , primerTimestamp) = guard.strategyCheck(
+        (active, , , , primerTimestamp) = guard.strategyCheck(
             address(fraxStrategy)
         );
         assertEq(primerTimestamp, 0);
@@ -471,7 +471,7 @@ contract SnLTest is BaseSetup {
             THREE_POOL_TOKEN.balanceOf(address(mimStrategy))
         );
 
-        (active, , primerTimestamp) = guard.strategyCheck(address(mimStrategy));
+        (active, , , , primerTimestamp) = guard.strategyCheck(address(mimStrategy));
         assertEq(primerTimestamp, 0);
         assertTrue(!active);
 
