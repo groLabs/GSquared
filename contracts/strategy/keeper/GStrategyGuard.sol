@@ -5,7 +5,7 @@ import "../../interfaces/IStrategy.sol";
 import "../../interfaces/IGStrategyGuard.sol";
 import "../../interfaces/AggregatorV3Interface.sol";
 import "../../interfaces/ICurve3Pool.sol";
-import "../../GVault.sol";
+import "../../GVault.sol";s
 
 library GuardErrors {
     error NotOwner(); // 0x30cd7471
@@ -71,8 +71,8 @@ contract GStrategyGuard is IGStrategyGuard {
 
     struct strategyData {
         bool active; // Is the strategy active
-        bool canHarvestWithLoss;  // Flag to indicate if the strategy can harvest with loss
-        uint256 lossStartBlock;  // First block when loss occured
+        bool canHarvestWithLoss; // Flag to indicate if the strategy can harvest with loss
+        uint256 lossStartBlock; // First block when loss occured
         uint64 timeLimit;
         uint64 primerTimestamp; // The time at which the health threshold was broken
     }
@@ -269,13 +269,15 @@ contract GStrategyGuard is IGStrategyGuard {
                 strategyCheck[strategy].lossStartBlock + LOSS_BLOCK_THRESHOLD <
                 block.number
             ) {
-                execPayload = abi.encodeWithSelector(this.unlockLoss.selector, (strategy));
+                execPayload = abi.encodeWithSelector(
+                    this.unlockLoss.selector,
+                    (strategy)
+                );
                 canExec = true;
                 break;
             } else if (
                 excessDebt == 0 && strategyCheck[strategy].lossStartBlock != 0
             ) {
-
                 execPayload = abi.encodeWithSelector(
                     this.resetLossStartBlock.selector,
                     (strategy)
@@ -418,6 +420,10 @@ contract GStrategyGuard is IGStrategyGuard {
         uint256 assets = strategy.estimatedTotalAssets();
         uint256 debt = totalDebt;
         (uint256 excessDebt, ) = vault.excessDebt(address(strategy));
+        // If assets are bigger than debt, there is no excess debt
+        if (assets > debt) {
+            return 0;
+        }
         excessDebt += debt - assets;
         return excessDebt;
     }
@@ -428,6 +434,13 @@ contract GStrategyGuard is IGStrategyGuard {
         for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
             if (strategy == address(0)) continue;
+            // Skip locked strategies
+            if (
+                !strategyCheck[strategy].canHarvestWithLoss &&
+                strategyCheck[strategy].lossStartBlock > 0
+            ) {
+                continue;
+            }
             if (
                 IStrategy(strategy).canHarvest() &&
                 _profitOrLossExceeded(IStrategy(strategy))

@@ -226,7 +226,8 @@ contract SnLTest is BaseSetup {
         assertTrue(fraxStrategy.canHarvest());
         assertTrue(guard.canHarvest());
         guard.harvest();
-        assertTrue(!fraxStrategy.canHarvest());
+        // Frax can still be harvested because it was marked as locked because it has debt
+        assertTrue(fraxStrategy.canHarvest());
         // credit available for other strategies
         assertTrue(mimStrategy.canHarvest());
         assertTrue(musdStrategy.canHarvest());
@@ -471,7 +472,9 @@ contract SnLTest is BaseSetup {
             THREE_POOL_TOKEN.balanceOf(address(mimStrategy))
         );
 
-        (active, , , , primerTimestamp) = guard.strategyCheck(address(mimStrategy));
+        (active, , , , primerTimestamp) = guard.strategyCheck(
+            address(mimStrategy)
+        );
         assertEq(primerTimestamp, 0);
         assertTrue(!active);
 
