@@ -65,7 +65,7 @@ contract GStopLossResolver is Owned {
         returns (bool canExec, bytes memory execPayload)
     {
         IGStrategyGuard executor = IGStrategyGuard(stopLossExecutor);
-        (canExec, execPayload) = executor.canUnlockLoss();
+        (canExec, execPayload) = executor.canUnlockStrategy();
     }
 
     /// @notice returns correct payload to gelato to trigger strategy

@@ -110,6 +110,10 @@ contract SnLTest is BaseSetup {
         mimStrategy.runHarvest();
         musdStrategy.runHarvest();
         vm.stopPrank();
+
+        vm.label(address(fraxStrategy), "Frax Strategy");
+        vm.label(address(musdStrategy), "mUSD Strategy");
+        vm.label(address(mimStrategy), "mim Strategy");
     }
 
     // GIVEN a convex strategy not added to the stop loss logic
@@ -212,6 +216,60 @@ contract SnLTest is BaseSetup {
         // Should be able to execute if there is loss even if gas price is high, because there is a big loss
         assertTrue(fraxStrategy.canHarvest());
         assertTrue(guard.canHarvest());
+    }
+
+    function testGuardShouldMarkStrategyLockedLossPersists() public {
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+        // Give lots of frax to alice
+        genStable(10000000000e18, frax, alice);
+
+        // Swap frax to 3crv to incur loss on strategy
+        vm.startPrank(alice);
+        IERC20(frax).approve(frax_lp, type(uint256).max);
+        uint256 amount = ICurveMeta(frax_lp).exchange(0, 1, 10000000000e18, 0);
+        vm.stopPrank();
+
+        vm.prank(BASED_ADDRESS);
+        guard.harvest();
+        (, bool canHarvestWithLoss, uint256 lossStartBlock, , ) = guard
+            .strategyCheck(address(fraxStrategy));
+        // Make sure strategy marked as locked
+        assertFalse(canHarvestWithLoss);
+        assertGt(lossStartBlock, 0);
+        assertFalse(guard.canHarvest());
+
+        // Check that strategy cannot be unlocked
+        (bool canUnlock, ) = guard.canUnlockStrategy();
+        assertFalse(canUnlock);
+        // Now mine X amount of blocks and strategy can now be harvested even with loss
+        vm.roll(block.number + guard.LOSS_BLOCK_THRESHOLD() + 1);
+        (canUnlock, ) = guard.canUnlockStrategy();
+        assertTrue(canUnlock);
+
+        // Unlock the strategy:
+        vm.prank(BASED_ADDRESS);
+        guard.unlockLoss(address(fraxStrategy));
+
+        // Make sure we can harvest now:
+        assertTrue(guard.canHarvest());
+        assertTrue(fraxStrategy.canHarvest());
+        (, canHarvestWithLoss, lossStartBlock, , ) = guard.strategyCheck(
+            address(fraxStrategy)
+        );
+        assertTrue(canHarvestWithLoss);
+        assertGt(lossStartBlock, 0);
+
+        // Run harvest
+        vm.prank(BASED_ADDRESS);
+        guard.harvest();
+        assertFalse(fraxStrategy.canHarvest());
+        // Make sure frax lock is reset:
+        (, canHarvestWithLoss, lossStartBlock, , ) = guard.strategyCheck(
+            address(fraxStrategy)
+        );
+        assertFalse(canHarvestWithLoss);
+        assertEq(lossStartBlock, 0);
     }
 
     function test_guard_should_execute_if_threshold_broken_and_return_true_if_credit_available()

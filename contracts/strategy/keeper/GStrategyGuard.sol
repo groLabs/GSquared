@@ -5,7 +5,7 @@ import "../../interfaces/IStrategy.sol";
 import "../../interfaces/IGStrategyGuard.sol";
 import "../../interfaces/AggregatorV3Interface.sol";
 import "../../interfaces/ICurve3Pool.sol";
-import "../../GVault.sol";s
+import "../../GVault.sol";
 
 library GuardErrors {
     error NotOwner(); // 0x30cd7471
@@ -252,7 +252,7 @@ contract GStrategyGuard is IGStrategyGuard {
     /// @notice Check if any strategy with loss can be unlocked
     /// @return canExec true if a strategy can be unlocked
     /// @return execPayload payload to execute
-    function canUnlockLoss()
+    function canUnlockStrategy()
         external
         view
         returns (bool canExec, bytes memory execPayload)
