@@ -32,6 +32,7 @@ contract ConvexStrategyTest is BaseSetup {
     using stdStorage for StdStorage;
 
     ConvexStrategy convexStrategy;
+    GStrategyGuard guard;
 
     function setUp() public virtual override {
         BaseSetup.setUp();
@@ -44,12 +45,14 @@ contract ConvexStrategyTest is BaseSetup {
             frax_lp
         );
         StopLossLogic snl = new StopLossLogic();
-
+        guard = new GStrategyGuard();
+        guard.setKeeper(BASED_ADDRESS);
         convexStrategy.setStopLossLogic(address(snl));
         snl.setStrategy(address(convexStrategy), 1e18, 400);
         convexStrategy.setKeeper(BASED_ADDRESS);
         gVault.removeStrategy(address(strategy));
         gVault.addStrategy(address(convexStrategy), 10000);
+        guard.addStrategy(address(strategy), 3600);
         vm.stopPrank();
     }
 
