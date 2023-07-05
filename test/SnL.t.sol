@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Base.GSquared.t.sol";
 import "../contracts/solmate/src/utils/SafeTransferLib.sol";
+import {GuardErrors} from "../contracts/strategy/keeper/GStrategyGuard.sol";
 
 contract SnLTest is BaseSetup {
     uint256 constant MIN_REPORT_DELAY = 172801;
@@ -114,6 +115,32 @@ contract SnLTest is BaseSetup {
         vm.label(address(fraxStrategy), "Frax Strategy");
         vm.label(address(musdStrategy), "mUSD Strategy");
         vm.label(address(mimStrategy), "mim Strategy");
+    }
+
+    function testGuardSetDebtThreshold() public {
+        uint256 initialThreshold = guard.debtThreshold();
+        vm.prank(BASED_ADDRESS);
+        guard.setDebtThreshold(1000);
+        assertEq(guard.debtThreshold(), 1000);
+        assertTrue(initialThreshold != guard.debtThreshold());
+    }
+
+    function testGuardSetDebtThresholdNotOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(GuardErrors.NotOwner.selector));
+        guard.setDebtThreshold(1000);
+    }
+
+    function testGuardSetGasThreshold() public {
+        uint256 initialThreshold = guard.gasThreshold();
+        vm.prank(BASED_ADDRESS);
+        guard.setGasThreshold(1000);
+        assertEq(guard.gasThreshold(), 1000);
+        assertTrue(initialThreshold != guard.gasThreshold());
+    }
+
+    function testGuardSetGasThresholdNotOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(GuardErrors.NotOwner.selector));
+        guard.setGasThreshold(1000);
     }
 
     // GIVEN a convex strategy not added to the stop loss logic
