@@ -54,6 +54,8 @@ contract GStrategyGuard is IGStrategyGuard {
         string reason,
         bytes lowLevelData
     );
+    event LogDebtThresholdSet(uint256 debtThreshold, uint256 oldThreshold);
+    event LogGasThresholdSet(uint256 gasThreshold, uint256 oldThreshold);
 
     uint256 public constant TARGET_DECIMALS = 18;
     uint256 public constant LOSS_BLOCK_THRESHOLD = 25;
@@ -66,6 +68,7 @@ contract GStrategyGuard is IGStrategyGuard {
 
     // 3 million gas to execute harvest
     uint256 public gasThreshold = 3_000_000;
+    uint256 public debtThreshold = 20_000 * 1e18;
     address public owner;
     mapping(address => bool) public keepers;
 
@@ -95,11 +98,22 @@ contract GStrategyGuard is IGStrategyGuard {
         emit LogOwnershipTransferred(previousOwner, _newOwner);
     }
 
+    /// @notice Sets debt threshold
+    /// @param _newDebtThreshold debt threshold to swap to
+    function setDebtThreshold(uint256 _newDebtThreshold) external {
+        if (msg.sender != owner) revert GuardErrors.NotOwner();
+        uint256 oldThreshold = debtThreshold;
+        debtThreshold = _newDebtThreshold;
+        emit LogDebtThresholdSet(_newDebtThreshold, oldThreshold);
+    }
+
     /// @notice set a new gas threshold for the contract to use when checking canHarvest
     /// @param _newGasThreshold gas threshold to swap to
     function setGasThreshold(uint256 _newGasThreshold) external {
         if (msg.sender != owner) revert GuardErrors.NotOwner();
+        uint256 oldThreshold = gasThreshold;
         gasThreshold = _newGasThreshold;
+        emit LogGasThresholdSet(_newGasThreshold, oldThreshold);
     }
 
     /// @notice set a new keeper for the contract
@@ -391,8 +405,8 @@ contract GStrategyGuard is IGStrategyGuard {
         } else {
             excessDebt += debt - assets;
         }
-        // If there is excess debt we should harvest anyway
-        if (excessDebt > 0) {
+        // If there is excess debt we should harvest
+        if (excessDebt > debtThreshold) {
             canHarvest = true;
         }
         profit += vault.creditAvailable(address(strategy));
