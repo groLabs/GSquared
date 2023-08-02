@@ -58,6 +58,66 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
     }
 
+    ////////////////////////////////////////////
+    ///////////// TEST SETTERS /////////////////
+    ////////////////////////////////////////////
+    /// @notice sets 3crv pool to arbitrary address
+    function testSet3crvPoolHappy() public {
+        assertEq(
+            convexStrategy.crv3pool(),
+            address(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7)
+        );
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.set3CrvPool(musd_lp);
+        vm.stopPrank();
+        assertEq(convexStrategy.crv3pool(), musd_lp);
+    }
+
+    function testSet3crvPoolUnHappy() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(StrategyErrors.NotOwner.selector)
+        );
+        convexStrategy.set3CrvPool(musd_lp);
+    }
+
+    /// @notice sets crv eth pool to arbitrary address
+    function testSetCrvEthPoolHappy() public {
+        assertEq(
+            convexStrategy.crvEthPool(),
+            address(0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511)
+        );
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.setCrvEthPool(musd_lp);
+        vm.stopPrank();
+        assertEq(convexStrategy.crvEthPool(), musd_lp);
+    }
+
+    function testSetCrvEthPoolUnHappy() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(StrategyErrors.NotOwner.selector)
+        );
+        convexStrategy.setCrvEthPool(musd_lp);
+    }
+
+    /// @notice sets cvx eth pool to arbitrary address
+    function testSetCvxEthPoolHappy() public {
+        assertEq(
+            convexStrategy.cvxEthPool(),
+            address(0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4)
+        );
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.setCvxEthPool(musd_lp);
+        vm.stopPrank();
+        assertEq(convexStrategy.cvxEthPool(), musd_lp);
+    }
+
+    function testSetCvxEthPoolUnHappy() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(StrategyErrors.NotOwner.selector)
+        );
+        convexStrategy.setCvxEthPool(musd_lp);
+    }
+
     function testStrategyHarvest(uint256 deposit) public {
         vm.assume(deposit > 1E20);
         vm.assume(deposit < 1E25);

@@ -173,13 +173,6 @@ contract ConvexStrategy {
     address internal constant USDC =
         address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
-    address internal constant CRV_3POOL =
-        address(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
-    address internal constant CRV_ETH =
-        address(0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511);
-    address internal constant CVX_ETH =
-        address(0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4);
-
     ERC20 internal constant CRV_3POOL_TOKEN =
         ERC20(address(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490));
 
@@ -245,6 +238,14 @@ contract ConvexStrategy {
     bool public emergencyMode;
     bool public stop;
 
+    // Curve pools
+    address public crv3pool =
+        address(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
+    address public crvEthPool =
+        address(0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511);
+    address public cvxEthPool =
+        address(0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4);
+
     // Strategy harvest thresholds
     uint256 internal debtThreshold = 20_000 * DEFAULT_DECIMALS_FACTOR;
     uint256 internal profitThreshold = 20_000 * DEFAULT_DECIMALS_FACTOR;
@@ -293,6 +294,10 @@ contract ConvexStrategy {
     event LogStopLossErrorString(uint256 stopLossAttempts, string reason);
     event LogStopLossErrorBytes(uint256 stopLossAttempts, bytes data);
 
+    event LogNew3CrvPool(address _pool);
+    event LogNewCrvEthPool(address _pool);
+    event LogNewCvxEthPool(address _pool);
+
     /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
@@ -314,8 +319,8 @@ contract ConvexStrategy {
         ASSET = _asset;
         _asset.approve(address(_vault), type(uint256).max); // Max approve asset for Vault to save gas
 
-        ERC20(CRV).approve(CRV_ETH, type(uint256).max);
-        ERC20(CVX).approve(CVX_ETH, type(uint256).max);
+        ERC20(CRV).approve(crvEthPool, type(uint256).max);
+        ERC20(CVX).approve(cvxEthPool, type(uint256).max);
         ERC20(WETH).approve(UNI_V3, type(uint256).max);
 
         (address lp, , , address reward, , bool shutdown) = Booster(BOOSTER)
@@ -326,7 +331,7 @@ contract ConvexStrategy {
         lpToken = ERC20(lp);
         rewardContract = reward;
         ERC20(CRV_3POOL_TOKEN).approve(_metaPool, type(uint256).max);
-        ERC20(USDC).approve(CRV_3POOL, type(uint256).max);
+        ERC20(USDC).approve(crv3pool, type(uint256).max);
         ERC20(lp).approve(BOOSTER, type(uint256).max);
         emit LogChangePool(_pid, lp, reward, _metaPool);
     }
@@ -471,6 +476,30 @@ contract ConvexStrategy {
         emit LogNewBaseSlippage(_baseSlippage);
     }
 
+    /// @notice set 3crv pool address
+    /// @param _pool 3crv pool address
+    function set3CrvPool(address _pool) external {
+        if (msg.sender != owner) revert StrategyErrors.NotOwner();
+        crv3pool = _pool;
+        emit LogNew3CrvPool(_pool);
+    }
+
+    /// @notice set crv eth pool address
+    /// @param _pool crv eth pool address
+    function setCrvEthPool(address _pool) external {
+        if (msg.sender != owner) revert StrategyErrors.NotOwner();
+        crvEthPool = _pool;
+        emit LogNewCrvEthPool(_pool);
+    }
+
+    /// @notice set cvx eth pool address
+    /// @param _pool cvx eth pool address
+    function setCvxEthPool(address _pool) external {
+        if (msg.sender != owner) revert StrategyErrors.NotOwner();
+        cvxEthPool = _pool;
+        emit LogNewCvxEthPool(_pool);
+    }
+
     /*//////////////////////////////////////////////////////////////
                            STRATEGY ACCOUNTING LOGIC
     //////////////////////////////////////////////////////////////*/
@@ -564,7 +593,7 @@ contract ConvexStrategy {
         //  virtual price to get an estimate for the number of tokens we will get
         return
             _amount *
-            ((price * 1E12) / ICurve3Pool(CRV_3POOL).get_virtual_price());
+            ((price * 1E12) / ICurve3Pool(crv3pool).get_virtual_price());
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -612,12 +641,12 @@ contract ConvexStrategy {
 
         uint256 crvValue;
         if (crv > MIN_REWARD_SELL_AMOUNT) {
-            crvValue = getPriceCurve(CRV_ETH, crv);
+            crvValue = getPriceCurve(crvEthPool, crv);
         }
 
         uint256 cvxValue;
         if (cvx > MIN_REWARD_SELL_AMOUNT) {
-            cvxValue = getPriceCurve(CVX_ETH, cvx);
+            cvxValue = getPriceCurve(cvxEthPool, cvx);
         }
 
         if (crvValue + cvxValue > MIN_WETH_SELL_AMOUNT) {
@@ -643,7 +672,7 @@ contract ConvexStrategy {
 
         uint256 cvx = ERC20(CVX).balanceOf(address(this));
         if (cvx > MIN_REWARD_SELL_AMOUNT) {
-            wethAmount += ICurveRewards(CVX_ETH).exchange(
+            wethAmount += ICurveRewards(cvxEthPool).exchange(
                 CRV_ETH_INDEX,
                 0,
                 cvx,
@@ -654,7 +683,7 @@ contract ConvexStrategy {
 
         uint256 crv = ERC20(CRV).balanceOf(address(this));
         if (crv > MIN_REWARD_SELL_AMOUNT) {
-            wethAmount += ICurveRewards(CRV_ETH).exchange(
+            wethAmount += ICurveRewards(crvEthPool).exchange(
                 CRV_ETH_INDEX,
                 0,
                 crv,
@@ -674,7 +703,7 @@ contract ConvexStrategy {
                     0
                 )
             );
-            ICurve3Pool(CRV_3POOL).add_liquidity(_amounts, 0);
+            ICurve3Pool(crv3pool).add_liquidity(_amounts, 0);
             return CRV_3POOL_TOKEN.balanceOf(address(this));
         }
     }
@@ -1135,7 +1164,7 @@ contract ConvexStrategy {
 
     /// @notice Get ratio between meta pool tokens
     function curveValue() internal view returns (uint256) {
-        uint256 three_pool_vp = ICurve3Pool(CRV_3POOL).get_virtual_price();
+        uint256 three_pool_vp = ICurve3Pool(crv3pool).get_virtual_price();
         uint256 meta_pool_vp = ICurveMeta(metaPool).get_virtual_price();
         return (meta_pool_vp * PERCENTAGE_DECIMAL_FACTOR) / three_pool_vp;
     }
