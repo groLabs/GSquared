@@ -1169,6 +1169,12 @@ contract ConvexStrategy {
         return (meta_pool_vp * PERCENTAGE_DECIMAL_FACTOR) / three_pool_vp;
     }
 
+    /// @notice Claims rewards from the convex reward pool
+    function claimRewards() external {
+        if (msg.sender != owner) revert StrategyErrors.NotOwner();
+        Rewards(rewardContract).getReward();
+    }
+
     /// @notice sweep unwanted tokens from the contract
     /// @param _recipient of the token
     /// @param _token address of
