@@ -232,8 +232,8 @@ contract ConvexStrategy {
     address internal newRewardContract;
 
     // Additional reward tokens provided by CRV
-    address[MAX_REWARDS] public rewardTokens;
-    uint256 numberOfRewards;
+    address[] public rewardTokens;
+    uint256 public numberOfRewards;
 
     // Admin variables
     address public owner; // contract owner
@@ -416,6 +416,7 @@ contract ConvexStrategy {
         if (msg.sender != owner) revert StrategyErrors.NotOwner();
         if (_tokens.length > MAX_REWARDS)
             revert StrategyErrors.RewardsTokenMax();
+        // Revoke approval for all current reward tokens
         for (uint256 i; i < rewardTokens.length; i++) {
             ERC20(rewardTokens[i]).approve(UNI_V2, 0);
         }
@@ -423,7 +424,7 @@ contract ConvexStrategy {
         numberOfRewards = _tokens.length;
         for (uint256 i; i < _tokens.length; ++i) {
             address token = _tokens[i];
-            rewardTokens[i] = token;
+            rewardTokens.push(token);
             ERC20(token).approve(UNI_V2, type(uint256).max);
         }
         emit LogAdditionalRewards(_tokens);

@@ -31,6 +31,8 @@ contract ConvexStrategyTest is BaseSetup {
 
     using stdStorage for StdStorage;
 
+    address[] public tokens;
+
     ConvexStrategy convexStrategy;
     GStrategyGuard guard;
 
@@ -1018,5 +1020,42 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
         assertGt(convexStrategy.estimatedTotalAssets(), initialAssets);
         assertGt(finalTotalDebt, initTotalDebt);
+    }
+
+    function testStrategySetAdditionalRewardsHappy() external {
+        tokens.push(address(USDC));
+        tokens.push(address(DAI));
+        tokens.push(address(THREE_POOL_TOKEN));
+        tokens.push(address(CURVE_TOKEN));
+        vm.prank(BASED_ADDRESS);
+        convexStrategy.setAdditionalRewards(tokens);
+
+        // Make sure the tokens are added
+        assertEq(convexStrategy.rewardTokens(0), address(USDC));
+        assertEq(convexStrategy.rewardTokens(1), address(DAI));
+        assertEq(convexStrategy.rewardTokens(2), address(THREE_POOL_TOKEN));
+        assertEq(convexStrategy.rewardTokens(3), address(CURVE_TOKEN));
+    }
+
+    function testStrategySetAdditionalRewardsUnhappy() external {
+        // Push invalid token address
+        tokens.push(address(0));
+        vm.startPrank(BASED_ADDRESS);
+        vm.expectRevert();
+        convexStrategy.setAdditionalRewards(tokens);
+        vm.stopPrank();
+    }
+
+    function testStrategySetAdditionalRewardsUnhappyRewardsTokenMax() external {
+        // Push more than MAX_REWARDS tokens:
+        for (uint256 i = 0; i < 10; i++) {
+            tokens.push(address(USDC));
+        }
+        vm.startPrank(BASED_ADDRESS);
+        vm.expectRevert(
+            abi.encodeWithSelector(StrategyErrors.RewardsTokenMax.selector)
+        );
+        convexStrategy.setAdditionalRewards(tokens);
+        vm.stopPrank();
     }
 }
