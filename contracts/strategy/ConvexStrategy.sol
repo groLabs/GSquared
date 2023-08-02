@@ -944,7 +944,6 @@ contract ConvexStrategy {
 
         // separate logic for emergency mode which needs implementation
         if (emergencyMode) {
-            sellAllRewards();
             divestAll(false);
             emergency = true;
             debtRepayment = ASSET.balanceOf(address(this));
@@ -981,7 +980,7 @@ contract ConvexStrategy {
     ///     any gains/losses from this action to the vault
     function stopLoss() external returns (bool) {
         if (!keepers[msg.sender]) revert StrategyErrors.NotKeeper();
-        if (stopLossAttempts == 0) sellAllRewards();
+        if (stopLossAttempts == 0 && !emergencyMode) sellAllRewards();
         if (divestAll(true) == 0) {
             stopLossAttempts += 1;
             return false;
