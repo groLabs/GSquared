@@ -640,12 +640,12 @@ contract ConvexStrategy {
         }
 
         uint256 crvValue;
-        if (crv > MIN_REWARD_SELL_AMOUNT) {
+        if (crv > MIN_REWARD_SELL_AMOUNT && crvEthPool != address(0)) {
             crvValue = getPriceCurve(crvEthPool, crv);
         }
 
         uint256 cvxValue;
-        if (cvx > MIN_REWARD_SELL_AMOUNT) {
+        if (cvx > MIN_REWARD_SELL_AMOUNT && cvxEthPool != address(0)) {
             cvxValue = getPriceCurve(cvxEthPool, cvx);
         }
 
@@ -671,7 +671,7 @@ contract ConvexStrategy {
         }
 
         uint256 cvx = ERC20(CVX).balanceOf(address(this));
-        if (cvx > MIN_REWARD_SELL_AMOUNT) {
+        if (cvx > MIN_REWARD_SELL_AMOUNT && cvxEthPool != address(0)) {
             wethAmount += ICurveRewards(cvxEthPool).exchange(
                 CRV_ETH_INDEX,
                 0,
@@ -682,7 +682,7 @@ contract ConvexStrategy {
         }
 
         uint256 crv = ERC20(CRV).balanceOf(address(this));
-        if (crv > MIN_REWARD_SELL_AMOUNT) {
+        if (crv > MIN_REWARD_SELL_AMOUNT && crvEthPool != address(0)) {
             wethAmount += ICurveRewards(crvEthPool).exchange(
                 CRV_ETH_INDEX,
                 0,
