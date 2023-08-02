@@ -1057,6 +1057,27 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
     }
 
+    function testClaimAndSweepRewards() public {
+        depositIntoVault(alice, 1E24);
+
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.runHarvest();
+        uint256 initialAssets = convexStrategy.estimatedTotalAssets();
+
+        prepareRewards(fraxConvexRewards);
+        assertGt(convexStrategy.estimatedTotalAssets(), initialAssets);
+
+        convexStrategy.claimRewards();
+        // Check that balance of curve token is non 0 after claim:
+        assertGt(CURVE_TOKEN.balanceOf(address(convexStrategy)), 0);
+        assertEq(CURVE_TOKEN.balanceOf(address(this)), 0);
+        // Sweep and check balance of curve token is 0 after sweep:
+        convexStrategy.sweep(address(this), address(CURVE_TOKEN));
+        assertEq(CURVE_TOKEN.balanceOf(address(convexStrategy)), 0);
+        assertGt(CURVE_TOKEN.balanceOf(address(this)), 0);
+        vm.stopPrank();
+    }
+
     // TODO: This test is omitted
     function test_strategy_should_claim_and_sell_rewards() private {
         depositIntoVault(alice, 1E24);
