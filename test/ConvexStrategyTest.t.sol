@@ -1117,6 +1117,40 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
     }
 
+    /// @notice Simple test to check allowance is set properly for additional rewards
+    function testSetAdditionalTokensAllowanceCheck() public {
+        // Make sure CRV starts with 0 allowance
+        assertEq(
+            CURVE_TOKEN.allowance(
+                address(convexStrategy),
+                address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)
+            ),
+            0
+        );
+        tokens.push(address(CURVE_TOKEN));
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.setAdditionalRewards(tokens);
+        // Make sure Curve allowance for strategy is set as uint256 max value
+        assertEq(
+            CURVE_TOKEN.allowance(
+                address(convexStrategy),
+                address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)
+            ),
+            type(uint256).max
+        );
+        // Now remove Curve from additional rewards and check that allowance is set to 0
+        tokens.pop();
+        tokens.push(address(USDC));
+        convexStrategy.setAdditionalRewards(tokens);
+        assertEq(
+            CURVE_TOKEN.allowance(
+                address(convexStrategy),
+                address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)
+            ),
+            0
+        );
+    }
+
     // TODO: This test is omitted
     function test_strategy_should_claim_and_sell_rewards() private {
         depositIntoVault(alice, 1E24);
