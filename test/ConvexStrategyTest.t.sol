@@ -1078,6 +1078,45 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
     }
 
+    /// @notice Test for the case if crveth pool is borked and we can't sell rewards as usual
+    /// Then we got to set CRV token as additional reward and sell it through that
+    function testSellCrvAsAdditionalReward() public {
+        depositIntoVault(alice, 1E24);
+        tokens.push(address(CURVE_TOKEN));
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.runHarvest();
+        uint256 initialAssets = convexStrategy.estimatedTotalAssets();
+
+        prepareRewards(fraxConvexRewards);
+        assertGt(convexStrategy.estimatedTotalAssets(), initialAssets);
+        convexStrategy.setCrvEthPool(address(0));
+        convexStrategy.setAdditionalRewards(tokens);
+        // Harvest in normal mode should sell crv through additional rewards
+        convexStrategy.runHarvest();
+        // Check that rewards are sold
+        assertEq(convexStrategy.rewards(), 0);
+        assertEq(CURVE_TOKEN.balanceOf(address(convexStrategy)), 0);
+        vm.stopPrank();
+    }
+
+    /// @notice Test for the case if crveth pool is borked and we can't sell rewards as usual
+    /// Then we just set crveth pool as 0x and rewards should stay unsold
+    function testSetCrvEthBorked() public {
+        depositIntoVault(alice, 1E24);
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.runHarvest();
+        uint256 initialAssets = convexStrategy.estimatedTotalAssets();
+
+        prepareRewards(fraxConvexRewards);
+        assertGt(convexStrategy.estimatedTotalAssets(), initialAssets);
+        convexStrategy.setCrvEthPool(address(0));
+        convexStrategy.runHarvest();
+        // Check that rewards are claimed but crv is not sold
+        assertEq(convexStrategy.rewards(), 0);
+        assertGt(CURVE_TOKEN.balanceOf(address(convexStrategy)), 0);
+        vm.stopPrank();
+    }
+
     // TODO: This test is omitted
     function test_strategy_should_claim_and_sell_rewards() private {
         depositIntoVault(alice, 1E24);
