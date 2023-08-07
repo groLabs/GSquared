@@ -476,27 +476,34 @@ contract ConvexStrategy {
         emit LogNewBaseSlippage(_baseSlippage);
     }
 
-    /// @notice set 3crv pool address
+    /// @notice set 3crv pool address and revoke approval from old pool
     /// @param _pool 3crv pool address
     function set3CrvPool(address _pool) external {
         if (msg.sender != owner) revert StrategyErrors.NotOwner();
+        // Revoke approval from old pool:
+        ERC20(USDC).approve(crv3pool, 0);
         crv3pool = _pool;
+        ERC20(USDC).approve(crv3pool, type(uint256).max);
         emit LogNew3CrvPool(_pool);
     }
 
-    /// @notice set crv eth pool address
+    /// @notice set crv eth pool address and revoke approval from old pool
     /// @param _pool crv eth pool address
     function setCrvEthPool(address _pool) external {
         if (msg.sender != owner) revert StrategyErrors.NotOwner();
+        ERC20(CRV).approve(crvEthPool, 0);
         crvEthPool = _pool;
+        ERC20(CRV).approve(crvEthPool, type(uint256).max);
         emit LogNewCrvEthPool(_pool);
     }
 
-    /// @notice set cvx eth pool address
+    /// @notice set cvx eth pool address and revoke approval from old pool
     /// @param _pool cvx eth pool address
     function setCvxEthPool(address _pool) external {
         if (msg.sender != owner) revert StrategyErrors.NotOwner();
+        ERC20(CVX).approve(cvxEthPool, 0);
         cvxEthPool = _pool;
+        ERC20(CVX).approve(cvxEthPool, type(uint256).max);
         emit LogNewCvxEthPool(_pool);
     }
 
@@ -545,6 +552,8 @@ contract ConvexStrategy {
 
     /// @notice Claim and sell off all reward tokens for underlying asset
     function sellAllRewards() internal returns (uint256) {
+        // Early revert in case of emergency mode
+        if (emergencyMode) return 0;
         Rewards(rewardContract).getReward();
         return _sellRewards();
     }
@@ -1009,7 +1018,7 @@ contract ConvexStrategy {
     ///     any gains/losses from this action to the vault
     function stopLoss() external returns (bool) {
         if (!keepers[msg.sender]) revert StrategyErrors.NotKeeper();
-        if (stopLossAttempts == 0 && !emergencyMode) sellAllRewards();
+        if (stopLossAttempts == 0) sellAllRewards();
         if (divestAll(true) == 0) {
             stopLossAttempts += 1;
             return false;
