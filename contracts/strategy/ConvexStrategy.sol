@@ -559,6 +559,8 @@ contract ConvexStrategy {
     }
 
     /// @notice Return combined value of all reward tokens in underlying asset
+    /// @dev Note that this doesn't include rewards that were already claimed. This might delay selling of rewards
+    /// @dev until next rewards are claimed if previous rewards are claimed.
     function rewards() public view returns (uint256) {
         return _claimableRewards() + _additionalRewardTokens();
     }
@@ -674,7 +676,6 @@ contract ConvexStrategy {
     function _sellRewards() internal returns (uint256) {
         uint256 wethAmount = ERC20(WETH).balanceOf(address(this));
         uint256 _numberOfRewards = numberOfRewards;
-
         if (_numberOfRewards > 0) {
             wethAmount += _sellAdditionalRewards(_numberOfRewards);
         }
@@ -820,7 +821,6 @@ contract ConvexStrategy {
             uint256 balance,
             uint256 _rewards
         ) = _estimatedTotalAssets(true);
-
         if (_rewards > MIN_REWARD_SELL_AMOUNT) balance = sellAllRewards();
         if (_excessDebt > assets) {
             // if we have more excess debt, this is an edge case and we shouldn't do any harvest at this point
@@ -979,7 +979,6 @@ contract ConvexStrategy {
 
         uint256 balance;
         bool emergency;
-
         // separate logic for emergency mode which needs implementation
         if (emergencyMode) {
             divestAll(false);
