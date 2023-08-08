@@ -552,7 +552,7 @@ contract ConvexStrategy {
 
     /// @notice Claim and sell off all reward tokens for underlying asset
     function sellAllRewards() internal returns (uint256) {
-        // Early revert in case of emergency mode
+        // Early return in case of emergency mode
         if (emergencyMode) return 0;
         Rewards(rewardContract).getReward();
         return _sellRewards();
