@@ -173,13 +173,6 @@ contract ConvexStrategy {
     address internal constant USDC =
         address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
-    address internal constant CRV_3POOL =
-        address(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
-    address internal constant CRV_ETH =
-        address(0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511);
-    address internal constant CVX_ETH =
-        address(0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4);
-
     ERC20 internal constant CRV_3POOL_TOKEN =
         ERC20(address(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490));
 
@@ -232,8 +225,8 @@ contract ConvexStrategy {
     address internal newRewardContract;
 
     // Additional reward tokens provided by CRV
-    address[MAX_REWARDS] public rewardTokens;
-    uint256 numberOfRewards;
+    address[] public rewardTokens;
+    uint256 public numberOfRewards;
 
     // Admin variables
     address public owner; // contract owner
@@ -244,6 +237,14 @@ contract ConvexStrategy {
     address public stopLossLogic;
     bool public emergencyMode;
     bool public stop;
+
+    // Curve pools
+    address public crv3pool =
+        address(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
+    address public crvEthPool =
+        address(0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511);
+    address public cvxEthPool =
+        address(0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4);
 
     // Strategy harvest thresholds
     uint256 internal debtThreshold = 20_000 * DEFAULT_DECIMALS_FACTOR;
@@ -293,6 +294,10 @@ contract ConvexStrategy {
     event LogStopLossErrorString(uint256 stopLossAttempts, string reason);
     event LogStopLossErrorBytes(uint256 stopLossAttempts, bytes data);
 
+    event LogNew3CrvPool(address _pool);
+    event LogNewCrvEthPool(address _pool);
+    event LogNewCvxEthPool(address _pool);
+
     /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
@@ -314,8 +319,8 @@ contract ConvexStrategy {
         ASSET = _asset;
         _asset.approve(address(_vault), type(uint256).max); // Max approve asset for Vault to save gas
 
-        ERC20(CRV).approve(CRV_ETH, type(uint256).max);
-        ERC20(CVX).approve(CVX_ETH, type(uint256).max);
+        ERC20(CRV).approve(crvEthPool, type(uint256).max);
+        ERC20(CVX).approve(cvxEthPool, type(uint256).max);
         ERC20(WETH).approve(UNI_V3, type(uint256).max);
 
         (address lp, , , address reward, , bool shutdown) = Booster(BOOSTER)
@@ -326,7 +331,7 @@ contract ConvexStrategy {
         lpToken = ERC20(lp);
         rewardContract = reward;
         ERC20(CRV_3POOL_TOKEN).approve(_metaPool, type(uint256).max);
-        ERC20(USDC).approve(CRV_3POOL, type(uint256).max);
+        ERC20(USDC).approve(crv3pool, type(uint256).max);
         ERC20(lp).approve(BOOSTER, type(uint256).max);
         emit LogChangePool(_pid, lp, reward, _metaPool);
     }
@@ -416,6 +421,7 @@ contract ConvexStrategy {
         if (msg.sender != owner) revert StrategyErrors.NotOwner();
         if (_tokens.length > MAX_REWARDS)
             revert StrategyErrors.RewardsTokenMax();
+        // Revoke approval for all current reward tokens
         for (uint256 i; i < rewardTokens.length; i++) {
             ERC20(rewardTokens[i]).approve(UNI_V2, 0);
         }
@@ -423,7 +429,7 @@ contract ConvexStrategy {
         numberOfRewards = _tokens.length;
         for (uint256 i; i < _tokens.length; ++i) {
             address token = _tokens[i];
-            rewardTokens[i] = token;
+            rewardTokens.push(token);
             ERC20(token).approve(UNI_V2, type(uint256).max);
         }
         emit LogAdditionalRewards(_tokens);
@@ -468,6 +474,37 @@ contract ConvexStrategy {
         if (msg.sender != owner) revert StrategyErrors.NotOwner();
         baseSlippage = _baseSlippage;
         emit LogNewBaseSlippage(_baseSlippage);
+    }
+
+    /// @notice set 3crv pool address and revoke approval from old pool
+    /// @param _pool 3crv pool address
+    function set3CrvPool(address _pool) external {
+        if (msg.sender != owner) revert StrategyErrors.NotOwner();
+        // Revoke approval from old pool:
+        ERC20(USDC).approve(crv3pool, 0);
+        crv3pool = _pool;
+        ERC20(USDC).approve(crv3pool, type(uint256).max);
+        emit LogNew3CrvPool(_pool);
+    }
+
+    /// @notice set crv eth pool address and revoke approval from old pool
+    /// @param _pool crv eth pool address
+    function setCrvEthPool(address _pool) external {
+        if (msg.sender != owner) revert StrategyErrors.NotOwner();
+        ERC20(CRV).approve(crvEthPool, 0);
+        crvEthPool = _pool;
+        ERC20(CRV).approve(crvEthPool, type(uint256).max);
+        emit LogNewCrvEthPool(_pool);
+    }
+
+    /// @notice set cvx eth pool address and revoke approval from old pool
+    /// @param _pool cvx eth pool address
+    function setCvxEthPool(address _pool) external {
+        if (msg.sender != owner) revert StrategyErrors.NotOwner();
+        ERC20(CVX).approve(cvxEthPool, 0);
+        cvxEthPool = _pool;
+        ERC20(CVX).approve(cvxEthPool, type(uint256).max);
+        emit LogNewCvxEthPool(_pool);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -515,11 +552,15 @@ contract ConvexStrategy {
 
     /// @notice Claim and sell off all reward tokens for underlying asset
     function sellAllRewards() internal returns (uint256) {
+        // Early return in case of emergency mode
+        if (emergencyMode) return 0;
         Rewards(rewardContract).getReward();
         return _sellRewards();
     }
 
     /// @notice Return combined value of all reward tokens in underlying asset
+    /// @dev Note that this doesn't include rewards that were already claimed. This might delay selling of rewards
+    /// @dev until next rewards are claimed if previous rewards are claimed.
     function rewards() public view returns (uint256) {
         return _claimableRewards() + _additionalRewardTokens();
     }
@@ -563,7 +604,7 @@ contract ConvexStrategy {
         //  virtual price to get an estimate for the number of tokens we will get
         return
             _amount *
-            ((price * 1E12) / ICurve3Pool(CRV_3POOL).get_virtual_price());
+            ((price * 1E12) / ICurve3Pool(crv3pool).get_virtual_price());
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -610,13 +651,13 @@ contract ConvexStrategy {
         }
 
         uint256 crvValue;
-        if (crv > MIN_REWARD_SELL_AMOUNT) {
-            crvValue = getPriceCurve(CRV_ETH, crv);
+        if (crv > MIN_REWARD_SELL_AMOUNT && crvEthPool != address(0)) {
+            crvValue = getPriceCurve(crvEthPool, crv);
         }
 
         uint256 cvxValue;
-        if (cvx > MIN_REWARD_SELL_AMOUNT) {
-            cvxValue = getPriceCurve(CVX_ETH, cvx);
+        if (cvx > MIN_REWARD_SELL_AMOUNT && cvxEthPool != address(0)) {
+            cvxValue = getPriceCurve(cvxEthPool, cvx);
         }
 
         if (crvValue + cvxValue > MIN_WETH_SELL_AMOUNT) {
@@ -635,14 +676,13 @@ contract ConvexStrategy {
     function _sellRewards() internal returns (uint256) {
         uint256 wethAmount = ERC20(WETH).balanceOf(address(this));
         uint256 _numberOfRewards = numberOfRewards;
-
         if (_numberOfRewards > 0) {
             wethAmount += _sellAdditionalRewards(_numberOfRewards);
         }
 
         uint256 cvx = ERC20(CVX).balanceOf(address(this));
-        if (cvx > MIN_REWARD_SELL_AMOUNT) {
-            wethAmount += ICurveRewards(CVX_ETH).exchange(
+        if (cvx > MIN_REWARD_SELL_AMOUNT && cvxEthPool != address(0)) {
+            wethAmount += ICurveRewards(cvxEthPool).exchange(
                 CRV_ETH_INDEX,
                 0,
                 cvx,
@@ -652,8 +692,8 @@ contract ConvexStrategy {
         }
 
         uint256 crv = ERC20(CRV).balanceOf(address(this));
-        if (crv > MIN_REWARD_SELL_AMOUNT) {
-            wethAmount += ICurveRewards(CRV_ETH).exchange(
+        if (crv > MIN_REWARD_SELL_AMOUNT && crvEthPool != address(0)) {
+            wethAmount += ICurveRewards(crvEthPool).exchange(
                 CRV_ETH_INDEX,
                 0,
                 crv,
@@ -673,7 +713,7 @@ contract ConvexStrategy {
                     0
                 )
             );
-            ICurve3Pool(CRV_3POOL).add_liquidity(_amounts, 0);
+            ICurve3Pool(crv3pool).add_liquidity(_amounts, 0);
             return CRV_3POOL_TOKEN.balanceOf(address(this));
         }
     }
@@ -781,7 +821,6 @@ contract ConvexStrategy {
             uint256 balance,
             uint256 _rewards
         ) = _estimatedTotalAssets(true);
-
         if (_rewards > MIN_REWARD_SELL_AMOUNT) balance = sellAllRewards();
         if (_excessDebt > assets) {
             // if we have more excess debt, this is an edge case and we shouldn't do any harvest at this point
@@ -940,10 +979,8 @@ contract ConvexStrategy {
 
         uint256 balance;
         bool emergency;
-
         // separate logic for emergency mode which needs implementation
         if (emergencyMode) {
-            sellAllRewards();
             divestAll(false);
             emergency = true;
             debtRepayment = ASSET.balanceOf(address(this));
@@ -1135,9 +1172,15 @@ contract ConvexStrategy {
 
     /// @notice Get ratio between meta pool tokens
     function curveValue() internal view returns (uint256) {
-        uint256 three_pool_vp = ICurve3Pool(CRV_3POOL).get_virtual_price();
+        uint256 three_pool_vp = ICurve3Pool(crv3pool).get_virtual_price();
         uint256 meta_pool_vp = ICurveMeta(metaPool).get_virtual_price();
         return (meta_pool_vp * PERCENTAGE_DECIMAL_FACTOR) / three_pool_vp;
+    }
+
+    /// @notice Claims rewards from the convex reward pool
+    function claimRewards() external {
+        if (msg.sender != owner) revert StrategyErrors.NotOwner();
+        Rewards(rewardContract).getReward();
     }
 
     /// @notice sweep unwanted tokens from the contract
@@ -1147,8 +1190,6 @@ contract ConvexStrategy {
         if (msg.sender != owner) revert StrategyErrors.NotOwner();
         if (address(ASSET) == _token) revert StrategyErrors.BaseAsset();
         if (address(lpToken) == _token) revert StrategyErrors.LpToken();
-        if (address(rewardContract) == _token)
-            revert StrategyErrors.ConvexToken();
         uint256 _amount = ERC20(_token).balanceOf(address(this));
         ERC20(_token).transfer(_recipient, _amount);
     }

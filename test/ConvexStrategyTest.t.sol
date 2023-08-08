@@ -9,7 +9,13 @@ contract ConvexStrategyTest is BaseSetup {
     uint256 constant MIN_REPORT_DELAY = 172801;
     uint256 constant MAX_REPORT_DELAY = 604801;
     uint256 constant LARGE_AMOUNT = 10**26;
+    address public constant CRV_ETH_POOL =
+        address(0x8301AE4fc9c624d1D396cbDAa1ed877821D7C511);
+    ERC20 public constant CVX =
+        ERC20(address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B));
 
+    address public CVX_ETH_POOL =
+        address(0xB576491F1E6e5E62f1d8F26062Ee822B40B0E0d4);
     address frax_lp = address(0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B);
     address frax = address(0x853d955aCEf822Db058eb8505911ED77F175b99e);
     address fraxConvexPool =
@@ -30,6 +36,8 @@ contract ConvexStrategyTest is BaseSetup {
     using SafeTransferLib for IERC20;
 
     using stdStorage for StdStorage;
+
+    address[] public tokens;
 
     ConvexStrategy convexStrategy;
     GStrategyGuard guard;
@@ -54,6 +62,105 @@ contract ConvexStrategyTest is BaseSetup {
         gVault.addStrategy(address(convexStrategy), 10000);
         guard.addStrategy(address(strategy), 3600);
         vm.stopPrank();
+    }
+
+    ////////////////////////////////////////////
+    ///////////// TEST SETTERS /////////////////
+    ////////////////////////////////////////////
+    /// @notice sets 3crv pool to arbitrary address
+    function testSet3crvPoolHappy() public {
+        // Check USDC allowance
+        assertEq(
+            USDC.allowance(address(convexStrategy), convexStrategy.crv3pool()),
+            type(uint256).max
+        );
+        assertEq(
+            convexStrategy.crv3pool(),
+            address(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7)
+        );
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.set3CrvPool(musd_lp);
+        assertEq(USDC.allowance(address(convexStrategy), THREE_POOL), 0);
+        // Check that musd allowance is set to max
+        assertEq(
+            USDC.allowance(address(convexStrategy), convexStrategy.crv3pool()),
+            type(uint256).max
+        );
+        vm.stopPrank();
+        assertEq(convexStrategy.crv3pool(), musd_lp);
+    }
+
+    function testSet3crvPoolUnHappy() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(StrategyErrors.NotOwner.selector)
+        );
+        convexStrategy.set3CrvPool(musd_lp);
+    }
+
+    /// @notice sets crv eth pool to arbitrary address
+    function testSetCrvEthPoolHappy() public {
+        // Check crv allowance
+        assertEq(
+            CURVE_TOKEN.allowance(
+                address(convexStrategy),
+                convexStrategy.crvEthPool()
+            ),
+            type(uint256).max
+        );
+        assertEq(convexStrategy.crvEthPool(), CRV_ETH_POOL);
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.setCrvEthPool(musd_lp);
+
+        // Check curve allowance should be set to 0 now:
+        assertEq(
+            CURVE_TOKEN.allowance(address(convexStrategy), CRV_ETH_POOL),
+            0
+        );
+        // Check that musd allowance is set to max
+        assertEq(
+            CURVE_TOKEN.allowance(
+                address(convexStrategy),
+                convexStrategy.crvEthPool()
+            ),
+            type(uint256).max
+        );
+        vm.stopPrank();
+        assertEq(convexStrategy.crvEthPool(), musd_lp);
+    }
+
+    function testSetCrvEthPoolUnHappy() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(StrategyErrors.NotOwner.selector)
+        );
+        convexStrategy.setCrvEthPool(musd_lp);
+    }
+
+    /// @notice sets cvx eth pool to arbitrary address
+    function testSetCvxEthPoolHappy() public {
+        // Check cvx allowance
+        assertEq(
+            CVX.allowance(address(convexStrategy), convexStrategy.cvxEthPool()),
+            type(uint256).max
+        );
+        assertEq(convexStrategy.cvxEthPool(), address(CVX_ETH_POOL));
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.setCvxEthPool(musd_lp);
+        // Check cvx allowance should be set to 0 now:
+        assertEq(CVX.allowance(address(convexStrategy), CVX_ETH_POOL), 0);
+        // Check that musd allowance is set to max
+        assertEq(
+            CVX.allowance(address(convexStrategy), convexStrategy.cvxEthPool()),
+            type(uint256).max
+        );
+        vm.stopPrank();
+        assertEq(convexStrategy.cvxEthPool(), musd_lp);
+    }
+
+    function testSetCvxEthPoolUnHappy() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(StrategyErrors.NotOwner.selector)
+        );
+        convexStrategy.setCvxEthPool(musd_lp);
     }
 
     function testStrategyHarvest(uint256 deposit) public {
@@ -995,6 +1102,119 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
     }
 
+    function testClaimAndSweepRewards() public {
+        depositIntoVault(alice, 1E24);
+
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.runHarvest();
+        uint256 initialAssets = convexStrategy.estimatedTotalAssets();
+
+        prepareRewards(fraxConvexRewards);
+        assertGt(convexStrategy.estimatedTotalAssets(), initialAssets);
+
+        convexStrategy.claimRewards();
+        // Check that balance of curve token is non 0 after claim:
+        assertGt(CURVE_TOKEN.balanceOf(address(convexStrategy)), 0);
+        assertEq(CURVE_TOKEN.balanceOf(address(this)), 0);
+        // Sweep and check balance of curve token is 0 after sweep:
+        convexStrategy.sweep(address(this), address(CURVE_TOKEN));
+        assertEq(CURVE_TOKEN.balanceOf(address(convexStrategy)), 0);
+        assertGt(CURVE_TOKEN.balanceOf(address(this)), 0);
+        vm.stopPrank();
+    }
+
+    /// @notice Test for the case if crveth pool is borked and we can't sell rewards as usual
+    /// Then we got to set CRV token as additional reward and sell it through that
+    function testSellCrvAsAdditionalReward() public {
+        depositIntoVault(alice, 1E24);
+        tokens.push(address(CURVE_TOKEN));
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.runHarvest();
+        uint256 initialAssets = convexStrategy.estimatedTotalAssets();
+
+        prepareRewards(fraxConvexRewards);
+        assertGt(convexStrategy.estimatedTotalAssets(), initialAssets);
+        convexStrategy.setCrvEthPool(address(0));
+        convexStrategy.setAdditionalRewards(tokens);
+        // Harvest in normal mode should sell crv through additional rewards
+        convexStrategy.runHarvest();
+        // Check that rewards are sold
+        assertEq(convexStrategy.rewards(), 0);
+        assertEq(CURVE_TOKEN.balanceOf(address(convexStrategy)), 0);
+        vm.stopPrank();
+    }
+
+    /// @notice Test for the case if crveth pool is borked and we can't sell rewards as usual
+    /// Then we just set crveth pool as 0x and rewards should stay unsold
+    function testSetCrvEthBorked() public {
+        depositIntoVault(alice, 1E24);
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.runHarvest();
+        uint256 initialAssets = convexStrategy.estimatedTotalAssets();
+
+        prepareRewards(fraxConvexRewards);
+        assertGt(convexStrategy.estimatedTotalAssets(), initialAssets);
+        convexStrategy.setCrvEthPool(address(0));
+        convexStrategy.runHarvest();
+        // Check that rewards are claimed but crv is not sold
+        assertEq(convexStrategy.rewards(), 0);
+        assertGt(CURVE_TOKEN.balanceOf(address(convexStrategy)), 0);
+        vm.stopPrank();
+    }
+
+    /// @notice Test for the case if crveth pool is borked and we set curve pool to a new one
+    function testSetCrvEthBorkedNewPoolSet() public {
+        depositIntoVault(alice, 1E24);
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.runHarvest();
+        uint256 initialAssets = convexStrategy.estimatedTotalAssets();
+        convexStrategy.setCrvEthPool(address(0));
+        // Check that crv eth pool is now set to 0
+        assertEq(convexStrategy.crvEthPool(), address(0));
+        // Now set proper crveth pool and make sure rewards are sold
+        convexStrategy.setCrvEthPool(CRV_ETH_POOL);
+        prepareRewards(fraxConvexRewards);
+        assertGt(convexStrategy.rewards(), 0);
+        convexStrategy.runHarvest();
+        assertEq(CURVE_TOKEN.balanceOf(address(convexStrategy)), 0);
+        assertEq(convexStrategy.rewards(), 0);
+        vm.stopPrank();
+    }
+
+    /// @notice Simple test to check allowance is set properly for additional rewards
+    function testSetAdditionalTokensAllowanceCheck() public {
+        // Make sure CRV starts with 0 allowance
+        assertEq(
+            CURVE_TOKEN.allowance(
+                address(convexStrategy),
+                address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)
+            ),
+            0
+        );
+        tokens.push(address(CURVE_TOKEN));
+        vm.startPrank(BASED_ADDRESS);
+        convexStrategy.setAdditionalRewards(tokens);
+        // Make sure Curve allowance for strategy is set as uint256 max value
+        assertEq(
+            CURVE_TOKEN.allowance(
+                address(convexStrategy),
+                address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)
+            ),
+            type(uint256).max
+        );
+        // Now remove Curve from additional rewards and check that allowance is set to 0
+        tokens.pop();
+        tokens.push(address(USDC));
+        convexStrategy.setAdditionalRewards(tokens);
+        assertEq(
+            CURVE_TOKEN.allowance(
+                address(convexStrategy),
+                address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D)
+            ),
+            0
+        );
+    }
+
     // TODO: This test is omitted
     function test_strategy_should_claim_and_sell_rewards() private {
         depositIntoVault(alice, 1E24);
@@ -1018,5 +1238,42 @@ contract ConvexStrategyTest is BaseSetup {
         vm.stopPrank();
         assertGt(convexStrategy.estimatedTotalAssets(), initialAssets);
         assertGt(finalTotalDebt, initTotalDebt);
+    }
+
+    function testStrategySetAdditionalRewardsHappy() external {
+        tokens.push(address(USDC));
+        tokens.push(address(DAI));
+        tokens.push(address(THREE_POOL_TOKEN));
+        tokens.push(address(CURVE_TOKEN));
+        vm.prank(BASED_ADDRESS);
+        convexStrategy.setAdditionalRewards(tokens);
+
+        // Make sure the tokens are added
+        assertEq(convexStrategy.rewardTokens(0), address(USDC));
+        assertEq(convexStrategy.rewardTokens(1), address(DAI));
+        assertEq(convexStrategy.rewardTokens(2), address(THREE_POOL_TOKEN));
+        assertEq(convexStrategy.rewardTokens(3), address(CURVE_TOKEN));
+    }
+
+    function testStrategySetAdditionalRewardsUnhappy() external {
+        // Push invalid token address
+        tokens.push(address(0));
+        vm.startPrank(BASED_ADDRESS);
+        vm.expectRevert();
+        convexStrategy.setAdditionalRewards(tokens);
+        vm.stopPrank();
+    }
+
+    function testStrategySetAdditionalRewardsUnhappyRewardsTokenMax() external {
+        // Push more than MAX_REWARDS tokens:
+        for (uint256 i = 0; i < 10; i++) {
+            tokens.push(address(USDC));
+        }
+        vm.startPrank(BASED_ADDRESS);
+        vm.expectRevert(
+            abi.encodeWithSelector(StrategyErrors.RewardsTokenMax.selector)
+        );
+        convexStrategy.setAdditionalRewards(tokens);
+        vm.stopPrank();
     }
 }

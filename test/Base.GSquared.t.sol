@@ -45,6 +45,8 @@ contract BaseSetup is Test {
         ERC20(address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48));
     ERC20 public constant USDT =
         ERC20(address(0xdAC17F958D2ee523a2206206994597C13D831ec7));
+    ERC20 public constant CURVE_TOKEN =
+        ERC20(address(0xD533a949740bb3306d119CC777fa900bA034cd52));
     address constant COFFEE_ADDRESS =
         address(0xc0ffEE4a95F15ff9973A17E563a8A8701D719890);
     address constant BASED_ADDRESS =
