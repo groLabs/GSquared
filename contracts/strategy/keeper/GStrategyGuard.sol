@@ -3,6 +3,9 @@ pragma solidity 0.8.10;
 
 import "../../interfaces/IStrategy.sol";
 import "../../interfaces/IGStrategyGuard.sol";
+import "../../interfaces/AggregatorV3Interface.sol";
+import "../../interfaces/ICurve3Pool.sol";
+import "../../GVault.sol";
 
 library GuardErrors {
     error NotOwner(); // 0x30cd7471
@@ -51,12 +54,28 @@ contract GStrategyGuard is IGStrategyGuard {
         string reason,
         bytes lowLevelData
     );
+    event LogDebtThresholdSet(uint256 debtThreshold, uint256 oldThreshold);
+    event LogGasThresholdSet(uint256 gasThreshold, uint256 oldThreshold);
 
+    uint256 public constant TARGET_DECIMALS = 18;
+    uint256 public constant LOSS_BLOCK_THRESHOLD = 25;
+    AggregatorV3Interface public constant CL_ETH_USD =
+        AggregatorV3Interface(
+            address(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419)
+        );
+    ICurve3Pool public constant THREE_CURVE_POOL =
+        ICurve3Pool(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7);
+
+    // 3 million gas to execute harvest
+    uint256 public gasThreshold = 3_000_000;
+    uint256 public debtThreshold = 20_000 * 1e18;
     address public owner;
     mapping(address => bool) public keepers;
 
     struct strategyData {
         bool active; // Is the strategy active
+        bool canHarvestWithLoss; // Flag to indicate if the strategy can harvest with loss
+        uint256 lossStartBlock; // First block when loss occured
         uint64 timeLimit;
         uint64 primerTimestamp; // The time at which the health threshold was broken
     }
@@ -77,6 +96,24 @@ contract GStrategyGuard is IGStrategyGuard {
         address previousOwner = msg.sender;
         owner = _newOwner;
         emit LogOwnershipTransferred(previousOwner, _newOwner);
+    }
+
+    /// @notice Sets debt threshold
+    /// @param _newDebtThreshold debt threshold to swap to
+    function setDebtThreshold(uint256 _newDebtThreshold) external {
+        if (msg.sender != owner) revert GuardErrors.NotOwner();
+        uint256 oldThreshold = debtThreshold;
+        debtThreshold = _newDebtThreshold;
+        emit LogDebtThresholdSet(_newDebtThreshold, oldThreshold);
+    }
+
+    /// @notice set a new gas threshold for the contract to use when checking canHarvest
+    /// @param _newGasThreshold gas threshold to swap to
+    function setGasThreshold(uint256 _newGasThreshold) external {
+        if (msg.sender != owner) revert GuardErrors.NotOwner();
+        uint256 oldThreshold = gasThreshold;
+        gasThreshold = _newGasThreshold;
+        emit LogGasThresholdSet(_newGasThreshold, oldThreshold);
     }
 
     /// @notice set a new keeper for the contract
@@ -226,6 +263,45 @@ contract GStrategyGuard is IGStrategyGuard {
         }
     }
 
+    /// @notice Check if any strategy with loss can be unlocked
+    /// @return canExec true if a strategy can be unlocked
+    /// @return execPayload payload to execute
+    function canUnlockStrategy()
+        external
+        view
+        returns (bool canExec, bytes memory execPayload)
+    {
+        uint256 strategiesLength = strategies.length;
+
+        for (uint256 i; i < strategiesLength; ++i) {
+            address strategy = strategies[i];
+            uint256 excessDebt = _getExcessDebt(IStrategy(strategy));
+            if (
+                excessDebt > 0 &&
+                strategyCheck[strategy].canHarvestWithLoss == false &&
+                strategyCheck[strategy].lossStartBlock != 0 &&
+                strategyCheck[strategy].lossStartBlock + LOSS_BLOCK_THRESHOLD <
+                block.number
+            ) {
+                execPayload = abi.encodeWithSelector(
+                    this.unlockLoss.selector,
+                    (strategy)
+                );
+                canExec = true;
+                break;
+            } else if (
+                excessDebt == 0 && strategyCheck[strategy].lossStartBlock != 0
+            ) {
+                execPayload = abi.encodeWithSelector(
+                    this.resetLossStartBlock.selector,
+                    (strategy)
+                );
+                canExec = true;
+                break;
+            }
+        }
+    }
+
     /// @notice Update the stop loss primer by setting a stop loss start time for a strategy
     function setStopLossPrimer() external {
         if (!keepers[msg.sender]) revert GuardErrors.NotKeeper();
@@ -297,18 +373,117 @@ contract GStrategyGuard is IGStrategyGuard {
         }
     }
 
+    /// @notice Function that converts _amount of ETH to USD using CL ETH/USD pricefeed
+    /// @notice It also scales the price to 18 decimals as ETH/USD feed has non 18 decimals
+    /// @param _amount the amount of ETH to convert
+    function _convertETHToUSD(uint256 _amount) internal view returns (uint256) {
+        (, int256 ethPriceInUsd, , , ) = CL_ETH_USD.latestRoundData();
+        // Scale the price to 18 decimals
+        uint256 ethPriceInWei = uint256(ethPriceInUsd) *
+            10**(TARGET_DECIMALS - CL_ETH_USD.decimals());
+        return (_amount * ethPriceInWei) / 10**TARGET_DECIMALS;
+    }
+
+    /// @notice Check if harvest needs to be executed for a strategy
+    /// @param strategy the target strategy
+    function _profitOrLossExceeded(IStrategy strategy)
+        internal
+        view
+        returns (bool)
+    {
+        bool canHarvest;
+        uint256 assets = strategy.estimatedTotalAssets();
+        GVault vault = GVault(strategy.vault());
+
+        (, , , uint256 totalDebt, , ) = vault.strategies(address(strategy));
+
+        uint256 debt = totalDebt;
+        (uint256 excessDebt, ) = vault.excessDebt(address(strategy));
+        uint256 profit;
+        if (assets > debt) {
+            profit = assets - debt;
+        } else {
+            excessDebt += debt - assets;
+        }
+        // If there is excess debt we should harvest
+        if (excessDebt > debtThreshold) {
+            canHarvest = true;
+        }
+        profit += vault.creditAvailable(address(strategy));
+        // Check if profit exceeds the gas threshold
+        uint256 gasUsedForHarvestInUsd = _convertETHToUSD(
+            tx.gasprice * gasThreshold
+        );
+        uint256 profitInUsd = (THREE_CURVE_POOL.get_virtual_price() * profit) /
+            10**TARGET_DECIMALS;
+        if (profitInUsd > gasUsedForHarvestInUsd) {
+            canHarvest = true;
+        }
+        return canHarvest;
+    }
+
+    /// @notice Calculate the excess debt for a strategy
+    /// @param strategy - the target strategy
+    function _getExcessDebt(IStrategy strategy)
+        internal
+        view
+        returns (uint256)
+    {
+        GVault vault = GVault(strategy.vault());
+        (, , , uint256 totalDebt, , ) = vault.strategies(address(strategy));
+        uint256 assets = strategy.estimatedTotalAssets();
+        uint256 debt = totalDebt;
+        (uint256 excessDebt, ) = vault.excessDebt(address(strategy));
+        // If assets are bigger than debt, there is no excess debt
+        if (assets > debt) {
+            return 0;
+        }
+        excessDebt += debt - assets;
+        return excessDebt;
+    }
+
     /// @notice Check if any strategy needs to be harvested
     function canHarvest() external view returns (bool result) {
         uint256 strategiesLength = strategies.length;
         for (uint256 i; i < strategiesLength; ++i) {
             address strategy = strategies[i];
             if (strategy == address(0)) continue;
-            if (IStrategy(strategy).canHarvest()) {
+            // Skip locked strategies
+            if (
+                !strategyCheck[strategy].canHarvestWithLoss &&
+                strategyCheck[strategy].lossStartBlock > 0
+            ) continue;
+            if (
+                IStrategy(strategy).canHarvest() &&
+                _profitOrLossExceeded(IStrategy(strategy))
+            ) {
                 if (strategyCheck[strategy].active) {
                     result = true;
                 }
             }
         }
+    }
+
+    /// @notice Unlock canHarvestWithLoss for strategy
+    /// @param strategy the target strategy
+    function unlockLoss(address strategy) external {
+        if (!keepers[msg.sender]) revert GuardErrors.NotKeeper();
+        strategyCheck[strategy].canHarvestWithLoss = true;
+    }
+
+    /// @notice Reset lossStartBlock for strategy plus resets canHarvestWithLoss
+    /// @param strategy the target strategy
+    function resetLossStartBlock(address strategy) external {
+        if (!keepers[msg.sender]) revert GuardErrors.NotKeeper();
+        _resetLossStartBlock(strategy);
+    }
+
+    /// @notice Reset lossStartBlock for strategy plus resets canHarvestWithLoss
+    /// @param strategy the target strategy
+    function _resetLossStartBlock(address strategy) private {
+        strategyCheck[strategy].lossStartBlock = 0;
+        // Set canHarvestWithLoss to false as well
+        strategyCheck[strategy].canHarvestWithLoss = false;
     }
 
     /// @notice Execute strategy harvest
@@ -320,25 +495,19 @@ contract GStrategyGuard is IGStrategyGuard {
             if (strategy == address(0)) continue;
             if (IStrategy(strategy).canHarvest()) {
                 if (strategyCheck[strategy].active) {
-                    try IStrategy(strategy).runHarvest() {} catch Error(
-                        string memory _reason
+                    // Record the start block of the loss and don't allow to run with canHarvestWithLoss unless
+                    // It's explicitly allowed
+                    if (
+                        _getExcessDebt(IStrategy(strategy)) > 0 &&
+                        !strategyCheck[strategy].canHarvestWithLoss &&
+                        strategyCheck[strategy].lossStartBlock == 0
                     ) {
-                        strategyCheck[strategy].active = false;
-                        bytes memory lowLevelData;
-                        emit LogStrategyHarvestFailure(
-                            strategy,
-                            _reason,
-                            lowLevelData
-                        );
-                    } catch (bytes memory _lowLevelData) {
-                        strategyCheck[strategy].active = false;
-                        string memory reason;
-                        emit LogStrategyHarvestFailure(
-                            strategy,
-                            reason,
-                            _lowLevelData
-                        );
+                        strategyCheck[strategy].lossStartBlock = block.number;
+                        return;
                     }
+                    IStrategy(strategy).runHarvest();
+                    // Reset loss related storage variables so next time we can do checks again
+                    _resetLossStartBlock(strategy);
                     return;
                 }
             }

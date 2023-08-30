@@ -57,6 +57,17 @@ contract GStopLossResolver is Owned {
         }
     }
 
+    /// @notice returns function selector to gelato to unlock loss OR set lossStartBlock to 0 for the
+    /// first strategy that was locked with a loss
+    function taskCanUnlockLoss()
+        external
+        view
+        returns (bool canExec, bytes memory execPayload)
+    {
+        IGStrategyGuard executor = IGStrategyGuard(stopLossExecutor);
+        (canExec, execPayload) = executor.canUnlockStrategy();
+    }
+
     /// @notice returns correct payload to gelato to trigger strategy
     /// stop loss on the GStopLossExecutor
     function taskTriggerStopLoss()

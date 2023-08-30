@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Base.GSquared.t.sol";
 import "../contracts/solmate/src/utils/SafeTransferLib.sol";
+import {GuardErrors} from "../contracts/strategy/keeper/GStrategyGuard.sol";
 
 contract SnLTest is BaseSetup {
     uint256 constant MIN_REPORT_DELAY = 172801;
@@ -110,6 +111,36 @@ contract SnLTest is BaseSetup {
         mimStrategy.runHarvest();
         musdStrategy.runHarvest();
         vm.stopPrank();
+
+        vm.label(address(fraxStrategy), "Frax Strategy");
+        vm.label(address(musdStrategy), "mUSD Strategy");
+        vm.label(address(mimStrategy), "mim Strategy");
+    }
+
+    function testGuardSetDebtThreshold() public {
+        uint256 initialThreshold = guard.debtThreshold();
+        vm.prank(BASED_ADDRESS);
+        guard.setDebtThreshold(1000);
+        assertEq(guard.debtThreshold(), 1000);
+        assertTrue(initialThreshold != guard.debtThreshold());
+    }
+
+    function testGuardSetDebtThresholdNotOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(GuardErrors.NotOwner.selector));
+        guard.setDebtThreshold(1000);
+    }
+
+    function testGuardSetGasThreshold() public {
+        uint256 initialThreshold = guard.gasThreshold();
+        vm.prank(BASED_ADDRESS);
+        guard.setGasThreshold(1000);
+        assertEq(guard.gasThreshold(), 1000);
+        assertTrue(initialThreshold != guard.gasThreshold());
+    }
+
+    function testGuardSetGasThresholdNotOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(GuardErrors.NotOwner.selector));
+        guard.setGasThreshold(1000);
     }
 
     // GIVEN a convex strategy not added to the stop loss logic
@@ -173,9 +204,145 @@ contract SnLTest is BaseSetup {
 
         guard.harvest();
 
-        assertTrue(!fraxStrategy.canHarvest());
-        assertTrue(!guard.canHarvest());
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
         vm.stopPrank();
+    }
+
+    function testGuardShouldNotExecuteIfGasPriceTooHigh() public {
+        uint256 shares = genThreeCrv(1E24, alice);
+        vm.startPrank(alice);
+        THREE_POOL_TOKEN.transfer(address(fraxStrategy), HARVEST_MIN);
+        vm.stopPrank();
+
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+
+        vm.warp(block.timestamp + MIN_REPORT_DELAY);
+        // Set gas price to a lot of gwei
+        vm.txGasPrice(100000100000100000e9);
+        // Strategy should return true but the guard won't let harvest happen because of gas price
+        assertTrue(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+    }
+
+    function testGuardShoudLetExecuteIfGasPriceIsHighButThereIsLoss() public {
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+        // Give lots of frax to alice
+        genStable(10000000000e18, frax, alice);
+
+        // Swap frax to 3crv to incur loss on strategy
+        vm.startPrank(alice);
+        IERC20(frax).approve(frax_lp, type(uint256).max);
+        uint256 amount = ICurveMeta(frax_lp).exchange(0, 1, 10000000000e18, 0);
+        vm.stopPrank();
+
+        // Set gas price to over 90000 gwei
+        vm.txGasPrice(100000100000100000e9);
+        // Should be able to execute if there is loss even if gas price is high, because there is a big loss
+        assertTrue(fraxStrategy.canHarvest());
+        assertTrue(guard.canHarvest());
+    }
+
+    function testGuardShouldMarkStrategyLockedLossPersists() public {
+        uint256 amountToSwap = 10000000000e18;
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+        // Give lots of frax to alice
+        genStable(amountToSwap, frax, alice);
+
+        // Swap frax to 3crv to incur loss on strategy
+        vm.startPrank(alice);
+        IERC20(frax).approve(frax_lp, type(uint256).max);
+        uint256 amount = ICurveMeta(frax_lp).exchange(0, 1, amountToSwap, 0);
+        vm.stopPrank();
+
+        vm.prank(BASED_ADDRESS);
+        guard.harvest();
+        (, bool canHarvestWithLoss, uint256 lossStartBlock, , ) = guard
+            .strategyCheck(address(fraxStrategy));
+        // Make sure strategy marked as locked
+        assertFalse(canHarvestWithLoss);
+        assertGt(lossStartBlock, 0);
+        assertFalse(guard.canHarvest());
+
+        // Check that strategy cannot be unlocked
+        (bool canUnlock, ) = guard.canUnlockStrategy();
+        assertFalse(canUnlock);
+        // Now mine X amount of blocks and strategy can now be harvested even with loss
+        vm.roll(block.number + guard.LOSS_BLOCK_THRESHOLD() + 1);
+        (canUnlock, ) = guard.canUnlockStrategy();
+        assertTrue(canUnlock);
+
+        // Unlock the strategy:
+        vm.prank(BASED_ADDRESS);
+        guard.unlockLoss(address(fraxStrategy));
+
+        // Make sure we can harvest now:
+        assertTrue(guard.canHarvest());
+        assertTrue(fraxStrategy.canHarvest());
+        (, canHarvestWithLoss, lossStartBlock, , ) = guard.strategyCheck(
+            address(fraxStrategy)
+        );
+        assertTrue(canHarvestWithLoss);
+        assertGt(lossStartBlock, 0);
+
+        // Run harvest
+        vm.prank(BASED_ADDRESS);
+        guard.harvest();
+        assertFalse(fraxStrategy.canHarvest());
+        // Make sure frax lock is reset:
+        (, canHarvestWithLoss, lossStartBlock, , ) = guard.strategyCheck(
+            address(fraxStrategy)
+        );
+        assertFalse(canHarvestWithLoss);
+        assertEq(lossStartBlock, 0);
+    }
+
+    function testGuardShouldMarkStrategyLockedLossVanishes() public {
+        uint256 amountToSwap = 10000000000e18;
+        assertFalse(fraxStrategy.canHarvest());
+        assertFalse(guard.canHarvest());
+        // Give lots of frax to alice
+        genStable(amountToSwap, frax, alice);
+
+        // Swap frax to 3crv to incur loss on strategy
+        vm.startPrank(alice);
+        IERC20(frax).approve(frax_lp, type(uint256).max);
+        THREE_POOL_TOKEN.approve(frax_lp, type(uint256).max);
+        uint256 amount = ICurveMeta(frax_lp).exchange(0, 1, amountToSwap, 0);
+        vm.stopPrank();
+
+        vm.prank(BASED_ADDRESS);
+        guard.harvest();
+        (, bool canHarvestWithLoss, uint256 lossStartBlock, , ) = guard
+            .strategyCheck(address(fraxStrategy));
+        // Make sure strategy marked as locked
+        assertFalse(canHarvestWithLoss);
+        assertGt(lossStartBlock, 0);
+        assertFalse(guard.canHarvest());
+
+        // Check that strategy cannot be unlocked
+        (bool canUnlock, ) = guard.canUnlockStrategy();
+        assertFalse(canUnlock);
+        // Now, remove the loss
+        vm.prank(alice);
+        ICurveMeta(frax_lp).exchange(1, 0, amount, 0);
+
+        vm.prank(BASED_ADDRESS);
+        guard.resetLossStartBlock(address(fraxStrategy));
+        // Make sure strategy is unlocked now as loss is gone and values are set to defaults
+        (, canHarvestWithLoss, lossStartBlock, , ) = guard.strategyCheck(
+            address(fraxStrategy)
+        );
+        assertFalse(canHarvestWithLoss);
+        assertEq(lossStartBlock, 0);
+
+        // Make sure we can harvest now:
+        vm.warp(block.timestamp + 604800 + 1);
+        assertTrue(guard.canHarvest());
+        assertTrue(fraxStrategy.canHarvest());
     }
 
     function test_guard_should_execute_if_threshold_broken_and_return_true_if_credit_available()
@@ -189,9 +356,9 @@ contract SnLTest is BaseSetup {
 
         assertTrue(fraxStrategy.canHarvest());
         assertTrue(guard.canHarvest());
-
         guard.harvest();
-        assertTrue(!fraxStrategy.canHarvest());
+        // Frax can still be harvested because it was marked as locked because it has debt
+        assertTrue(fraxStrategy.canHarvest());
         // credit available for other strategies
         assertTrue(mimStrategy.canHarvest());
         assertTrue(musdStrategy.canHarvest());
@@ -334,16 +501,16 @@ contract SnLTest is BaseSetup {
         uint64 primerTimestamp; // The time at which the health threshold was broken
 
         assertTrue(!fraxStrategy.canStopLoss());
-        (, , primerTimestamp) = guard.strategyCheck(address(fraxStrategy));
+        (, , , , primerTimestamp) = guard.strategyCheck(address(fraxStrategy));
         assertGt(primerTimestamp, 0);
         assertTrue(guard.canEndStopLoss());
 
         vm.startPrank(BASED_ADDRESS);
         guard.endStopLossPrimer();
 
-        (, , primerTimestamp) = guard.strategyCheck(address(fraxStrategy));
+        (, , , , primerTimestamp) = guard.strategyCheck(address(fraxStrategy));
         assertEq(primerTimestamp, 0);
-        (, , primerTimestamp) = guard.strategyCheck(address(mimStrategy));
+        (, , , , primerTimestamp) = guard.strategyCheck(address(mimStrategy));
         assertGt(primerTimestamp, 0);
         assertTrue(guard.canEndStopLoss());
         vm.stopPrank();
@@ -408,7 +575,7 @@ contract SnLTest is BaseSetup {
         );
         uint64 primerTimestamp;
         bool active;
-        (active, , primerTimestamp) = guard.strategyCheck(
+        (active, , , , primerTimestamp) = guard.strategyCheck(
             address(fraxStrategy)
         );
         assertEq(primerTimestamp, 0);
@@ -436,7 +603,9 @@ contract SnLTest is BaseSetup {
             THREE_POOL_TOKEN.balanceOf(address(mimStrategy))
         );
 
-        (active, , primerTimestamp) = guard.strategyCheck(address(mimStrategy));
+        (active, , , , primerTimestamp) = guard.strategyCheck(
+            address(mimStrategy)
+        );
         assertEq(primerTimestamp, 0);
         assertTrue(!active);
 
