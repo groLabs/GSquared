@@ -41,14 +41,18 @@ contract arbTest is Test, BaseSetup {
         );
         arb = new FraxArb();
         vm.stopPrank();
-        genThreeCrv(2e23, BASED_ADDRESS);
+        genThreeCrv(7e22, BASED_ADDRESS);
     }
 
     function testArb() public {
         vm.startPrank(BASED_ADDRESS);
-        convexStrategy.setBaseSlippage(500);
+        convexStrategy.setBaseSlippage(50);
         THREE_POOL_TOKEN.approve(address(arb), MAX_UINT);
         arb.performArbWithTransfer(THREE_POOL_TOKEN.balanceOf(BASED_ADDRESS));
+        console2.log(
+            "Initial 3crv balance",
+            THREE_POOL_TOKEN.balanceOf(address(arb))
+        );
         // Reduce strategy base ratio
         (, uint256 debtRatio, , , , ) = gVaultMainnet.strategies(
             address(convexStrategy)
