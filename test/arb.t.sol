@@ -3,7 +3,7 @@ import "forge-std/Vm.sol";
 import "forge-std/interfaces/IERC20.sol";
 import "./utils/utils.sol";
 import "./Base.GSquared.t.sol";
-import {ArbOusd} from "../contracts/ArbOusd.sol";
+import {FraxArb} from "../contracts/FraxArb.sol";
 import "forge-std/console2.sol";
 
 // Base fixture
@@ -16,7 +16,7 @@ contract arbTest is Test, BaseSetup {
 
     ConvexStrategy public convexStrategy;
     GVault public gVaultMainnet;
-    ArbOusd arb;
+    FraxArb public arb;
 
     function setUp() public override {
         utils = new Utils();
@@ -34,12 +34,12 @@ contract arbTest is Test, BaseSetup {
         vm.deal(BASED_ADDRESS, 100000e18);
         vm.startPrank(BASED_ADDRESS);
         convexStrategy = ConvexStrategy(
-            address(0x73703f0493C08bA592AB1e321BEaD695AC5b39E3)
-        ); // OUSD cvx strat
+            address(0x60a6A86ad77EF672D93Db4408D65cf27Dd627050)
+        ); // FRAX cvx strat
         gVaultMainnet = GVault(
             address(0x1402c1cAa002354fC2C4a4cD2b4045A5b9625EF3)
         );
-        arb = new ArbOusd();
+        arb = new FraxArb();
         vm.stopPrank();
         genThreeCrv(2e23, BASED_ADDRESS);
     }
@@ -53,12 +53,12 @@ contract arbTest is Test, BaseSetup {
         (, uint256 debtRatio, , , , ) = gVaultMainnet.strategies(
             address(convexStrategy)
         );
-        console2.log("Initial debt ration", debtRatio);
+        console2.log("Initial debt ratio", debtRatio);
         vm.stopPrank();
         vm.prank(VAULT_OWNER);
         gVaultMainnet.setDebtRatio(address(convexStrategy), debtRatio - 224);
         // Run arb multiple times:
-        for (uint256 i = 0; i < 8; ++i) {
+        for (uint256 i = 0; i < 12; ++i) {
             vm.startPrank(BASED_ADDRESS);
             console2.log("Running arb iteration: ", i + 1);
             (uint256 initialBal, uint256 finalBal) = arb.performArb(120);
@@ -92,5 +92,9 @@ contract arbTest is Test, BaseSetup {
             address(convexStrategy)
         );
         assertEq(debtRatioFinal, 0);
+        console2.log(
+            "Final 3crv balance",
+            THREE_POOL_TOKEN.balanceOf(address(arb))
+        );
     }
 }

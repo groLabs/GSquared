@@ -4,10 +4,25 @@ import {ERC20} from "./solmate/src/tokens/ERC20.sol";
 import {Owned} from "./solmate/src/auth/Owned.sol";
 import "./interfaces/ICurveMeta.sol";
 import "./interfaces/ICurve3Pool.sol";
-import "./interfaces/IOusdVault.sol";
 import "./solmate/src/utils/SafeTransferLib.sol";
 
-contract ArbOusd is Owned {
+/// Uniswap v3 router interface
+interface IUniV3 {
+    struct ExactInputParams {
+        bytes path;
+        address recipient;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+    }
+
+    function exactInput(ExactInputParams calldata params)
+        external
+        payable
+        returns (uint256 amountOut);
+}
+
+contract FraxArb is Owned {
     using SafeTransferLib for ERC20;
     /*//////////////////////////////////////////////////////////////
                                 Events
@@ -29,26 +44,27 @@ contract ArbOusd is Owned {
         ERC20(address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48));
     ERC20 public constant USDT =
         ERC20(address(0xdAC17F958D2ee523a2206206994597C13D831ec7));
-    ERC20 public constant OUSD =
-        ERC20(address(0x2A8e1E676Ec238d8A992307B495b45B3fEAa5e86));
+    ERC20 public constant FRAX =
+        ERC20(address(0x853d955aCEf822Db058eb8505911ED77F175b99e));
 
-    ICurveMeta public constant OUSD_META =
-        ICurveMeta(address(0x87650D7bbfC3A9F10587d7778206671719d9910D));
+    ICurveMeta public constant FRAX_META =
+        ICurveMeta(address(0xd632f22692FaC7611d2AA1C0D552930D43CAEd3B));
     ICurve3Pool public constant THREE_POOL =
         ICurve3Pool(address(0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7));
-    IOusdVault public constant OVAULT =
-        IOusdVault(address(0xE75D77B1865Ae93c7eaa3040B038D7aA7BC02F70));
 
     int128 public constant THREE_CURVE_META_INDEX = 1;
-    int128 public constant OUSD_META_INDEX = 0;
+    int128 public constant FRAX_META_INDEX = 0;
+    uint256 public constant UNI_V3_FEE = 500;
+    address public constant UNI_V3 =
+        address(0xE592427A0AEce92De3Edee1F18E0157C05861564);
 
     constructor() Owned(msg.sender) {
-        CRV_3POOL_TOKEN.approve(address(OUSD_META), type(uint256).max);
+        CRV_3POOL_TOKEN.approve(address(FRAX_META), type(uint256).max);
         // Approve all 3 tokens allowance to 3curve pool
         DAI.approve(address(THREE_POOL), type(uint256).max);
         USDC.approve(address(THREE_POOL), type(uint256).max);
         USDT.safeApprove(address(THREE_POOL), type(uint256).max);
-        OUSD.approve(address(OVAULT), type(uint256).max);
+        FRAX.approve(address(UNI_V3), type(uint256).max);
     }
 
     /// @notice This function is used to perform the arb
@@ -73,19 +89,28 @@ contract ArbOusd is Owned {
         uint256 threeCurveBal = CRV_3POOL_TOKEN.balanceOf(address(this));
         // Require 3 curve token balance non-zero:
         require(threeCurveBal > 0, "!3CRV");
-        // Swap the 3CRV for OUSD
-        OUSD_META.exchange(
+        // Swap the 3CRV for FRAX
+        FRAX_META.exchange(
             THREE_CURVE_META_INDEX,
-            OUSD_META_INDEX,
+            FRAX_META_INDEX,
             threeCurveBal,
             0
         );
 
-        // Make sure we have non-zero OUSD balance
-        require(OUSD.balanceOf(address(this)) >= 0, "!OUSD");
+        // Make sure we have non-zero FRAX balance
+        require(FRAX.balanceOf(address(this)) >= 0, "!FRAX");
 
-        // Redeem the OUSD for stablecoins:
-        OVAULT.redeemAll(0);
+        // Swap FRAX to USDC
+        uint256 fraxAmount = FRAX.balanceOf(address(this));
+        IUniV3(UNI_V3).exactInput(
+            IUniV3.ExactInputParams(
+                abi.encodePacked(FRAX, uint24(UNI_V3_FEE), USDC),
+                address(this),
+                block.timestamp,
+                fraxAmount,
+                0
+            )
+        );
 
         // Collect all balances of 3 tokens
         uint256 _daiBalance = DAI.balanceOf(address(this));
