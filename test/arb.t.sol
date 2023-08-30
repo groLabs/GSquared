@@ -3,7 +3,7 @@ import "forge-std/Vm.sol";
 import "forge-std/interfaces/IERC20.sol";
 import "./utils/utils.sol";
 import "./Base.GSquared.t.sol";
-import {FraxArb} from "../contracts/FraxArb.sol";
+import {FraxArbHv} from "../contracts/FraxArbHv.sol";
 import "forge-std/console2.sol";
 
 // Base fixture
@@ -16,7 +16,7 @@ contract arbTest is Test, BaseSetup {
 
     ConvexStrategy public convexStrategy;
     GVault public gVaultMainnet;
-    FraxArb public arb;
+    FraxArbHv public arb;
 
     function setUp() public override {
         utils = new Utils();
@@ -39,9 +39,10 @@ contract arbTest is Test, BaseSetup {
         gVaultMainnet = GVault(
             address(0x1402c1cAa002354fC2C4a4cD2b4045A5b9625EF3)
         );
-        arb = new FraxArb();
+        arb = new FraxArbHv(address(convexStrategy));
+        convexStrategy.setKeeper(address(arb));
         vm.stopPrank();
-        genThreeCrv(7e22, BASED_ADDRESS);
+        //genThreeCrv(7e22, BASED_ADDRESS);
     }
 
     function testArb() public {
@@ -54,9 +55,17 @@ contract arbTest is Test, BaseSetup {
             THREE_POOL_TOKEN.balanceOf(address(arb))
         );
         // Reduce strategy base ratio
-        (, uint256 debtRatio, , , , ) = gVaultMainnet.strategies(
-            address(convexStrategy)
-        );
+        (
+            ,
+            uint256 debtRatio,
+            ,
+            uint256 totalDebt,
+            uint256 totalGain,
+            uint256 totalLoss
+        ) = gVaultMainnet.strategies(address(convexStrategy));
+        console2.log("Total debt", totalDebt);
+        console2.log("Total gain", totalGain);
+        console2.log("Total loss", totalLoss);
         console2.log("Initial debt ratio", debtRatio);
         vm.stopPrank();
         vm.prank(VAULT_OWNER);
@@ -68,11 +77,11 @@ contract arbTest is Test, BaseSetup {
             (uint256 initialBal, uint256 finalBal) = arb.performArb(120);
             (
                 ,
-                uint256 debtRatio,
+                debtRatio,
                 ,
-                uint256 totalDebt,
-                uint256 totalGain,
-                uint256 totalLoss
+                totalDebt,
+                totalGain,
+                totalLoss
             ) = gVaultMainnet.strategies(address(convexStrategy));
             vm.stopPrank();
             console2.log("Current debt ratio is", debtRatio);
@@ -87,7 +96,6 @@ contract arbTest is Test, BaseSetup {
             console2.log("Total loss", totalLoss);
 
             vm.startPrank(BASED_ADDRESS);
-            convexStrategy.runHarvest();
             vm.stopPrank();
         }
 
