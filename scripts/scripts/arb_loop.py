@@ -85,7 +85,7 @@ def swap() -> None:
                         "value": 0,
                         "gas": 100000,
                         "maxFeePerGas": Web3.toWei(50, "gwei"),
-                        "maxPriorityFeePerGas": Web3.toWei(10, "gwei"),
+                        "maxPriorityFeePerGas": Web3.toWei(20, "gwei"),
                         "nonce": nonce,
                         "chainId": 1,
                         "type": 2,
@@ -100,9 +100,9 @@ def swap() -> None:
             tx2: TxParams = {
                     "to": arb_contract.address,
                     "value": 0,
-                    "gas": 350000,
+                    "gas": 600000,
                     "maxFeePerGas": Web3.toWei(50, "gwei"),
-                    "maxPriorityFeePerGas": Web3.toWei(10, "gwei"),
+                    "maxPriorityFeePerGas": Web3.toWei(20, "gwei"),
                     "nonce": nonce,
                     "chainId": 1,
                     "type": 2,
@@ -117,9 +117,9 @@ def swap() -> None:
             tx3: TxParams = {
                     "to": arb_contract.address,
                     "value": 0,
-                    "gas": 350000,
+                    "gas": 600000,
                     "maxFeePerGas": Web3.toWei(50, "gwei"),
-                    "maxPriorityFeePerGas": Web3.toWei(10, "gwei"),
+                    "maxPriorityFeePerGas": Web3.toWei(20, "gwei"),
                     "nonce": nonce,
                     "chainId": 1,
                     "type": 2,
@@ -137,13 +137,13 @@ def swap() -> None:
         tx4: TxParams = {
                 "to": convex_strategy.address,
                 "value": 0,
-                "gas": 350000,
+                "gas": 2000000,
                 "maxFeePerGas": Web3.toWei(50, "gwei"),
-                "maxPriorityFeePerGas": Web3.toWei(10, "gwei"),
+                "maxPriorityFeePerGas": Web3.toWei(20, "gwei"),
                 "nonce": nonce,
                 "chainId": 1,
                 "type": 2,
-                "data": convex_strategy.encodeABI(fn_name="runHarvest", args=[]),
+                "data": convex_strategy.encodeABI(fn_name="runHarvest"),
         }
         pp.pprint(f"tx4:\n{tx4}\n")
         tx4_signed = signer.sign_transaction(tx4)
