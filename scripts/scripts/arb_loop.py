@@ -49,12 +49,9 @@ def swap() -> None:
     convex_strategy: Contract = web3.eth.contract(
         address=web3.toChecksumAddress(FRAX_STRATEGY), abi=get_abi("ConvexStrategy")
     )
-    # Read msig transactions from file to include them into bundle
-    with open("../../msig_transactions.json") as f:
-        msig_transactions = json.load(f)
     flashbot(web3, signer)
-    # Run the loop 9 times as we need to decrease debtRatio of strategy
-    for i in range(9):
+    # Run the loop once as we need to decrease debtRatio of strategy
+    for i in range(1):
         # Reset bundle for each arb loop
         bundle = []
         options = {
@@ -65,23 +62,6 @@ def swap() -> None:
             "chainId": CHAIN_ID,
             "from": signer.address,
         }
-        # Increase allowance for 3crv token if needed before sending it to arb contract
-        three_pool_allowance = three_pool_token.functions.allowance(
-            ADMIN, arb_contract.address
-        ).call()
-        if three_pool_allowance < AMOUNT_TO_SWAP:
-            approve_3crv_tx = three_pool_token.functions.approve(
-                arb_contract.address, MAX_UINT
-            ).buildTransaction(options)
-            options["nonce"] += 1
-            bundle.append({"signer": signer, "transaction": approve_3crv_tx})
-        options_copy = deepcopy(options)
-        options_copy["data"] = msig_transactions[i]["data"]
-        options_copy["nonce"] = web3.eth.get_transaction_count(signer.address)
-        msig_tx_signed = signer.sign_transaction(options_copy)
-        # Execute transaction now without bundle:
-        bundle.append({"signed_transaction": msig_tx_signed.rawTransaction})
-        options["nonce"] += 1
         # Check if arb contract has enough 3pool tokens to perform the arb
         # If not, first transfer 3pool tokens from strategy to arb contract and then perform arb
         # If yes, perform arb without transfer, as Arb contract should already have some
@@ -90,12 +70,24 @@ def swap() -> None:
             arb_contract.address
         ).call()
         if three_pool_balance == 0:
+            # Increase allowance for 3crv token if needed before sending it to arb contract
+            three_pool_allowance = three_pool_token.functions.allowance(
+                ADMIN, arb_contract.address
+            ).call()
+            if three_pool_allowance < AMOUNT_TO_SWAP:
+                approve_3crv_tx = three_pool_token.functions.approve(
+                    arb_contract.address, MAX_UINT
+                ).buildTransaction(options)
+                options["nonce"] += 1
+                bundle.append({"signer": signer, "transaction": approve_3crv_tx})
+            options["gas"] = 350000
             arb_with_transfer_tx = arb_contract.functions.performArbWithTransfer(
                 AMOUNT_TO_SWAP
             ).buildTransaction(options)
             options["nonce"] += 1
             bundle.append({"signer": signer, "transaction": arb_with_transfer_tx})
         else:
+            options["gas"] = 350000
             arb_tx = arb_contract.functions.performArb(SLIPPAGE).buildTransaction(options)
             options["nonce"] += 1
             bundle.append({"signer": signer, "transaction": arb_tx})
