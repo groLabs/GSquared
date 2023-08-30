@@ -24,7 +24,7 @@ FRAX_STRATEGY = "0x60a6A86ad77EF672D93Db4408D65cf27Dd627050"
 
 # Constants
 CHAIN_ID = 1
-AMOUNT_TO_SWAP = int(200e18)
+AMOUNT_TO_SWAP = int(2e23)
 MAX_UINT = 2**256 - 100
 SLIPPAGE = 120
 
@@ -85,7 +85,7 @@ def swap() -> None:
                         "value": 0,
                         "gas": 1000000,
                         "maxFeePerGas": Web3.toWei(50, "gwei"),
-                        "maxPriorityFeePerGas": Web3.toWei(5, "gwei"),
+                        "maxPriorityFeePerGas": Web3.toWei(10, "gwei"),
                         "nonce": nonce,
                         "chainId": 1,
                         "type": 2,
@@ -102,7 +102,7 @@ def swap() -> None:
                     "value": 0,
                     "gas": 3000000,
                     "maxFeePerGas": Web3.toWei(50, "gwei"),
-                    "maxPriorityFeePerGas": Web3.toWei(5, "gwei"),
+                    "maxPriorityFeePerGas": Web3.toWei(10, "gwei"),
                     "nonce": nonce,
                     "chainId": 1,
                     "type": 2,
@@ -119,7 +119,7 @@ def swap() -> None:
                     "value": 0,
                     "gas": 3000000,
                     "maxFeePerGas": Web3.toWei(50, "gwei"),
-                    "maxPriorityFeePerGas": Web3.toWei(5, "gwei"),
+                    "maxPriorityFeePerGas": Web3.toWei(10, "gwei"),
                     "nonce": nonce,
                     "chainId": 1,
                     "type": 2,
@@ -134,6 +134,21 @@ def swap() -> None:
         #options["to"] = convex_strategy.address
         #harvest_tx = convex_strategy.functions.runHarvest().buildTransaction(options)
         #bundle.append({"signer": signer, "transaction": harvest_tx})
+        tx4: TxParams = {
+                "to": convex_strategy.address,
+                "value": 0,
+                "gas": 3000000,
+                "maxFeePerGas": Web3.toWei(50, "gwei"),
+                "maxPriorityFeePerGas": Web3.toWei(10, "gwei"),
+                "nonce": nonce,
+                "chainId": 1,
+                "type": 2,
+                "data": convex_strategy.encodeABI(fn_name="runHarvest", args=[]),
+        }
+        pp.pprint(f"tx4:\n{tx4}\n")
+        tx4_signed = signer.sign_transaction(tx4)
+        nonce += 1
+        bundle.append({"signed_transaction": tx4_signed.rawTransaction})
         pp.pprint(bundle)
         while True:
             block = web3.eth.block_number
@@ -163,7 +178,7 @@ def swap() -> None:
             print("bundle stats:", stats_v1)
             print("bundle stats:", stats_v2)
             send_result.wait()
-            runs = 20
+            runs = 200
             while True:
                 time.sleep(12)
                 try:
