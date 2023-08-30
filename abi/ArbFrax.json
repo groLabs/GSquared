@@ -5,53 +5,51 @@
     "type": "constructor"
   },
   {
+    "anonymous": false,
     "inputs": [
       {
+        "indexed": false,
         "internalType": "uint256",
         "name": "_initialAmount",
-        "type": "uint256",
-        "indexed": false
+        "type": "uint256"
       },
       {
+        "indexed": false,
         "internalType": "uint256",
         "name": "_finalAmount",
-        "type": "uint256",
-        "indexed": false
+        "type": "uint256"
       },
       {
+        "indexed": false,
         "internalType": "uint256",
         "name": "_slippageAmount",
-        "type": "uint256",
-        "indexed": false
+        "type": "uint256"
       }
     ],
-    "type": "event",
     "name": "ArbPerformed",
-    "anonymous": false
+    "type": "event"
   },
   {
+    "anonymous": false,
     "inputs": [
       {
+        "indexed": true,
         "internalType": "address",
         "name": "user",
-        "type": "address",
-        "indexed": true
+        "type": "address"
       },
       {
+        "indexed": true,
         "internalType": "address",
         "name": "newOwner",
-        "type": "address",
-        "indexed": true
+        "type": "address"
       }
     ],
-    "type": "event",
     "name": "OwnershipTransferred",
-    "anonymous": false
+    "type": "event"
   },
   {
     "inputs": [],
-    "stateMutability": "view",
-    "type": "function",
     "name": "DAI",
     "outputs": [
       {
@@ -59,64 +57,51 @@
         "name": "",
         "type": "address"
       }
-    ]
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],
-    "stateMutability": "view",
-    "type": "function",
-    "name": "OUSD",
+    "name": "FRAX",
     "outputs": [
       {
         "internalType": "contract ERC20",
         "name": "",
         "type": "address"
       }
-    ]
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],
-    "stateMutability": "view",
-    "type": "function",
-    "name": "OUSD_META",
+    "name": "FRAX_META",
     "outputs": [
       {
         "internalType": "contract ICurveMeta",
         "name": "",
         "type": "address"
       }
-    ]
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],
-    "stateMutability": "view",
-    "type": "function",
-    "name": "OUSD_META_INDEX",
+    "name": "FRAX_META_INDEX",
     "outputs": [
       {
         "internalType": "int128",
         "name": "",
         "type": "int128"
       }
-    ]
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],
-    "stateMutability": "view",
-    "type": "function",
-    "name": "OVAULT",
-    "outputs": [
-      {
-        "internalType": "contract IOusdVault",
-        "name": "",
-        "type": "address"
-      }
-    ]
-  },
-  {
-    "inputs": [],
-    "stateMutability": "view",
-    "type": "function",
     "name": "THREE_CURVE_META_INDEX",
     "outputs": [
       {
@@ -124,12 +109,12 @@
         "name": "",
         "type": "int128"
       }
-    ]
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],
-    "stateMutability": "view",
-    "type": "function",
     "name": "THREE_POOL",
     "outputs": [
       {
@@ -137,12 +122,38 @@
         "name": "",
         "type": "address"
       }
-    ]
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],
+    "name": "UNI_V3",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "view",
-    "type": "function",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "UNI_V3_FEE",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "USDC",
     "outputs": [
       {
@@ -150,12 +161,12 @@
         "name": "",
         "type": "address"
       }
-    ]
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],
-    "stateMutability": "view",
-    "type": "function",
     "name": "USDT",
     "outputs": [
       {
@@ -163,12 +174,12 @@
         "name": "",
         "type": "address"
       }
-    ]
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [],
-    "stateMutability": "view",
-    "type": "function",
     "name": "owner",
     "outputs": [
       {
@@ -176,7 +187,9 @@
         "name": "",
         "type": "address"
       }
-    ]
+    ],
+    "stateMutability": "view",
+    "type": "function"
   },
   {
     "inputs": [
@@ -186,8 +199,6 @@
         "type": "uint256"
       }
     ],
-    "stateMutability": "nonpayable",
-    "type": "function",
     "name": "performArb",
     "outputs": [
       {
@@ -200,7 +211,9 @@
         "name": "",
         "type": "uint256"
       }
-    ]
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
     "inputs": [
@@ -210,9 +223,10 @@
         "type": "uint256"
       }
     ],
+    "name": "performArbWithTransfer",
+    "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function",
-    "name": "performArbWithTransfer"
+    "type": "function"
   },
   {
     "inputs": [
@@ -222,9 +236,10 @@
         "type": "address"
       }
     ],
+    "name": "sweep",
+    "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function",
-    "name": "sweep"
+    "type": "function"
   },
   {
     "inputs": [
@@ -234,8 +249,9 @@
         "type": "address"
       }
     ],
+    "name": "transferOwnership",
+    "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function",
-    "name": "transferOwnership"
+    "type": "function"
   }
 ]

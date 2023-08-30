@@ -39,7 +39,7 @@ def swap() -> None:
     signer: LocalAccount = Account.from_key(os.environ["ADMIN_KEY"])
     web3 = Web3(HTTPProvider(os.environ["WEB3_ALCHEMY_PROJECT_ID"]))
     arb_contract: Contract = web3.eth.contract(
-        address=web3.toChecksumAddress(FRAX_ARB), abi=get_abi("ArbOusd")
+        address=web3.toChecksumAddress(FRAX_ARB), abi=get_abi("FraxArb")
     )
 
     three_pool_token: Contract = web3.eth.contract(
