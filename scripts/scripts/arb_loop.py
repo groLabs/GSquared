@@ -14,15 +14,15 @@ from web3.contract import Contract
 from web3.exceptions import TransactionNotFound
 
 # Addresses
-ADMIN = '0xBa5ED108abA290BBdFDD88A0F022E2357349566a'
-OUSD_ARB = '0x0000000000000000000000000000000000000000'  # TODO: Change once deployed
-THREE_POOL_TOKEN = '0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490'
-OUSD_STRATEGY = '0x73703f0493C08bA592AB1e321BEaD695AC5b39E3'
+ADMIN = "0xBa5ED108abA290BBdFDD88A0F022E2357349566a"
+FRAX_ARB = "0x0ECD44E4531eB827DEEd394b5eEAd3DD6c25F726"
+THREE_POOL_TOKEN = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+FRAX_STRATEGY = "0x60a6A86ad77EF672D93Db4408D65cf27Dd627050"
 
 # Constants
 CHAIN_ID = 1
 AMOUNT_TO_SWAP = int(200_000e18)
-MAX_UINT = 2 ** 256 - 100
+MAX_UINT = 2**256 - 100
 SLIPPAGE = 120
 
 
@@ -38,22 +38,19 @@ def swap() -> None:
 
     signer: LocalAccount = Account.from_key(os.environ["ADMIN_KEY"])
     web3 = Web3(HTTPProvider(os.environ["WEB3_ALCHEMY_PROJECT_ID"]))
-    arb_ousd: Contract = web3.eth.contract(
-        address=web3.toChecksumAddress(OUSD_ARB),
-        abi=get_abi("ArbOusd")
+    arb_contract: Contract = web3.eth.contract(
+        address=web3.toChecksumAddress(FRAX_ARB), abi=get_abi("ArbOusd")
     )
 
     three_pool_token: Contract = web3.eth.contract(
-        address=web3.toChecksumAddress(THREE_POOL_TOKEN),
-        abi=get_abi("ERC20")
+        address=web3.toChecksumAddress(THREE_POOL_TOKEN), abi=get_abi("ERC20")
     )
 
     convex_strategy: Contract = web3.eth.contract(
-        address=web3.toChecksumAddress(OUSD_STRATEGY),
-        abi=get_abi("ConvexStrategy")
+        address=web3.toChecksumAddress(FRAX_STRATEGY), abi=get_abi("ConvexStrategy")
     )
     # Read msig transactions from file to include them into bundle
-    with open("msig_transactions.json") as f:
+    with open("../../msig_transactions.json") as f:
         msig_transactions = json.load(f)
     flashbot(web3, signer)
     # Run the loop 9 times as we need to decrease debtRatio of strategy
@@ -70,19 +67,17 @@ def swap() -> None:
         }
         # Increase allowance for 3crv token if needed before sending it to arb contract
         three_pool_allowance = three_pool_token.functions.allowance(
-            ADMIN,
-            arb_ousd.address
+            ADMIN, arb_contract.address
         ).call()
         if three_pool_allowance < AMOUNT_TO_SWAP:
             approve_3crv_tx = three_pool_token.functions.approve(
-                arb_ousd.address,
-                MAX_UINT
+                arb_contract.address, MAX_UINT
             ).buildTransaction(options)
             options["nonce"] += 1
             bundle.append({"signer": signer, "transaction": approve_3crv_tx})
         options_copy = deepcopy(options)
-        options_copy['data'] = msig_transactions[i]['data']
-        options_copy['nonce'] = web3.eth.get_transaction_count(signer.address)
+        options_copy["data"] = msig_transactions[i]["data"]
+        options_copy["nonce"] = web3.eth.get_transaction_count(signer.address)
         msig_tx_signed = signer.sign_transaction(options_copy)
         # Execute transaction now without bundle:
         bundle.append({"signed_transaction": msig_tx_signed.rawTransaction})
@@ -91,14 +86,17 @@ def swap() -> None:
         # If not, first transfer 3pool tokens from strategy to arb contract and then perform arb
         # If yes, perform arb without transfer, as Arb contract should already have some
         # 3pool tokens from previous arb
-        three_pool_balance = three_pool_token.functions.balanceOf(arb_ousd.address).call()
+        three_pool_balance = three_pool_token.functions.balanceOf(
+            arb_contract.address
+        ).call()
         if three_pool_balance == 0:
-            arb_with_transfer_tx = arb_ousd.functions.performArbWithTransfer(
-                AMOUNT_TO_SWAP).buildTransaction(options)
+            arb_with_transfer_tx = arb_contract.functions.performArbWithTransfer(
+                AMOUNT_TO_SWAP
+            ).buildTransaction(options)
             options["nonce"] += 1
             bundle.append({"signer": signer, "transaction": arb_with_transfer_tx})
         else:
-            arb_tx = arb_ousd.functions.performArb(SLIPPAGE).buildTransaction(options)
+            arb_tx = arb_contract.functions.performArb(SLIPPAGE).buildTransaction(options)
             options["nonce"] += 1
             bundle.append({"signer": signer, "transaction": arb_tx})
 
