@@ -83,7 +83,7 @@ def swap() -> None:
                 tx1: TxParams = {
                         "to": three_pool_token.address,
                         "value": 0,
-                        "gas": 1000000,
+                        "gas": 100000,
                         "maxFeePerGas": Web3.toWei(50, "gwei"),
                         "maxPriorityFeePerGas": Web3.toWei(10, "gwei"),
                         "nonce": nonce,
@@ -100,7 +100,7 @@ def swap() -> None:
             tx2: TxParams = {
                     "to": arb_contract.address,
                     "value": 0,
-                    "gas": 3000000,
+                    "gas": 350000,
                     "maxFeePerGas": Web3.toWei(50, "gwei"),
                     "maxPriorityFeePerGas": Web3.toWei(10, "gwei"),
                     "nonce": nonce,
@@ -117,7 +117,7 @@ def swap() -> None:
             tx3: TxParams = {
                     "to": arb_contract.address,
                     "value": 0,
-                    "gas": 3000000,
+                    "gas": 350000,
                     "maxFeePerGas": Web3.toWei(50, "gwei"),
                     "maxPriorityFeePerGas": Web3.toWei(10, "gwei"),
                     "nonce": nonce,
@@ -137,7 +137,7 @@ def swap() -> None:
         tx4: TxParams = {
                 "to": convex_strategy.address,
                 "value": 0,
-                "gas": 3000000,
+                "gas": 350000,
                 "maxFeePerGas": Web3.toWei(50, "gwei"),
                 "maxPriorityFeePerGas": Web3.toWei(10, "gwei"),
                 "nonce": nonce,
